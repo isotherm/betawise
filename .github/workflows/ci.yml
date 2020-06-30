@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  linux:
+    runs-on: ubuntu-16.04
+    steps:
+    - name: Check out repository.
+      uses: actions/checkout@v2
+    - name: Install cross compiler.
+      run: sudo apt-get install gcc-m68k-linux-gnu
+    - name: Build library and applets.
+      run: make CROSS_COMPILE=m68k-linux-gnu-
+    - name: Upload artifacts.
+      uses: actions/upload-artifact@v2
+      with:
+        name: applets
+        path: "*.OS3KApp"

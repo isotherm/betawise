@@ -3,17 +3,16 @@ TARGET = DebugTool.OS3KApp
 SRC = betawise.c debug.c
 OBJ = $(SRC:.c=.o)
 
-CC = m68k-elf-gcc
-CFLAGS = -m68000 -mpcrel -Os -fomit-frame-pointer -ffixed-a5
-INCLUDE = -I.
-LIB =
-LD = m68k-elf-ld
+CROSS_COMPILE = m68k-elf-
+CC = $(CROSS_COMPILE)gcc
+LD = $(CROSS_COMPILE)ld
+CFLAGS = -m68000 -mpcrel -Os -fomit-frame-pointer -ffixed-a5 -U_FORTIFY_SOURCE
 LDFLAGS = -T betawise.lds
 
 .SUFFIXES = .c
 
 .c.o:
-	$(CC) $(CFLAGS) $(INCLUDE) -c $<
+	$(CC) $(CFLAGS) -c $<
 
 all: $(TARGET)
 
