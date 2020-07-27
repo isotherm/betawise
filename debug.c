@@ -138,7 +138,7 @@ void command_long() {
 void command_string() {
     if(gd->n < 1) {
         puts("");
-        puts("Syntax: W address [write]");
+        puts("Syntax: S address [write]");
         return;
     }
     char* pMem = (char*)gd->args[0];
