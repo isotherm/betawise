@@ -33,7 +33,7 @@ void command_call() {
     }
     puts(" OK");
     unsigned pFunc = gd->args[0];
-    if(pFunc >= 0xA000 && pFunc <= 0xA400 && !(pFunc & 3)) {
+    if(pFunc >= 0xA000 && pFunc <= 0xA470 && !(pFunc & 3)) {
         pFunc = (unsigned)&ClearScreen + ((pFunc - 0xA000) >> 1);
     }
     switch(gd->n) {
