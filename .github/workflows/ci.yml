@@ -19,5 +19,5 @@ jobs:
     - name: Upload artifacts.
       uses: actions/upload-artifact@v2
       with:
-        name: applets
+        name: betawise-applets
         path: "*.OS3KApp"
