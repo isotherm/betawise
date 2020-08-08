@@ -208,13 +208,13 @@ DEFINE_SYSCALL(0xA320, SYS_A320);
 DEFINE_SYSCALL(0xA324, SYS_A324);
 DEFINE_SYSCALL(0xA328, SYS_A328);
 DEFINE_SYSCALL(0xA32C, SYS_A32C);
-DEFINE_SYSCALL(0xA330, SYS_A330); // getch
-DEFINE_SYSCALL(0xA334, SYS_A334); // getche
+DEFINE_SYSCALL(0xA330, getchar);
+DEFINE_SYSCALL(0xA334, SYS_A334); // getchar with echo
 DEFINE_SYSCALL(0xA338, abort);
 DEFINE_SYSCALL(0xA33C, atoi);
 DEFINE_SYSCALL(0xA340, atol);
 DEFINE_SYSCALL(0xA344, sscanf);
-DEFINE_SYSCALL(0xA348, fgetc);
+DEFINE_SYSCALL(0xA348, fgets);
 DEFINE_SYSCALL(0xA34C, fprintf);
 DEFINE_SYSCALL(0xA350, fputc);
 DEFINE_SYSCALL(0xA354, fscanf);
@@ -297,10 +297,6 @@ int fputs(const char* str, FILE* stream) {
         }
     }
     return fputc('\n', stream);
-}
-
-int getchar(void) {
-    return fgetc(stdin);
 }
 
 int putchar(int character) {
