@@ -1,7 +1,7 @@
 #ifndef _BETAWISE_H_
 #define _BETAWISE_H_
 
-// TODO: Provide our own 
+// TODO: Provide our own
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -118,6 +118,15 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status);
 #define MSG_USB_PLUG 0x30001
 #define MSG_USB_UNPLUG 0x3000C
 
+// Raster op codes.
+#define ROP_CAPTURE 1
+#define ROP_DSTINVERT 2
+#define ROP_SRCINVERT 3
+#define ROP_NOTSRCCOPY 4
+#define ROP_WHITENESS 5
+#define ROP_BLACKNESS 6
+#define ROP_SRCPAINT 7
+
 // System functions.
 void ClearScreen();
 void SetCursor(uint8_t row, uint8_t col, uint8_t cursor_mode);
@@ -125,9 +134,20 @@ void GetCursorPos(uint8_t* row, uint8_t* col);
 void PutStringCentered(const char *str);
 void PutChar(const char c);
 void PutStringRaw(const char* str);
+void SetCursorMode(uint8_t cursor_mode);
+void GetCursorMode(uint8_t* cursor_mode);
+void ClearRowCols(uint8_t row, uint8_t col_start, uint8_t col_stop);
+void ClearRows(uint8_t row_start, uint8_t row_stop);
 
 void PutString(const char* str);
 
+void DrawBitmap(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t* bitmap);
+void RasterOp(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t* bitmap, uint8_t rop);
+
+void ProgressBar(uint8_t row, uint16_t value, uint16_t total);
+// exit_keys is a list of key codes that exit text input. Terminated by -1 (\xFF).
+char TextBox(char* buffer, uint8_t* len, uint16_t max_len, const char* exit_keys, uint16_t password);
+char WaitForKey(void);
 int IsKeyReady(void);
 
 // Standard library functions.
@@ -189,7 +209,7 @@ extern char __rom_size;
 #define APPLET_LANGUAGE_NL .languageId = 8,
 #define APPLET_LANGUAGE_SV .languageId = 9,
 #define APPLET_HEADER_END };
-    
+
 // Global data pointer (applets must store global static data in this struct)
 struct gd_t;
 register volatile struct gd_t* gd asm("a5");

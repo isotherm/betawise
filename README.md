@@ -45,7 +45,6 @@ Much research and work is still needed:
 * Make betawise static library for easier linking
 * Investigate different statuses from `ProcessMessage`
 * Find and document timer functions and messages
-* Find and document graphic drawing routines
 * Find and document non-message keyboard functions
 * Eliminate need to put global data into a structure
 
