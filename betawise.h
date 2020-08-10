@@ -136,8 +136,8 @@ void PutChar(const char c);
 void PutStringRaw(const char* str);
 void SetCursorMode(uint8_t cursor_mode);
 void GetCursorMode(uint8_t* cursor_mode);
-void ClearRowCols(uint8_t row, uint8_t col_start, uint8_t col_stop);
-void ClearRows(uint8_t row_start, uint8_t row_stop);
+void ClearRowCols(uint8_t row, uint8_t col_first, uint8_t col_last);
+void ClearRows(uint8_t row_first, uint8_t row_last);
 
 void PutString(const char* str);
 
@@ -149,6 +149,17 @@ void ProgressBar(uint8_t row, uint16_t value, uint16_t total);
 char TextBox(char* buffer, uint8_t* len, uint16_t max_len, const char* exit_keys, uint16_t password);
 char WaitForKey(void);
 int IsKeyReady(void);
+
+void DialogInit(char single, char row_first, char row_last, char col);
+// marker is usually ' '; id is for the user; shortcut_key and file_size are usually -1.
+int DialogAddItem(char* text, char text_len, char marker, int id, char shortcut_key, int file_size);
+int DialogAddExitKey(short key);
+void DialogSetChoice(char index);
+void DialogDraw();
+short DialogRun();
+char DialogGetChoice();
+int DialogGetChoiceId();
+int DialogGetItemId(char index);
 
 // Standard library functions.
 int tolower(int c);
