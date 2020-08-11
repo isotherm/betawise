@@ -328,10 +328,9 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
 
                 case MOD_CTRL | KEY_I:
                     ClearScreen();
-                    for(;;) {
+                    for(char choice = 1;;) {
                         uint32_t stack[BUFFER_COUNT];
                         uint8_t row, col;
-                        char choice;
                         DialogInit(0, 1, 4, 40);
                         DialogAddExitKey(KEY_ENTER);
                         DialogAddExitKey(KEY_ESC);
@@ -341,7 +340,8 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
                             int valid = !NumberFromString((char*)gd->buffer[i] + 1, &stack[i]);
                             DialogAddItem((char*)gd->buffer[i], len, valid ? ' ' : '\xd7', !valid, keys[i], -1);
                         }
-                        DialogAddItem("nvoke f(1,2,...)", 14, '\x10', 0, KEY_I, -1);
+                        DialogAddItem("all f(1,2,...)", 14, '\x10', 0, KEY_C, -1);
+                        DialogSetChoice(choice);
                         DialogDraw();
                         if(DialogRun() == KEY_ESC) {
                             break;
@@ -349,7 +349,6 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
                         if(DialogGetChoice() > BUFFER_COUNT) {
                             for(choice = 1; choice <= BUFFER_COUNT; choice++) {
                                 if(DialogGetItemId(choice) != 0) {
-                                    DialogSetChoice(choice);
                                     break;
                                 }
                             }
