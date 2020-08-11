@@ -17,6 +17,10 @@
 #define stdout (FILE*)1
 #define stderr (FILE*)2
 
+// Cursor mode definitoins.
+#define CURSOR_HIDE 0x0C
+#define CURSOR_SHOW 0x0F
+
 // Key codes definitions.
 #define KEY_FILE_1      0x2D
 #define KEY_FILE_2      0x2C

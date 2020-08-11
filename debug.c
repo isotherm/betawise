@@ -62,7 +62,7 @@ void DumpSetCursor(char offset, char mode, char show) {
     } else if(mode == MODE_ASCII) {
         col = FIRST_BYTE_COL + (BYTES_PER_ROW * 3) + col;
     }
-    SetCursor(row, col, show ? 0xF : 0xC);
+    SetCursor(row, col, show ? CURSOR_SHOW : CURSOR_HIDE);
 }
 
 void DumpSetCursorCur() {
@@ -102,7 +102,7 @@ void DumpRedrawScreen() {
     ClearScreen();
     InstallBusErrorHandler();
     for(char row = 1; row <= ROWS_PER_SCREEN; row++) {
-        SetCursor(row, 1, 0xC);
+        SetCursor(row, 1, CURSOR_HIDE);
         printf("%08X ", pAddr);
         for(char byte = 0; byte < BYTES_PER_ROW; byte++) {
             gd->busError = 0;
@@ -361,14 +361,14 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
                             uint32_t result = ((uint32_t(*)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t))stack[0])(
                                 stack[2], stack[4], stack[6], stack[1], stack[3], stack[5]);
                             printf("Return value = 0x%08X (%d)", result, result);
-                            SetCursorMode(0xC);
+                            SetCursorMode(CURSOR_HIDE);
                             WaitForKey();
                             break;
                         } else {
                             choice = DialogGetChoice() - 1;
                         }
                         GetCursorPos(&row, &col);
-                        SetCursor(row, col + 6, 0xC);
+                        SetCursor(row, col + 6, CURSOR_HIDE);
                         NumberPrompt("", (char*)gd->buffer[choice] + 1, BUFFER_INPUT, choice ? "0x" : "!");
                     }
                     DumpRedrawScreen();
@@ -378,7 +378,7 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
                     buffer[0] = 0;
                     for(;;) {
                         ClearRowCols(4, 1, 41);
-                        SetCursor(4, 1, 0xC);
+                        SetCursor(4, 1, CURSOR_HIDE);
                         if(NumberPrompt("Go to address: ", buffer, sizeof(buffer), "0x") == -2) {
                             break;
                         }
