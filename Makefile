@@ -1,13 +1,13 @@
-TARGET = DebugTool.OS3KApp
+TARGET = betawise.a
 
-SRC = betawise.c debug.c
+SRC = betawise.c
 OBJ = $(SRC:.c=.o)
 
 CROSS_COMPILE = m68k-elf-
 CC = $(CROSS_COMPILE)gcc
-LD = $(CROSS_COMPILE)ld
+AR = $(CROSS_COMPILE)ar
 CFLAGS = -m68000 -mpcrel -Os -fomit-frame-pointer -ffixed-a5 -U_FORTIFY_SOURCE
-LDFLAGS = -T betawise.lds
+ARFLAGS = rcs
 
 .SUFFIXES = .c
 
@@ -15,12 +15,12 @@ LDFLAGS = -T betawise.lds
 	$(CC) $(CFLAGS) -c $<
 
 all: $(TARGET)
+	+$(MAKE) -C DebugTool
 
-$(TARGET): debug.o betawise.o
-	$(LD) $(LDFLAGS) $^ -o $@
+$(TARGET): betawise.o
+	$(AR) $(ARFLAGS) $@ $^
 
 clean:
 	rm -f $(OBJ) $(TARGET)
 
-debug.o: debug.c betawise.h
 betawise.o: betawise.c betawise.h
