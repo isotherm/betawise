@@ -16,6 +16,7 @@ ARFLAGS = rcs
 
 all: $(TARGET)
 	+$(MAKE) -C DebugTool
+	+$(MAKE) -C EhBASIC
 
 $(TARGET): betawise.o
 	$(AR) $(ARFLAGS) $@ $^

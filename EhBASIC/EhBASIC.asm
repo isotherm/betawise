@@ -2,8 +2,7 @@
 #														#
 #	Enhanced BASIC for the Motorola MC680xx							#
 #														#
-#	This is the generic version with I/O and LOAD/SAVE example code for the		#
-#	EASy68k editor/simulator. 2002-2012.							#
+#	This version is for the AlphaSmart Neo.							#
 #														#
 #####################################################################################
 #														#
@@ -66,271 +65,56 @@ nobrk		=	0				| null response to INPUT causes a break
 #####################################################################################
 
 
-	.include	"EhBASIC.inc"
-							| RAM offset definitions
-
-#	.org		0x000400			| past the vectors in a real system
+	.include	"EhBASIC.inc"		| RAM offset definitions
 
 
 #####################################################################################
 #
-# the following code is simulator specific, change to suit your system
-
 # output character to the console from register d0.b
 
 VEC_OUT:
-	MOVEM.l	%d0-%d1,-(%sp)		| save d0, d1
-	MOVE.b	%d0,%d1			| copy character
-	MOVEQ		#6,%d0			| character out
-	TRAP		#15				| do I/O function
-
-	MOVEM.l	(%sp)+,%d0-%d1		| restore d0, d1
+	MOVEM.l	%d0-%d1/%a0-%a1,-(%sp)	| save variables for C calling convention
+	MOVEM.l	%d0,-(%sp)			| pass param1, character
+	BSR		PutCharWrapper		| print the character      
+	ADDQ		#4,%sp			| skip params
+VEC_OUT_DONE:
+	MOVEM.l	(%sp)+,%d0-%d1/%a0-%a1	| restore variables for calling convention
 	RTS
 
 
 #####################################################################################
 #
-# input a character from the console into register d0
-# else return Cb=0 if there's no character available
+# read/wait for a character from the console into register d0 and set flags
 
 VEC_IN:
-	MOVE.l	%d1,-(%sp)			| save d1
-	MOVEQ		#7,%d0			| get the status
-	TRAP		#15				| do I/O function
-
-	MOVE.b	%d1,%d0			| copy the returned status
-	BNE.s		RETCHR			| if a character is waiting go get it
-
-	MOVE.l	(%sp)+,%d1			| else restore d1
-	TST.b		%d0				| set the z flag
-#	ANDI.b	#0xFE,%CCR			| clear the carry, flag we got no byte
-#							| done by the TST.b
-	RTS
-
-RETCHR:
-	MOVEQ		#5,%d0			| get byte form the keyboard
-	TRAP		#15				| do I/O function
-
-	MOVE.b	%d1,%d0			| copy the returned byte
-	MOVE.l	(%sp)+,%d1			| restore d1
-	TST.b		%d0				| set the z flag on the received byte
+	MOVEM.l	%d1/%a0-%a1,-(%sp)	| save variables for C calling convention
+	MOVEM.l	%d0,-(%sp)			| pass param1, whether to wait
+	BSR		GetCharWrapper		| read/wait for a character
+	ADDQ		#4,%sp			| skip params
+	TST.b		%d0				| clear the z flag
+	BEQ.s		VEC_IN_EMPTY		| carry is currently cleared
 	ORI.b		#1,%CCR			| set the carry, flag we got a byte
+VEC_IN_EMPTY:
+	MOVEM.l	(%sp)+,%d1/%a0-%a1	| restore variables for calling convention
 	RTS
 
 
 #####################################################################################
 #
-# LOAD routine for the Easy68k simulator
+# LOAD a file into program memory
 
 VEC_LD:
-	LEA		load_title(%pc),%a1	| set the LOAD request title string pointer
-	BSR		get_filename		| get the filename from the line or the request
-
-	BEQ		LAB_FCER			| if null do function call error then warm start
-
-	MOVE		#51,%d0			| open existing file
-	TRAP		#15				| do I/O function
-
-	TST.w		%d0				| test load result
-	BNE.s		LOAD_exit			| if error clear up and exit
-
-	MOVE.l	%d1,file_id.w(%a3)	| save the file ID
-
-	LEA		LOAD_in(%pc),%a1		| get byte from file vector
-	MOVE.l	%a1,V_INPTv.w(%a3)	| set the input vector
-	BRA		LAB_127D			| now we just wait for Basic command, no "Ready"
-
-LOAD_exit:
-	BSR		LAB_147A			| go do "CLEAR"
-	BRA		LAB_1274			| BASIC warm start entry, go wait for Basic
-							| command
-
-# input character to register d0 from file
-
-LOAD_in:
-	MOVEM.l	%d1-%d2/%a1,-(%sp)	| save d1, d2 & a1
-	MOVE.l	file_id.w(%a3),%d1	| get file ID back
-	LEA		file_byte.w(%a3),%a1	| point to byte buffer
-	MOVEQ		#1,%d2			| set count for one byte
-	MOVEQ		#53,%d0			| read from file
-	TRAP		#15				| do I/O function
-
-	TST.w		%d0				| test status
-	BNE.s		LOAD_eof			| branch if byte read failed
-
-	MOVE.b	(%a1),%d0			| get byte
-	MOVEM.l	(%sp)+,%d1-%d2/%a1	| restore d1, d2 & a1
-	ORI.b		#1,%CCR			| set carry, flag we got a byte
-	RTS
-							| got an error on read so restore the input
-							| vector and tidy up
-LOAD_eof:
-	MOVEQ		#50,%d0			| close all files
-	TRAP		#15				| do I/O function
-
-	LEA		VEC_IN(%pc),%a1		| get byte from input device vector
-	MOVE.l	%a1,V_INPTv.w(%a3)	| set input vector
-	MOVEQ		#0,%d0			| clear byte
-	MOVEM.l	(%sp)+,%d1-%d2/%a1	| restore d1, d2 & a1
-	BSR		LAB_147A			| do CLEAR, erase variables/functions and
-							| flush stacks
-	BRA		LAB_1274			| BASIC warm start entry, go wait for Basic
-							| command
+	MOVEQ		#0x2E,%d7			| error code $2E "Not implemented" error
+	BRA		LAB_XERR			| do error #d7, then warm start
 
 
 #####################################################################################
 #
-# get the filename from the line or from the filename requester
-#
-# if the name is null, "", or there is nothing following then the requester is used
-# to get a filename else the filename is got from the line. if the requester is used
-# the name buffer is allocated in string space and is always null terminated before
-# it is passed to the file requester
-
-get_filename:
-	BEQ.s		get_name			| if no following go use the requester
-
-get_file:
-	MOVE.l	%a1,-(%sp)			| save the title string pointer
-	SUBQ.w	#1,%a5			| decrement the execute pointer
-	BSR		LAB_GVAL			| get value from line
-	MOVEA.l	(%sp)+,%a1			| restore the title string pointer
-	TST.b		Dtypef.w(%a3)		| test the data type flag
-	BPL		LAB_TMER			| if not string type do type mismatch error
-
-	MOVEA.l	FAC1_m.w(%a3),%a2		| get the descriptor pointer
-	MOVE.w	4(%a2),%d1			| get the string length
-	BEQ.s		get_name			| if null go use the file requester
-
-	MOVEA.l	(%a2),%a1			| get the string pointer
-	MOVE.w	%d1,%d0			| copy the string length
-	ADDQ.w	#1,%d1			| increment the string length
-	BSR		LAB_2115			| make space d1 bytes long
-
-	MOVE.b	#0x00,(%a0,%d0.w)		| null terminate the new string
-	SUBQ.w	#1,%d0			| decrement the string length
-name_copy:
-	MOVE.b	(%a1,%d0.w),(%a0,%d0.w)	| copy a file name byte
-	DBF		%d0,name_copy		| loop while more to do
-
-	MOVEA.l	%a0,%a1			| copy the new, terminated, file name pointer
-
-	MOVEA.l	%a2,%a0			| copy the old filename descriptor pointer
-	BRA		LAB_22B6			| pop string off descriptor stack or from memory
-							| returns with d0 = length, a0 = pointer
-
-# get a name with the file requester
-
-get_name:
-	MOVE.l	%a3,-(%sp)			| save the variables base pointer
-	MOVE.w	#0x100,%d1			| enough space for the request filename
-	BSR		LAB_2115			| make space d1 bytes long
-	MOVEA.l	%a0,%a3			| copy the file name buffer pointer
-	LEA		file_list(%pc),%a2	| set the file types list pointer
-	MOVEQ		#0,%d1			| file open
-	MOVE.b	%d1,(%a3)			| ensure initial null file name
-	MOVEQ		#58,%d0			| file I/O
-	TRAP		#15
-
-	MOVEA.l	%a3,%a1			| copy the file name pointer
-	MOVEA.l	(%sp)+,%a3			| restore the variables pointer
-	TST.l		%d1				| did the user hit open
-	RTS
-
-
-load_title:
-	.asciz	"LOAD file"			| LOAD file title string
-
-save_title:
-	.asciz	"SAVE file"			| SAVE file title string
-
-file_list:
-	.asciz	"*.bas"			| file type list
-	.align	2				| ensure even
-
-
-#####################################################################################
-#
-# SAVE routine for the Easy68k simulator
+# SAVE program memory into a file
 
 VEC_SV:
-	LEA		save_title(%pc),%a1	| set the SAVE request title string pointer
-	PEA		SAVE_RTN(%pc)		| set the return point
-	BEQ.s		get_name			| if no following go use the file requester
-
-	CMP.b		#',',%d0			| compare the following byte with ","
-	BNE		get_file			| if not "," get the filename from the line
-
-	BEQ.s		get_name			| else go use the file requester
-
-SAVE_RTN:
-	BEQ		LAB_FCER			| if null do function call error then warm start
-
-	MOVEA.l	%a0,%a1			| copy filename pointer
-	MOVE		#52,%d0			| open new file
-	TRAP		#15				| do I/O function
-
-	TST.w		%d0				| test save result
-	BNE		LAB_FCER			| if error do function call error, warm start
-
-	MOVE.l	%d1,file_id.w(%a3)	| save file ID
-
-	MOVE.l	V_OUTPv.w(%a3),-(%sp)	| save the output vector
-	LEA		SAVE_OUT(%pc),%a1		| send byte to file vector
-	MOVE.l	%a1,V_OUTPv.w(%a3)	| change the output vector
-
-	MOVE.b	TWidth.w(%a3),-(%sp)	| save the current line length
-	MOVE.b	#0x00,TWidth.w(%a3)	| set infinite length line for save
-
-	BSR		LAB_GBYT			| get next BASIC byte
-	BEQ		SAVE_bas			| if no following go do SAVE
-
-	CMP.b		#',',%d0			| else compare with ","
-	BNE		LAB_SNER			| if not "," so go do syntax error/warm start
-
-	BSR		LAB_IGBY			| increment & scan memory
-SAVE_bas:
-	BSR		LAB_LIST			| go do list (line numbers applicable)
-	MOVE.b	(%sp)+,TWidth.w(%a3)	| restore the line length
-
-	MOVE.l	(%sp)+,V_OUTPv.w(%a3)	| restore the output vector
-	MOVEQ		#50,%d0			| close all files
-	TRAP		#15				| do I/O function
-
-	RTS
-
-
-# output character to file from register d0
-
-SAVE_OUT:
-	MOVEM.l	%d0-%d2/%a1,-(%sp)	| save d0, d1, d2 & a1
-	MOVE.l	file_id.w(%a3),%d1	| get file ID back
-	LEA		file_byte.w(%a3),%a1	| point to byte buffer
-	MOVE.b	%d0,(%a1)			| save byte
-	MOVEQ		#1,%d2			| set byte count
-	MOVEQ		#54,%d0			| write to file
-	TRAP		#15				| do I/O function
-
-	MOVEM.l	(%sp)+,%d0-%d2/%a1	| restore d0, d1, d2 & a1
-	RTS
-
-
-#####################################################################################
-#
-# turn off simulator key echo
-
-code_start:
-	MOVEQ		#12,%d0			| keyboard echo
-	MOVEQ		#0,%d1			| turn off echo
-	TRAP		#15				| do I/O function
-
-# to tell EhBASIC where and how much RAM it has pass the address in a0 and the size
-# in d0. these values are at the end of the .inc file
-
-	MOVEA.l	#ram_addr,%a0		| tell BASIC where RAM starts
-	MOVE.l	#ram_size,%d0		| tell BASIC how big RAM is
-
-# end of simulator specific code
+	MOVEQ		#0x2E,%d7			| error code $2E "Not implemented" error
+	BRA		LAB_XERR			| do error #d7, then warm start
 
 
 ########################################################################################
@@ -341,30 +125,22 @@ code_start:
 # Register use :- (must improve this !!)
 #
 #	%a6 -	temp Bpntr				| temporary BASIC execute pointer
-#	%a5 -	Bpntr					| BASIC execute (get byte) pointer
-#	%a4 -	des_sk				| descriptor stack pointer
-#	%a3 -	ram_strt				| start of RAM. all RAM references are offsets
+#	%a5 -	ram_strt				| start of RAM. all RAM references are offsets
 #							| from this value
+#	%a4 -	des_sk				| descriptor stack pointer
+#	%a3 -	Bpntr					| BASIC execute (get byte) pointer
 #
 
 #####################################################################################
 #
-# BASIC cold start entry point. assume entry with RAM address in a0 and RAM length
-# in d0
+# BASIC cold start entry point. assume entry with RAM address in a5
 
+.global LAB_COLD
 LAB_COLD:
-	CMP.l		#0x4000,%d0			| compare size with 16k
-	BGE.s		LAB_sizok			| branch if >= 16k
-
-	MOVEQ		#5,%d0			| error 5 - not enough RAM
-	RTS						| just exit. this as stands will never execute
-							| but could be used to exit back to an OS
-
-LAB_sizok:
-	MOVEA.l	%a0,%a3			| copy RAM base to a3
-	ADDA.l	%d0,%a0			| a0 is top of RAM
-	MOVE.l	%a0,Ememl.w(%a3)		| set end of mem
-	LEA		ram_base.w(%a3),%sp	| set stack to RAM start + 1k
+	MOVEA.l	%a5,%a0			| copy RAM base to a0
+	ADDA.l	#ram_size,%a0		| a0 is top of RAM
+	MOVE.l	%a0,Ememl.w(%a5)		| set end of mem
+	LEA		ram_base.w(%a5),%sp	| set stack to RAM start + 1k
 
 	MOVE.w	#0x4EF9,%d0			| JMP opcode
 	MOVEA.l	%sp,%a0			| point to start of vector table
@@ -402,26 +178,26 @@ LAB_sizok:
 
 ###LAB_GMEM
 	MOVEQ		#0x00,%d0			| clear d0
-	MOVE.b	%d0,Nullct.w(%a3)		| default NULL count
-	MOVE.b	%d0,TPos.w(%a3)		| clear terminal position
-	MOVE.b	%d0,ccflag.w(%a3)		| allow CTRL-C check
-	MOVE.w	%d0,prg_strt-2.w(%a3)	| clear start word
-	MOVE.w	%d0,BHsend.w(%a3)		| clear value to string end word
+	MOVE.b	%d0,Nullct.w(%a5)		| default NULL count
+	MOVE.b	%d0,TPos.w(%a5)		| clear terminal position
+	MOVE.b	%d0,ccflag.w(%a5)		| allow CTRL-C check
+	MOVE.w	%d0,prg_strt-2.w(%a5)	| clear start word
+	MOVE.w	%d0,BHsend.w(%a5)		| clear value to string end word
 
-	MOVE.b	#0x50,TWidth.w(%a3)	| default terminal width byte for simulator
-	MOVE.b	#0x0E,TabSiz.w(%a3)	| save default tab size = 14
+	MOVE.b	#40,TWidth.w(%a5)		| default terminal width byte
+	MOVE.b	#10,TabSiz.w(%a5)		| save default tab size
 
-	MOVE.b	#0x38,Iclim.w(%a3)	| default limit for TAB = 14 for simulator
+	MOVE.b	#20,Iclim.w(%a5)		| default limit for TAB
 
-	LEA		des_sk.w(%a3),%a4		| set descriptor stack start
+	LEA		des_sk.w(%a5),%a4		| set descriptor stack start
 
-	LEA		prg_strt.w(%a3),%a0	| get start of mem
-	MOVE.l	%a0,Smeml.w(%a3)		| save start of mem
+	LEA		prg_strt.w(%a5),%a0	| get start of mem
+	MOVE.l	%a0,Smeml.w(%a5)		| save start of mem
 
 	BSR		LAB_1463			| do "NEW" and "CLEAR"
 	BSR		LAB_CRLF			| print CR/LF
-	MOVE.l	Ememl.w(%a3),%d0		| get end of mem
-	SUB.l		Smeml.w(%a3),%d0		| subtract start of mem
+	MOVE.l	Ememl.w(%a5),%d0		| get end of mem
+	SUB.l		Smeml.w(%a5),%d0		| subtract start of mem
 
 	BSR		LAB_295E			| print d0 as unsigned integer (bytes free)
 	LEA		LAB_SMSG(%pc),%a0		| point to start message
@@ -431,9 +207,9 @@ LAB_sizok:
 	BSR		LAB_UFAC			| unpack memory (%a0) into FAC1
 
 	LEA		LAB_1274(%pc),%a0		| get warm start vector
-	MOVE.l	%a0,Wrmjpv.w(%a3)		| set warm start vector
+	MOVE.l	%a0,Wrmjpv.w(%a5)		| set warm start vector
 	BSR		LAB_RND			| initialise
-	JMP		LAB_WARM.w(%a3)		| go do warm start
+	JMP		LAB_WARM.w(%a5)		| go do warm start
 
 
 #####################################################################################
@@ -498,7 +274,7 @@ LAB_UVER:
 	ROR.b		#1,%d0			| ........ .......0 .......$ &.......
 	LSR.w		#1,%d0			| ........ .......0 0....... $&.....­.
 	AND.b		#0xC0,%d0			| mask the type bits
-	MOVE.b	%d0,Dtypef.w(%a3)		| save the data type
+	MOVE.b	%d0,Dtypef.w(%a5)		| save the data type
 
 	MOVEQ		#0,%d0			| clear d0 and set the zero flag
 	MOVEA.l	%d0,%a0			| return a null address
@@ -682,7 +458,7 @@ LAB_XERR:
 	LEA		LAB_EMSG(%pc),%a0		| point to " Error" message
 LAB_1269:
 	BSR		LAB_18C3			| print null terminated string from memory
-	MOVE.l	Clinel.w(%a3),%d0		| get current line
+	MOVE.l	Clinel.w(%a5),%d0		| get current line
 	BMI.s		LAB_1274			| go do warm start if -ve # (was immediate mode)
 
 							| else print line number
@@ -698,9 +474,9 @@ LAB_1274:
 
 LAB_127D:
 	MOVEQ		#-1,%d1			| set to -1
-	MOVE.l	%d1,Clinel.w(%a3)		| set current line #
-	MOVE.b	%d1,Breakf.w(%a3)		| set break flag
-	LEA		Ibuffs.w(%a3),%a5		| set basic execute pointer ready for new line
+	MOVE.l	%d1,Clinel.w(%a5)		| set current line #
+	MOVE.b	%d1,Breakf.w(%a5)		| set break flag
+	LEA		Ibuffs.w(%a5),%a3		| set basic execute pointer ready for new line
 LAB_127E:
 	BSR		LAB_1357			| call for BASIC input
 	BSR		LAB_GBYT			| scan memory
@@ -714,7 +490,7 @@ LAB_127E:
 							| no line number so do immediate mode, a5
 							| points to the buffer start
 	BSR		LAB_13A6			| crunch keywords into Basic tokens
-							| crunch from (%a5), output to (%a0)
+							| crunch from (%a3), output to (%a0)
 							| returns ..
 							| d2 is length, d1 trashed, d0 trashed,
 							| a1 trashed
@@ -728,17 +504,17 @@ LAB_127E:
 LAB_1295:
 	BSR		LAB_GFPN			| get fixed-point number into temp integer & d1
 	BSR		LAB_13A6			| crunch keywords into Basic tokens
-							| crunch from (%a5), output to (%a0)
+							| crunch from (%a3), output to (%a0)
 							| returns .. d2 is length,
 							| d1 trashed, d0 trashed, a1 trashed
-	MOVE.l	Itemp.w(%a3),%d1		| get required line #
+	MOVE.l	Itemp.w(%a5),%d1		| get required line #
 	BSR		LAB_SSLN			| search BASIC for d1 line number
 							| returns pointer in a0
 	BCS.s		LAB_12E6			| branch if not found
 
 							| aroooogah! line # already exists! delete it
 	MOVEA.l	(%a0),%a1			| get start of block (next line pointer)
-	MOVE.l	Sfncl.w(%a3),%d0		| get end of block (start of functions)
+	MOVE.l	Sfncl.w(%a5),%d0		| get end of block (start of functions)
 	SUB.l		%a1,%d0			| subtract start of block ( = bytes to move)
 	LSR.l		#1,%d0			| /2 (word move)
 	SUBQ.l	#1,%d0			| adjust for DBF loop
@@ -753,28 +529,28 @@ LAB_12B0:
 	SWAP		%d0				| swap high word to low word
 	DBF		%d0,LAB_12AE		| decrement high count and loop until done
 
-	MOVE.l	%a2,Sfncl.w(%a3)		| start of functions
-	MOVE.l	%a2,Svarl.w(%a3)		| save start of variables
-	MOVE.l	%a2,Sstrl.w(%a3)		| start of strings
-	MOVE.l	%a2,Sarryl.w(%a3)		| save start of arrays
-	MOVE.l	%a2,Earryl.w(%a3)		| save end of arrays
+	MOVE.l	%a2,Sfncl.w(%a5)		| start of functions
+	MOVE.l	%a2,Svarl.w(%a5)		| save start of variables
+	MOVE.l	%a2,Sstrl.w(%a5)		| start of strings
+	MOVE.l	%a2,Sarryl.w(%a5)		| save start of arrays
+	MOVE.l	%a2,Earryl.w(%a5)		| save end of arrays
 
 							| got new line in buffer and no existing same #
 LAB_12E6:
-	MOVE.b	Ibuffs.w(%a3),%d0		| get byte from start of input buffer
+	MOVE.b	Ibuffs.w(%a5),%d0		| get byte from start of input buffer
 	BEQ.s		LAB_1325			| if null line go do line chaining
 
 							| got new line and it isn't empty line
-	MOVEA.l	Sfncl.w(%a3),%a1		| get start of functions (end of block to move)
+	MOVEA.l	Sfncl.w(%a5),%a1		| get start of functions (end of block to move)
 	LEA		8(%a1,%d2.w),%a2		| copy it, add line length and add room for
 							| pointer and line number
 
-	MOVE.l	%a2,Sfncl.w(%a3)		| start of functions
-	MOVE.l	%a2,Svarl.w(%a3)		| save start of variables
-	MOVE.l	%a2,Sstrl.w(%a3)		| start of strings
-	MOVE.l	%a2,Sarryl.w(%a3)		| save start of arrays
-	MOVE.l	%a2,Earryl.w(%a3)		| save end of arrays
-	MOVE.l	Ememl.w(%a3),Sstorl.w(%a3)	| copy end of mem to start of strings, clear
+	MOVE.l	%a2,Sfncl.w(%a5)		| start of functions
+	MOVE.l	%a2,Svarl.w(%a5)		| save start of variables
+	MOVE.l	%a2,Sstrl.w(%a5)		| start of strings
+	MOVE.l	%a2,Sarryl.w(%a5)		| save start of arrays
+	MOVE.l	%a2,Earryl.w(%a5)		| save end of arrays
+	MOVE.l	Ememl.w(%a5),Sstorl.w(%a5)	| copy end of mem to start of strings, clear
 							| strings
 
 	MOVE.l	%a1,%d1			| copy end of block to move
@@ -793,11 +569,11 @@ LAB_1301:
 
 # space is opened up, now copy the crunched line from the input buffer into the space
 
-	LEA		Ibuffs.w(%a3),%a1		| source is input buffer
+	LEA		Ibuffs.w(%a5),%a1		| source is input buffer
 	MOVEA.l	%a0,%a2			| copy destination
 	MOVEQ		#-1,%d1			| set to allow re-chaining
 	MOVE.l	%d1,(%a2)+			| set next line pointer (allow re-chaining)
-	MOVE.l	Itemp.w(%a3),(%a2)+	| save line number
+	MOVE.l	Itemp.w(%a5),(%a2)+	| save line number
 	LSR.w		#1,%d2			| /2 (word copy)
 	SUBQ.w	#1,%d2			| correct for loop end on -1
 LAB_1303:
@@ -859,9 +635,10 @@ LAB_INLN:
 
 LAB_1357:
 	MOVEQ		#0x00,%d1			| clear buffer index
-	LEA		Ibuffs.w(%a3),%a0		| set buffer base pointer
+	LEA		Ibuffs.w(%a5),%a0		| set buffer base pointer
 LAB_1359:
-	JSR		V_INPT.w(%a3)		| call scan input device
+	MOVEQ		#1,%d0			| wait for a key
+	JSR		V_INPT.w(%a5)		| call scan input device
 	BCC.s		LAB_1359			| loop if no byte
 
 	BEQ.s		LAB_1359			| loop if null byte
@@ -914,7 +691,7 @@ LAB_1392:
 	ADDQ.w	#1,%d2			| increment the buffer save index
 
 	ADDQ.w	#1,%d1			| increment the buffer read index
-	MOVE.b	(%a5,%d1.w),%d0		| get a byte from the input buffer
+	MOVE.b	(%a3,%d1.w),%d0		| get a byte from the input buffer
 	BEQ		LAB_13EC			| if [EOL] go save it without crunching
 
 	CMP.b		#' ',%d0			| compare the character with " "
@@ -938,7 +715,7 @@ LAB_1392:
 	BRA.s		LAB_13CC			| else continue crunching
 
 # crunch keywords into Basic tokens
-# crunch from (%a5), output to (%a0)
+# crunch from (%a3), output to (%a0)
 # returns ..
 # d4 trashed
 # d3 trashed
@@ -953,10 +730,10 @@ LAB_1392:
 LAB_13A6:
 	MOVEQ		#0,%d1			| clear the read index
 	MOVE.l	%d1,%d2			| clear the save index
-	MOVE.b	%d1,Oquote.w(%a3)		| clear the open quote/DATA flag
+	MOVE.b	%d1,Oquote.w(%a5)		| clear the open quote/DATA flag
 LAB_13AC:
 	MOVEQ		#0,%d0			| clear word
-	MOVE.b	(%a5,%d1.w),%d0		| get byte from input buffer
+	MOVE.b	(%a3,%d1.w),%d0		| get byte from input buffer
 	BEQ.s		LAB_13EC			| if null save byte then continue crunching
 
 	CMP.b		#'_',%d0			| compare with "_"
@@ -968,7 +745,7 @@ LAB_13AC:
 	CMP.b		#'0',%d0			| compare with "0"
 	BCC.s		LAB_13EC			| if >= "0" save byte then continue crunching
 
-	MOVE.b	%d0,Asrch.w(%a3)		| save buffer byte as search character
+	MOVE.b	%d0,Asrch.w(%a5)		| save buffer byte as search character
 	CMP.b		#0x22,%d0			| is it quote character?
 	BEQ.s		LAB_1410			| branch if so (copy quoted string)
 
@@ -981,7 +758,7 @@ LAB_13C6:
 
 							| crunch rest
 LAB_13CC:
-	BTST.b	#6,Oquote.w(%a3)		| test open quote/DATA token flag
+	BTST.b	#6,Oquote.w(%a5)		| test open quote/DATA token flag
 	BNE.s		LAB_13EC			| branch if b6 of Oquote set (was DATA)
 							| go save byte then continue crunching
 
@@ -1003,7 +780,7 @@ LAB_13D8:
 							| crunching
 
 	ADDQ.w	#1,%d4			| increment read index
-	CMP.b		(%a5,%d4.w),%d0		| compare byte from input buffer
+	CMP.b		(%a3,%d4.w),%d0		| compare byte from input buffer
 	BEQ.s		LAB_13D6			| loop if character match
 
 	BRA.s		LAB_1417			| branch if no match
@@ -1027,20 +804,20 @@ LAB_13EC:
 
 							| token was : or DATA
 LAB_13FF:
-	MOVE.b	%d0,Oquote.w(%a3)		| save token-$3A ($00 for ":", TK_DATA-$3A for
+	MOVE.b	%d0,Oquote.w(%a5)		| save token-$3A ($00 for ":", TK_DATA-$3A for
 							| DATA)
 LAB_1401:
 	SUB.b		#(TK_REM-0x3A)&255,%d0	| subtract REM token offset
 	BNE		LAB_13AC			| If wasn't REM then go crunch rest of line
 
-	MOVE.b	%d0,Asrch.w(%a3)		| else was REM so set search for [EOL]
+	MOVE.b	%d0,Asrch.w(%a5)		| else was REM so set search for [EOL]
 
 							| loop for REM, "..." etc.
 LAB_1408:
-	MOVE.b	(%a5,%d1.w),%d0		| get byte from input buffer
+	MOVE.b	(%a3,%d1.w),%d0		| get byte from input buffer
 	BEQ.s		LAB_13EC			| branch if null [EOL]
 
-	CMP.b		Asrch.w(%a3),%d0		| compare with stored character
+	CMP.b		Asrch.w(%a5),%d0		| compare with stored character
 	BEQ.s		LAB_13EC			| branch if match (end quote, REM, :, or DATA)
 
 							| entry for copy string in quotes, don't crunch
@@ -1067,7 +844,7 @@ LAB_141B:
 
 							| reached end of table with no match
 LAB_141F:
-	MOVE.b	(%a5,%d1.w),%d0		| restore byte from input buffer
+	MOVE.b	(%a3,%d1.w),%d0		| restore byte from input buffer
 	BRA.s		LAB_13EC			| go save byte in output and continue crunching
 
 							| reached [EOL]
@@ -1088,7 +865,7 @@ LAB_142C:
 # search Basic for d1 line number from start of mem
 
 LAB_SSLN:
-	MOVEA.l	Smeml.w(%a3),%a0		| get start of program mem
+	MOVEA.l	Smeml.w(%a5),%a0		| get start of program mem
 	BRA.s		LAB_SCLN			| go search for required line from a0
 
 LAB_145F:
@@ -1122,43 +899,43 @@ LAB_NEW:
 	BNE.s		RTS_005			| exit if not end of statement (do syntax error)
 
 LAB_1463:
-	MOVEA.l	Smeml.w(%a3),%a0		| point to start of program memory
+	MOVEA.l	Smeml.w(%a5),%a0		| point to start of program memory
 	MOVEQ		#0,%d0			| clear longword
 	MOVE.l	%d0,(%a0)+			| clear first line, next line pointer
-	MOVE.l	%a0,Sfncl.w(%a3)		| set start of functions
+	MOVE.l	%a0,Sfncl.w(%a5)		| set start of functions
 
 # reset execution to start, clear variables and flush stack
 
 LAB_1477:
-	MOVEA.l	Smeml.w(%a3),%a5		| reset BASIC execute pointer
-	SUBQ.w	#1,%a5			| -1 (as end of previous line)
+	MOVEA.l	Smeml.w(%a5),%a3		| reset BASIC execute pointer
+	SUBQ.w	#1,%a3			| -1 (as end of previous line)
 
 # "CLEAR" command gets here
 
 LAB_147A:
-	MOVE.l	Ememl.w(%a3),Sstorl.w(%a3)	| save end of mem as bottom of string space
-	MOVE.l	Sfncl.w(%a3),%d0		| get start of functions
-	MOVE.l	%d0,Svarl.w(%a3)		| start of variables
-	MOVE.l	%d0,Sstrl.w(%a3)		| start of strings
-	MOVE.l	%d0,Sarryl.w(%a3)		| set start of arrays
-	MOVE.l	%d0,Earryl.w(%a3)		| set end of arrays
+	MOVE.l	Ememl.w(%a5),Sstorl.w(%a5)	| save end of mem as bottom of string space
+	MOVE.l	Sfncl.w(%a5),%d0		| get start of functions
+	MOVE.l	%d0,Svarl.w(%a5)		| start of variables
+	MOVE.l	%d0,Sstrl.w(%a5)		| start of strings
+	MOVE.l	%d0,Sarryl.w(%a5)		| set start of arrays
+	MOVE.l	%d0,Earryl.w(%a5)		| set end of arrays
 LAB_1480:
 	MOVEQ		#0,%d0			| set Zb
-	MOVE.b	%d0,ccnull.w(%a3)		| clear get byte countdown
+	MOVE.b	%d0,ccnull.w(%a5)		| clear get byte countdown
 	BSR		LAB_RESTORE			| perform RESTORE command
 
 # flush stack & clear continue flag
 
 LAB_1491:
-	LEA		des_sk.w(%a3),%a4		| reset descriptor stack pointer
+	LEA		des_sk.w(%a5),%a4		| reset descriptor stack pointer
 
 	MOVE.l	(%sp)+,%d0			| pull return address
-	LEA		ram_base.w(%a3),%sp	| set stack to RAM start + 1k, flush stack
+	LEA		ram_base.w(%a5),%sp	| set stack to RAM start + 1k, flush stack
 	MOVE.l	%d0,-(%sp)			| restore return address
 
 	MOVEQ		#0,%d0			| clear longword
-	MOVE.l	%d0,Cpntrl.w(%a3)		| clear continue pointer
-	MOVE.b	%d0,Sufnxf.w(%a3)		| clear subscript/FNX flag
+	MOVE.l	%d0,Cpntrl.w(%a5)		| clear continue pointer
+	MOVE.b	%d0,Sufnxf.w(%a5)		| clear subscript/FNX flag
 RTS_005:
 	RTS
 
@@ -1181,7 +958,7 @@ LAB_LIST:
 	BCS.s		LAB_14BD			| branch if next character numeric (LIST n...)
 
 	MOVEQ		#-1,%d1			| set end to $FFFFFFFF
-	MOVE.l	%d1,Itemp.w(%a3)		| save to Itemp
+	MOVE.l	%d1,Itemp.w(%a5)		| save to Itemp
 
 	MOVEQ		#0,%d1			| set start to $00000000
 	TST.b		%d0				| test next byte
@@ -1205,7 +982,7 @@ LAB_14C0:
 	BNE.s		RTS_005			| return if not "-" (will be Syntax error)
 
 	MOVEQ		#-1,%d1			| set end to $FFFFFFFF
-	MOVE.l	%d1,Itemp.w(%a3)		| save Itemp
+	MOVE.l	%d1,Itemp.w(%a5)		| save Itemp
 
 							| LIST [n]-[m] the - was there so see if
 							| there is an m to set as the end value
@@ -1214,7 +991,7 @@ LAB_14C0:
 
 	BSR		LAB_GFPN			| get fixed-point number into temp integer & d1
 LAB_14D4:
-	MOVE.b	#0x00,Oquote.w(%a3)	| clear open quote flag
+	MOVE.b	#0x00,Oquote.w(%a5)	| clear open quote flag
 	BSR		LAB_CRLF			| print CR/LF
 	MOVE.l	(%a0)+,%d0			| get next line pointer
 	BEQ.s		RTS_005			| if null all done so exit
@@ -1223,7 +1000,7 @@ LAB_14D4:
 	BSR		LAB_1629			| do CRTL-C check vector
 
 	MOVE.l	(%a0)+,%d0			| get this line #
-	CMP.l		Itemp.w(%a3),%d0		| compare end line # with this line #
+	CMP.l		Itemp.w(%a5),%d0		| compare end line # with this line #
 	BHI.s		RTS_005			| if this line greater all done so exit
 
 LAB_14E2:
@@ -1237,7 +1014,7 @@ LAB_150C:
 	BNE.s		LAB_1519			| branch if not
 
 							| we're either entering or leaving quotes
-	EOR.b		#0xFF,Oquote.w(%a3)	| toggle open quote flag
+	EOR.b		#0xFF,Oquote.w(%a5)	| toggle open quote flag
 LAB_1519:
 	MOVE.b	(%a0)+,%d0			| get byte and increment pointer
 	BNE.s		LAB_152E			| branch if not [EOL] (go print)
@@ -1253,7 +1030,7 @@ LAB_152E:
 	BPL.s		LAB_150C			| just go print it if not token byte
 
 							| else it was a token byte so maybe uncrunch it
-	TST.b		Oquote.w(%a3)		| test the open quote flag
+	TST.b		Oquote.w(%a5)		| test the open quote flag
 	BMI.s		LAB_150C			| just go print character if open quote set
 
 							| else uncrunch BASIC token
@@ -1286,13 +1063,13 @@ LAB_1540:
 LAB_FOR:
 	BSR		LAB_LET			| go do LET
 
-	MOVE.l	Lvarpl.w(%a3),%d0		| get the loop variable pointer
-	CMP.l		Sstrl.w(%a3),%d0		| compare it with the end of vars memory
+	MOVE.l	Lvarpl.w(%a5),%d0		| get the loop variable pointer
+	CMP.l		Sstrl.w(%a5),%d0		| compare it with the end of vars memory
 	BGE		LAB_TMER			| if greater go do type mismatch error
 
 # test for not less than the start of variables memory if needed
 #
-#	CMP.l		Svarl.w(%a3),%d0		| compare it with the start of variables memory
+#	CMP.l		Svarl.w(%a5),%d0		| compare it with the start of variables memory
 #	BLT		LAB_TMER			| if not variables memory do type mismatch error
 
 #	MOVEQ		#28,%d0			| we need 28 bytes !
@@ -1301,20 +1078,20 @@ LAB_FOR:
 	BSR		LAB_SNBS			| scan for next BASIC statement ([:] or [EOL])
 							| returns a0 as pointer to [:] or [EOL]
 	MOVE.l	%a0,(%sp)			| push onto stack (and dump the return address)
-	MOVE.l	Clinel.w(%a3),-(%sp)	| push current line onto stack
+	MOVE.l	Clinel.w(%a5),-(%sp)	| push current line onto stack
 
 	MOVEQ		#-1-(TK_TO^255),%d0	| set "TO" token
 	BSR		LAB_SCCA			| scan for CHR$(d0) else syntax error/warm start
 	BSR		LAB_CTNM			| check if source is numeric, else type mismatch
-	MOVE.b	Dtypef.w(%a3),-(%sp)	| push the FOR variable data type onto stack
+	MOVE.b	Dtypef.w(%a5),-(%sp)	| push the FOR variable data type onto stack
 	BSR		LAB_EVNM			| evaluate expression and check is numeric else
 							| do type mismatch
 
-	MOVE.l	FAC1_m.w(%a3),-(%sp)	| push TO value mantissa
-	MOVE.w	FAC1_e.w(%a3),-(%sp)	| push TO value exponent and sign
+	MOVE.l	FAC1_m.w(%a5),-(%sp)	| push TO value mantissa
+	MOVE.w	FAC1_e.w(%a5),-(%sp)	| push TO value exponent and sign
 
-	MOVE.l	#0x80000000,FAC1_m.w(%a3)	| set default STEP size mantissa
-	MOVE.w	#0x8100,FAC1_e.w(%a3)	| set default STEP size exponent and sign
+	MOVE.l	#0x80000000,FAC1_m.w(%a5)	| set default STEP size mantissa
+	MOVE.w	#0x8100,FAC1_e.w(%a5)	| set default STEP size exponent and sign
 
 	BSR		LAB_GBYT			| scan memory
 	CMP.b		#TK_STEP,%d0		| compare with STEP token
@@ -1325,37 +1102,37 @@ LAB_FOR:
 	BSR		LAB_EVNM			| evaluate expression & check is numeric
 							| else do type mismatch
 LAB_15B3:
-	MOVE.l	FAC1_m.w(%a3),-(%sp)	| push STEP value mantissa
-	MOVE.w	FAC1_e.w(%a3),-(%sp)	| push STEP value exponent and sign
+	MOVE.l	FAC1_m.w(%a5),-(%sp)	| push STEP value mantissa
+	MOVE.w	FAC1_e.w(%a5),-(%sp)	| push STEP value exponent and sign
 
-	MOVE.l	Lvarpl.w(%a3),-(%sp)	| push variable pointer for FOR/NEXT
+	MOVE.l	Lvarpl.w(%a5),-(%sp)	| push variable pointer for FOR/NEXT
 	MOVE.w	#TK_FOR,-(%sp)		| push FOR token on stack
 
 	BRA.s		LAB_15C2			| go do interpreter inner loop
 
 LAB_15DC:						| have reached [EOL]+1
-	MOVE.w	%a5,%d0			| copy BASIC execute pointer
+	MOVE.w	%a3,%d0			| copy BASIC execute pointer
 	AND.w		#1,%d0			| and make line start address even
-	ADD.w		%d0,%a5			| add to BASIC execute pointer
-	MOVE.l	(%a5)+,%d0			| get next line pointer
+	ADD.w		%d0,%a3			| add to BASIC execute pointer
+	MOVE.l	(%a3)+,%d0			| get next line pointer
 	BEQ		LAB_1274			| if null go to immediate mode, no "BREAK"
 							| message (was immediate or [EOT] marker)
 
-	MOVE.l	(%a5)+,Clinel.w(%a3)	| save (new) current line #
+	MOVE.l	(%a3)+,Clinel.w(%a5)	| save (new) current line #
 LAB_15F6:
 	BSR		LAB_GBYT			| get BASIC byte
-	BSR.s		LAB_15FF			| go interpret BASIC code from (%a5)
+	BSR.s		LAB_15FF			| go interpret BASIC code from (%a3)
 
 # interpreter inner loop (re)entry point
 
 LAB_15C2:
 	BSR.s		LAB_1629			| do CRTL-C check vector
-	TST.b		Clinel.w(%a3)		| test current line #, is -ve for immediate mode
+	TST.b		Clinel.w(%a5)		| test current line #, is -ve for immediate mode
 	BMI.s		LAB_15D1			| branch if immediate mode
 
-	MOVE.l	%a5,Cpntrl.w(%a3)		| save BASIC execute pointer as continue pointer
+	MOVE.l	%a3,Cpntrl.w(%a5)		| save BASIC execute pointer as continue pointer
 LAB_15D1:
-	MOVE.b	(%a5)+,%d0			| get this byte & increment pointer
+	MOVE.b	(%a3)+,%d0			| get this byte & increment pointer
 	BEQ.s		LAB_15DC			| loop if [EOL]
 
 	CMP.b		#0x3A,%d0			| compare with ":"
@@ -1366,7 +1143,7 @@ LAB_15D1:
 
 #####################################################################################
 #
-# interpret BASIC code from (%a5)
+# interpret BASIC code from (%a3)
 
 LAB_15FF:
 	BEQ		RTS_006			| exit if zero [EOL]
@@ -1393,7 +1170,7 @@ LAB_1602:
 # key press is detected.
 
 LAB_1629:
-	JMP		V_CTLC.w(%a3)		| ctrl c check vector
+	JMP		V_CTLC.w(%a5)		| ctrl c check vector
 
 # if there was a key press it gets back here .....
 
@@ -1411,7 +1188,7 @@ LAB_1639:
 
 LAB_END:
 	BNE.s		LAB_1639			| exit if something follows STOP
-	MOVE.b	#0,Breakf.w(%a3)		| clear break flag, indicate program end
+	MOVE.b	#0,Breakf.w(%a5)		| clear break flag, indicate program end
 
 
 #####################################################################################
@@ -1422,19 +1199,19 @@ LAB_STOP:
 	BNE.s		LAB_1639			| exit if something follows STOP
 
 LAB_163B:
-	LEA		Ibuffe.w(%a3),%a1		| get buffer end
-	CMPA.l	%a1,%a5			| compare execute address with buffer end
+	LEA		Ibuffe.w(%a5),%a1		| get buffer end
+	CMPA.l	%a1,%a3			| compare execute address with buffer end
 	BCS.s		LAB_164F			| branch if BASIC pointer is in buffer
 							| can't continue in immediate mode
 
 							| else...
-	MOVE.l	%a5,Cpntrl.w(%a3)		| save BASIC execute pointer as continue pointer
+	MOVE.l	%a3,Cpntrl.w(%a5)		| save BASIC execute pointer as continue pointer
 LAB_1647:
-	MOVE.l	Clinel.w(%a3),Blinel.w(%a3)	| save break line
+	MOVE.l	Clinel.w(%a5),Blinel.w(%a5)	| save break line
 LAB_164F:
 	ADDQ.w	#4,%sp			| dump return address, don't return to execute
 							| loop
-	MOVE.b	Breakf.w(%a3),%d0		| get break flag
+	MOVE.b	Breakf.w(%a5),%d0		| get break flag
 	BEQ		LAB_1274			| go do warm start if was program end
 
 	LEA		LAB_BMSG(%pc),%a0		| point to "Break"
@@ -1446,14 +1223,14 @@ LAB_164F:
 # perform RESTORE
 
 LAB_RESTORE:
-	MOVEA.l	Smeml.w(%a3),%a0		| copy start of memory
+	MOVEA.l	Smeml.w(%a5),%a0		| copy start of memory
 	BEQ.s		LAB_1624			| branch if next character null (RESTORE)
 
 	BSR		LAB_GFPN			| get fixed-point number into temp integer & d1
-	CMP.l		Clinel.w(%a3),%d1		| compare current line # with required line #
+	CMP.l		Clinel.w(%a5),%d1		| compare current line # with required line #
 	BLS.s		LAB_GSCH			| branch if >= (start search from beginning)
 
-	MOVEA.l	%a5,%a0			| copy BASIC execute pointer
+	MOVEA.l	%a3,%a0			| copy BASIC execute pointer
 LAB_RESs:
 	TST.b		(%a0)+			| test next byte & increment pointer
 	BNE.s		LAB_RESs			| loop if not EOL
@@ -1469,7 +1246,7 @@ LAB_GSCH:
 
 LAB_1624:
 	TST.b		-(%a0)			| decrement pointer (faster)
-	MOVE.l	%a0,Dptrl.w(%a3)		| save DATA pointer
+	MOVE.l	%a0,Dptrl.w(%a5)		| save DATA pointer
 RTS_006:
 	RTS
 
@@ -1480,7 +1257,7 @@ RTS_006:
 
 LAB_NULL:
 	BSR		LAB_GTBY			| get byte parameter, result in d0 and Itemp
-	MOVE.b	%d0,Nullct.w(%a3)		| save new NULL count
+	MOVE.b	%d0,Nullct.w(%a5)		| save new NULL count
 	RTS
 
 
@@ -1491,15 +1268,15 @@ LAB_NULL:
 LAB_CONT:
 	BNE		LAB_SNER			| if following byte exit to do syntax error
 
-	TST.b		Clinel.w(%a3)		| test current line #, is -ve for immediate mode
+	TST.b		Clinel.w(%a5)		| test current line #, is -ve for immediate mode
 	BPL		LAB_CCER			| if running go do can't continue error
 
-	MOVE.l	Cpntrl.w(%a3),%d0		| get continue pointer
+	MOVE.l	Cpntrl.w(%a5),%d0		| get continue pointer
 	BEQ		LAB_CCER			| go do can't continue error if we can't
 
 							| we can continue so ...
-	MOVEA.l	%d0,%a5			| save continue pointer as BASIC execute pointer
-	MOVE.l	Blinel.w(%a3),Clinel.w(%a3)	| set break line as current line
+	MOVEA.l	%d0,%a3			| save continue pointer as BASIC execute pointer
+	MOVE.l	Blinel.w(%a5),Clinel.w(%a5)	| set break line as current line
 	RTS
 
 
@@ -1511,7 +1288,7 @@ LAB_RUN:
 	BNE.s		LAB_RUNn			| if following byte do RUN n
 
 	BSR		LAB_1477			| execution to start, clear vars & flush stack
-	MOVE.l	%a5,Cpntrl.w(%a3)		| save as continue pointer
+	MOVE.l	%a3,Cpntrl.w(%a5)		| save as continue pointer
 	BRA		LAB_15C2			| go do interpreter inner loop
 							| (can't RTS, we flushed the stack!)
 
@@ -1527,8 +1304,8 @@ LAB_RUNn:
 LAB_DO:
 #	MOVE.l	#0x05,%d0			| need 5 bytes for DO
 #	BSR.s		LAB_1212			| check room on stack for A bytes
-	MOVE.l	%a5,-(%sp)			| push BASIC execute pointer on stack
-	MOVE.l	Clinel.w(%a3),-(%sp)	| push current line on stack
+	MOVE.l	%a3,-(%sp)			| push BASIC execute pointer on stack
+	MOVE.l	Clinel.w(%a5),-(%sp)	| push current line on stack
 	MOVE.w	#TK_DO,-(%sp)		| push token for DO on stack
 	PEA		LAB_15C2(%pc)		| set return address
 	BRA		LAB_GBYT			| scan memory & return to interpreter inner loop
@@ -1541,8 +1318,8 @@ LAB_DO:
 LAB_GOSUB:
 #	MOVE.l	#10,%d0			| need 10 bytes for GOSUB
 #	BSR.s		LAB_1212			| check room on stack for d0 bytes
-	MOVE.l	%a5,-(%sp)			| push BASIC execute pointer
-	MOVE.l	Clinel.w(%a3),-(%sp)	| push current line
+	MOVE.l	%a3,-(%sp)			| push BASIC execute pointer
+	MOVE.l	Clinel.w(%a5),-(%sp)	| push current line
 	MOVE.w	#TK_GOSUB,-(%sp)		| push token for GOSUB
 LAB_16B0:
 	BSR		LAB_GBYT			| scan memory
@@ -1560,11 +1337,11 @@ LAB_16B0:
 
 LAB_GOTO:
 	BSR		LAB_GFPN			| get fixed-point number into temp integer & d1
-	MOVEA.l	Smeml.w(%a3),%a0		| get start of memory
-	CMP.l		Clinel.w(%a3),%d1		| compare current line with wanted #
+	MOVEA.l	Smeml.w(%a5),%a0		| get start of memory
+	CMP.l		Clinel.w(%a5),%d1		| compare current line with wanted #
 	BLS.s		LAB_16D0			| branch if current # => wanted #
 
-	MOVEA.l	%a5,%a0			| copy BASIC execute pointer
+	MOVEA.l	%a3,%a0			| copy BASIC execute pointer
 LAB_GOTs:
 	TST.b		(%a0)+			| test next byte & increment pointer
 	BNE.s		LAB_GOTs			| loop if not EOL
@@ -1578,9 +1355,9 @@ LAB_16D0:
 							| returns Cb=0 if found
 	BCS		LAB_USER			| if carry set go do "Undefined statement" error
 
-	MOVEA.l	%a0,%a5			| copy to basic execute pointer
-	SUBQ.w	#1,%a5			| decrement pointer
-	MOVE.l	%a5,Cpntrl.w(%a3)		| save as continue pointer
+	MOVEA.l	%a0,%a3			| copy to basic execute pointer
+	SUBQ.w	#1,%a3			| decrement pointer
+	MOVE.l	%a3,Cpntrl.w(%a5)		| save as continue pointer
 	RTS
 
 
@@ -1609,18 +1386,18 @@ LAB_LOOP:
 DoRest:
 	BSR		LAB_IGBY			| increment & scan memory
 	BSR		LAB_EVEX			| evaluate expression
-	TST.b		FAC1_e.w(%a3)		| test FAC1 exponent
+	TST.b		FAC1_e.w(%a5)		| test FAC1 exponent
 	BEQ.s		DoCmp				| if = 0 go do straight compare
 
-	MOVE.b	#0xFF,FAC1_e.w(%a3)	| else set all bits
+	MOVE.b	#0xFF,FAC1_e.w(%a5)	| else set all bits
 DoCmp:
-	EOR.b		%d7,FAC1_e.w(%a3)		| EOR with invert byte
+	EOR.b		%d7,FAC1_e.w(%a5)		| EOR with invert byte
 	BNE.s		LoopDone			| if <> 0 clear stack & back to interpreter loop
 
 							| loop condition wasn't met so do it again
 LoopAlways:
-	MOVE.l	6(%sp),Clinel.w(%a3)	| copy DO current line
-	MOVE.l	10(%sp),%a5			| save BASIC execute pointer
+	MOVE.l	6(%sp),Clinel.w(%a5)	| copy DO current line
+	MOVE.l	10(%sp),%a3			| save BASIC execute pointer
 
 	LEA		LAB_15C2(%pc),%a0		| get return address
 	MOVE.l	%a0,(%sp)			| dump the call to this routine and set the
@@ -1646,8 +1423,8 @@ LAB_RETURN:
 							| GOSUB
 
 	ADDQ.w	#6,%sp			| dump calling address & token
-	MOVE.l	(%sp)+,Clinel.w(%a3)	| pull current line
-	MOVE.l	(%sp)+,%a5			| pull BASIC execute pointer
+	MOVE.l	(%sp)+,Clinel.w(%a5)	| pull current line
+	MOVE.l	(%sp)+,%a3			| pull BASIC execute pointer
 							| now do perform "DATA" statement as we could be
 							| returning into the middle of an ON <var> GOSUB
 							| n,m,p,q line (the return address used by the
@@ -1662,7 +1439,7 @@ LAB_RETURN:
 LAB_DATA:
 	BSR.s		LAB_SNBS			| scan for next BASIC statement ([:] or [EOL])
 							| returns a0 as pointer to [:] or [EOL]
-	MOVEA.l	%a0,%a5			| skip rest of statement
+	MOVEA.l	%a0,%a3			| skip rest of statement
 RTS_007:
 	RTS
 
@@ -1673,7 +1450,7 @@ RTS_007:
 # returns a0 as pointer to [:] or [EOL]
 
 LAB_SNBS:
-	MOVEA.l	%a5,%a0			| copy BASIC execute pointer
+	MOVEA.l	%a3,%a0			| copy BASIC execute pointer
 	MOVEQ		#0x22,%d1			| set string quote character
 	MOVEQ		#0x3A,%d2			| set look for character = ":"
 	BRA.s		LAB_172D			| go do search
@@ -1719,13 +1496,13 @@ LAB_IF:
 	BNE		LAB_SNER			| if not GOTO token do syntax error/warm start
 
 							| was GOTO so check for GOTO <n>
-	MOVE.l	%a5,%a0			| save the execute pointer
+	MOVE.l	%a3,%a0			| save the execute pointer
 	BSR		LAB_IGBY			| scan memory, test for a numeric character
-	MOVE.l	%a0,%a5			| restore the execute pointer
+	MOVE.l	%a0,%a3			| restore the execute pointer
 	BCC		LAB_SNER			| if not numeric do syntax error/warm start
 
 LAB_174B:
-	MOVE.b	FAC1_e.w(%a3),%d0		| get FAC1 exponent
+	MOVE.b	FAC1_e.w(%a5),%d0		| get FAC1 exponent
 	BEQ.s		LAB_174E			| if result was zero go look for an ELSE
 
 	BSR		LAB_IGBY			| increment & scan memory
@@ -1735,15 +1512,15 @@ LAB_174B:
 							| to this code
 
 	CMP.b		#TK_RETURN,%d0		| compare with RETURN token
-	BEQ		LAB_1602			| if RETURN then interpret BASIC code from (%a5)
+	BEQ		LAB_1602			| if RETURN then interpret BASIC code from (%a3)
 							| and don't return here
 
-	BSR		LAB_15FF			| else interpret BASIC code from (%a5)
+	BSR		LAB_15FF			| else interpret BASIC code from (%a3)
 
 # the IF was executed and there may be a following ELSE so the code needs to return
 # here to check and ignore the ELSE if present
 
-	MOVE.b	(%a5),%d0			| get the next basic byte
+	MOVE.b	(%a3),%d0			| get the next basic byte
 	CMP.b		#TK_ELSE,%d0		| compare it with the token for ELSE
 	BEQ.s		LAB_DATA			| if ELSE ignore the following statement
 
@@ -1755,12 +1532,12 @@ LAB_174B:
 # perform ELSE after IF
 
 LAB_174E:
-	MOVE.b	(%a5)+,%d0			| faster increment past THEN
+	MOVE.b	(%a3)+,%d0			| faster increment past THEN
 	MOVEQ		#-1-(TK_ELSE^255),%d3	| set search for ELSE token
 	MOVEQ		#-1-(TK_IF^255),%d4	| set search for IF token
 	MOVEQ		#0,%d5			| clear the nesting depth
 LAB_1750:
-	MOVE.b	(%a5)+,%d0			| get next BASIC byte & increment ptr
+	MOVE.b	(%a3)+,%d0			| get next BASIC byte & increment ptr
 	BEQ.s		LAB_1754			| if EOL correct the pointer and return
 
 	CMP.b		%d4,%d0			| compare with "IF" token
@@ -1783,7 +1560,7 @@ LAB_1756:
 							| code will return to the interpreter loop
 							| at the tail end of the GOTO <n>
 
-	BRA		LAB_15FF			| else interpret BASIC code from (%a5)
+	BRA		LAB_15FF			| else interpret BASIC code from (%a3)
 							| code will return to the interpreter loop
 							| at the tail end of the <statement>
 
@@ -1793,11 +1570,11 @@ LAB_1756:
 # perform REM, skip (rest of) line
 
 LAB_REM:
-	TST.b		(%a5)+			| test byte & increment pointer
+	TST.b		(%a3)+			| test byte & increment pointer
 	BNE.s		LAB_REM			| loop if not EOL
 
 LAB_1754:
-	SUBQ.w	#1,%a5			| correct the execute pointer
+	SUBQ.w	#1,%a3			| correct the execute pointer
 	RTS
 
 
@@ -1839,7 +1616,7 @@ LAB_1773:
 #####################################################################################
 #
 # get fixed-point number into temp integer & d1
-# interpret number from (%a5), leave (%a5) pointing to byte after #
+# interpret number from (%a3), leave (%a3) pointing to byte after #
 
 LAB_GFPN:
 	MOVEQ		#0x00,%d1			| clear integer register
@@ -1872,7 +1649,7 @@ LAB_1785:
 
 	MOVE.l	(%sp)+,%d2			| restore d2
 LAB_1786:
-	MOVE.l	%d1,Itemp.w(%a3)		| save Itemp
+	MOVE.l	%d1,Itemp.w(%a5)		| save Itemp
 	RTS
 
 
@@ -1908,19 +1685,19 @@ LAB_17B7:
 
 .endif
 
-	TST.b		Dtypef.w(%a3)		| test data type, $80=string, $40=integer,
+	TST.b		Dtypef.w(%a5)		| test data type, $80=string, $40=integer,
 							| $00=float
 	BMI		LAB_TMER			| if string do "Type mismatch" error/warm start
 
 	BNE.s		LAB_INCI			| go do integer INC/DEC
 
-	MOVE.l	%a0,Lvarpl.w(%a3)		| save var address
+	MOVE.l	%a0,Lvarpl.w(%a5)		| save var address
 	BSR		LAB_UFAC			| unpack memory (%a0) into FAC1
-	MOVE.l	#0x80000000,FAC2_m.w(%a3)	| set FAC2 mantissa for 1
+	MOVE.l	#0x80000000,FAC2_m.w(%a5)	| set FAC2 mantissa for 1
 	MOVE.w	(%sp),%d0			| move exponent & sign to d0
-	MOVE.w	%d0,FAC2_e.w(%a3)		| move exponent & sign to FAC2
-	MOVE.b	FAC1_s.w(%a3),FAC_sc.w(%a3)	| make sign compare = FAC1 sign
-	EOR.b		%d0,FAC_sc.w(%a3)		| make sign compare (FAC1_s EOR FAC2_s)
+	MOVE.w	%d0,FAC2_e.w(%a5)		| move exponent & sign to FAC2
+	MOVE.b	FAC1_s.w(%a5),FAC_sc.w(%a5)	| make sign compare = FAC1 sign
+	EOR.b		%d0,FAC_sc.w(%a5)		| make sign compare (FAC1_s EOR FAC2_s)
 	BSR		LAB_ADD			| add FAC2 to FAC1
 	BSR		LAB_PFAC			| pack FAC1 into variable (Lvarpl)
 LAB_INCT:
@@ -1950,15 +1727,15 @@ LAB_DECI:
 LAB_LET:
 	BSR		LAB_SVAR			| search for or create a variable
 							| return the variable address in a0
-	MOVE.l	%a0,Lvarpl.w(%a3)		| save variable address
-	MOVE.b	Dtypef.w(%a3),-(%sp)	| push var data type, $80=string, $40=integer,
+	MOVE.l	%a0,Lvarpl.w(%a5)		| save variable address
+	MOVE.b	Dtypef.w(%a5),-(%sp)	| push var data type, $80=string, $40=integer,
 							| $00=float
 	MOVEQ		#-1-(TK_EQUAL^255),%d0	| get = token
 	BSR		LAB_SCCA			| scan for CHR$(d0), else do syntax error/warm
 							| start
 	BSR		LAB_EVEX			| evaluate expression
-	MOVE.b	Dtypef.w(%a3),%d0		| copy expression data type
-	MOVE.b	(%sp)+,Dtypef.w(%a3)	| pop variable data type
+	MOVE.b	Dtypef.w(%a5),%d0		| copy expression data type
+	MOVE.b	(%sp)+,Dtypef.w(%a5)	| pop variable data type
 	ROL.b		#1,%d0			| set carry if expression type = string
 	BSR		LAB_CKTM			| type match check, set C for string
 	BEQ		LAB_PFAC			| if number pack FAC1 into variable Lvarpl & RET
@@ -1966,16 +1743,16 @@ LAB_LET:
 # string LET
 
 LAB_17D5:
-	MOVEA.l	Lvarpl.w(%a3),%a2		| get pointer to variable
+	MOVEA.l	Lvarpl.w(%a5),%a2		| get pointer to variable
 LAB_17D6:
-	MOVEA.l	FAC1_m.w(%a3),%a0		| get descriptor pointer
+	MOVEA.l	FAC1_m.w(%a5),%a0		| get descriptor pointer
 	MOVEA.l	(%a0),%a1			| get string pointer
-	CMP.l		Sstorl.w(%a3),%a1		| compare string memory start with string
+	CMP.l		Sstorl.w(%a5),%a1		| compare string memory start with string
 							| pointer
 	BCS.s		LAB_1811			| if it was in program memory assign the value
 							| and exit
 
-	CMPA.l	Sfncl.w(%a3),%a0		| compare functions start with descriptor
+	CMPA.l	Sfncl.w(%a5),%a0		| compare functions start with descriptor
 							| pointer
 	BCS.s		LAB_1811			| branch if >= (string is on stack)
 
@@ -1985,7 +1762,7 @@ LAB_1810:
 	MOVE.w	4(%a0),%d1			| get string length
 	MOVEA.l	(%a0),%a0			| get string pointer
 	BSR		LAB_20C9			| copy string
-	MOVEA.l	FAC1_m.w(%a3),%a0		| get descriptor pointer back
+	MOVEA.l	FAC1_m.w(%a5),%a0		| get descriptor pointer back
 							| clean stack & assign value to string variable
 LAB_1811:
 	CMPA.l	%a0,%a4			| is string on the descriptor stack
@@ -2006,8 +1783,8 @@ RTS_008:
 LAB_GET:
 	BSR		LAB_SVAR			| search for or create a variable
 							| return the variable address in a0
-	MOVE.l	%a0,Lvarpl.w(%a3)		| save variable address as GET variable
-	TST.b		Dtypef.w(%a3)		| test data type, $80=string, $40=integer,
+	MOVE.l	%a0,Lvarpl.w(%a5)		| save variable address as GET variable
+	TST.b		Dtypef.w(%a5)		| test data type, $80=string, $40=integer,
 							| $00=float
 	BMI.s		LAB_GETS			| go get string character
 
@@ -2062,13 +1839,13 @@ LAB_1831:
 	BEQ		LAB_18BD			| if ";" continue with PRINT processing
 
 	BSR		LAB_EVEX			| evaluate expression
-	TST.b		Dtypef.w(%a3)		| test data type, $80=string, $40=integer,
+	TST.b		Dtypef.w(%a5)		| test data type, $80=string, $40=integer,
 							| $00=float
 	BMI.s		LAB_1829			| branch if string
 
 ** replace the two lines above with this code
 
-**	MOVE.b	Dtypef.w(%a3),%d0		| get data type flag, $80=string, $00=numeric
+**	MOVE.b	Dtypef.w(%a5),%d0		| get data type flag, $80=string, $00=numeric
 **	BMI.s		LAB_1829			| branch if string
 
 	BSR		LAB_2970			| convert FAC1 to string
@@ -2077,11 +1854,11 @@ LAB_1831:
 # don't check fit if terminal width byte is zero
 
 	MOVEQ		#0,%d0			| clear d0
-	MOVE.b	TWidth.w(%a3),%d0		| get terminal width byte
+	MOVE.b	TWidth.w(%a5),%d0		| get terminal width byte
 	BEQ.s		LAB_185E			| skip check if zero
 
 	SUB.b		7(%a4),%d0			| subtract string length
-	SUB.b		TPos.w(%a3),%d0		| subtract terminal position
+	SUB.b		TPos.w(%a5),%d0		| subtract terminal position
 	BCC.s		LAB_185E			| branch if less than terminal width
 
 	BSR.s		LAB_CRLF			| else print CR/LF
@@ -2107,15 +1884,15 @@ LAB_CRLF:
 	BRA.s		LAB_PRNA			| go print the character & return
 
 LAB_188B:
-	MOVE.b	TPos.w(%a3),%d2		| get terminal position
-	CMP.b		Iclim.w(%a3),%d2		| compare with input column limit
+	MOVE.b	TPos.w(%a5),%d2		| get terminal position
+	CMP.b		Iclim.w(%a5),%d2		| compare with input column limit
 	BCS.s		LAB_1898			| branch if less than Iclim
 
 	BSR.s		LAB_CRLF			| else print CR/LF (next line)
 	BRA.s		LAB_18BD			| continue with PRINT processing
 
 LAB_1898:
-	SUB.b		TabSiz.w(%a3),%d2		| subtract TAB size
+	SUB.b		TabSiz.w(%a5),%d2		| subtract TAB size
 	BCC.s		LAB_1898			| loop if result was >= 0
 
 	NEG.b		%d2				| twos complement it
@@ -2135,7 +1912,7 @@ LAB_18A2:
 	BNE.s		LAB_18B7			| branch if not (was SPC)
 
 							| calculate TAB offset
-	SUB.b		TPos.w(%a3),%d2		| subtract terminal position
+	SUB.b		TPos.w(%a5),%d2		| subtract terminal position
 	BLS.s		LAB_18BD			| branch if result was <= 0
 							| can't TAB backwards or already there
 
@@ -2204,44 +1981,44 @@ LAB_PRNA:
 	BCS.s		LAB_18F9			| branch if less, non printing character
 
 							| don't check fit if terminal width byte is zero
-	MOVE.b	TWidth.w(%a3),%d1		| get terminal width
+	MOVE.b	TWidth.w(%a5),%d1		| get terminal width
 	BNE.s		LAB_18F0			| branch if not zero (not infinite length)
 
 							| is "infinite line" so check TAB position
-	MOVE.b	TPos.w(%a3),%d1		| get position
-	SUB.b		TabSiz.w(%a3),%d1		| subtract TAB size
+	MOVE.b	TPos.w(%a5),%d1		| get position
+	SUB.b		TabSiz.w(%a5),%d1		| subtract TAB size
 	BNE.s		LAB_18F7			| skip reset if different
 
-	MOVE.b	%d1,TPos.w(%a3)		| else reset position
+	MOVE.b	%d1,TPos.w(%a5)		| else reset position
 	BRA.s		LAB_18F7			| go print character
 
 LAB_18F0:
-	CMP.b		TPos.w(%a3),%d1		| compare with terminal character position
+	CMP.b		TPos.w(%a5),%d1		| compare with terminal character position
 	BNE.s		LAB_18F7			| branch if not at end of line
 
 	MOVE.l	%d0,-(%sp)			| save d0
 	BSR		LAB_CRLF			| else print CR/LF
 	MOVE.l	(%sp)+,%d0			| restore d0
 LAB_18F7:
-	ADDQ.b	#0x01,TPos.w(%a3)		| increment terminal position
+	ADDQ.b	#0x01,TPos.w(%a5)		| increment terminal position
 LAB_18F9:
-	JSR		V_OUTP.w(%a3)		| output byte via output vector
+	JSR		V_OUTP.w(%a5)		| output byte via output vector
 	CMP.b		#0x0D,%d0			| compare with [CR]
 	BNE.s		LAB_188A			| branch if not [CR]
 
 							| else print nullct nulls after the [CR]
 	MOVEQ		#0x00,%d1			| clear d1
-	MOVE.b	Nullct.w(%a3),%d1		| get null count
+	MOVE.b	Nullct.w(%a5),%d1		| get null count
 	BEQ.s		LAB_1886			| branch if no nulls
 
 	MOVEQ		#0x00,%d0			| load [NULL]
 LAB_1880:
-	JSR		V_OUTP.w(%a3)		| go print the character
+	JSR		V_OUTP.w(%a5)		| go print the character
 	DBF		%d1,LAB_1880		| decrement count and loop if not all done
 
 	MOVEQ		#0x0D,%d0			| restore the character
 LAB_1886:
-	MOVE.b	%d1,TPos.w(%a3)		| clear terminal position
+	MOVE.b	%d1,TPos.w(%a5)		| clear terminal position
 LAB_188A:
 	MOVE.l	(%sp)+,%d1			| restore d1
 	RTS
@@ -2252,18 +2029,18 @@ LAB_188A:
 # handle bad input data
 
 LAB_1904:
-	MOVEA.l	(%sp)+,%a5			| restore execute pointer
-	TST.b		Imode.w(%a3)		| test input mode flag, $00=INPUT, $98=READ
+	MOVEA.l	(%sp)+,%a3			| restore execute pointer
+	TST.b		Imode.w(%a5)		| test input mode flag, $00=INPUT, $98=READ
 	BPL.s		LAB_1913			| branch if INPUT (go do redo)
 
-	MOVE.l	Dlinel.w(%a3),Clinel.w(%a3)	| save DATA line as current line
+	MOVE.l	Dlinel.w(%a5),Clinel.w(%a5)	| save DATA line as current line
 	BRA		LAB_TMER			| do type mismatch error, then warm start
 
 							| mode was INPUT
 LAB_1913:
 	LEA		LAB_REDO(%pc),%a0		| point to redo message
 	BSR		LAB_18C3			| print null terminated string from memory
-	MOVEA.l	Cpntrl.w(%a3),%a5		| save continue pointer as BASIC execute pointer
+	MOVEA.l	Cpntrl.w(%a5),%a3		| save continue pointer as BASIC execute pointer
 	RTS
 
 
@@ -2314,25 +2091,25 @@ LAB_1934:
 # perform READ
 
 LAB_READ:
-	MOVEA.l	Dptrl.w(%a3),%a0		| get the DATA pointer
+	MOVEA.l	Dptrl.w(%a5),%a0		| get the DATA pointer
 	MOVEQ		#0x98-0x100,%d0		| flag READ
 LAB_1953:
-	MOVE.b	%d0,Imode.w(%a3)		| set input mode flag, $00=INPUT, $98=READ
-	MOVE.l	%a0,Rdptrl.w(%a3)		| save READ pointer
+	MOVE.b	%d0,Imode.w(%a5)		| set input mode flag, $00=INPUT, $98=READ
+	MOVE.l	%a0,Rdptrl.w(%a5)		| save READ pointer
 
 							| READ or INPUT the next variable from list
 LAB_195B:
 	BSR		LAB_SVAR			| search for or create a variable
 							| return the variable address in a0
-	MOVE.l	%a0,Lvarpl.w(%a3)		| save variable address as LET variable
-	MOVE.l	%a5,-(%sp)			| save BASIC execute pointer
+	MOVE.l	%a0,Lvarpl.w(%a5)		| save variable address as LET variable
+	MOVE.l	%a3,-(%sp)			| save BASIC execute pointer
 LAB_1961:
-	MOVEA.l	Rdptrl.w(%a3),%a5		| set READ pointer as BASIC execute pointer
+	MOVEA.l	Rdptrl.w(%a5),%a3		| set READ pointer as BASIC execute pointer
 	BSR		LAB_GBYT			| scan memory
 	BNE.s		LAB_1986			| if not null go get the value
 
 							| the pointer was to a null entry
-	TST.b		Imode.w(%a3)		| test input mode flag, $00=INPUT, $98=READ
+	TST.b		Imode.w(%a5)		| test input mode flag, $00=INPUT, $98=READ
 	BMI.s		LAB_19DD			| branch if READ (go find the next statement)
 
 							| else the mode was INPUT so get more
@@ -2345,7 +2122,7 @@ LAB_1961:
 
 .if	nobrk != 0
 
-	MOVE.l	%a0,Rdptrl.w(%a3)		| save the READ pointer
+	MOVE.l	%a0,Rdptrl.w(%a5)		| save the READ pointer
 	BRA.s		LAB_1961			| go handle the input
 
 .endif
@@ -2361,15 +2138,15 @@ LAB_1961:
 	BRA		LAB_1647			| else go do the BREAK exit
 
 LAB_1984:
-	MOVEA.l	%a0,%a5			| set the execute pointer to the buffer
-	SUBQ.w	#1,%a5			| decrement the execute pointer
+	MOVEA.l	%a0,%a3			| set the execute pointer to the buffer
+	SUBQ.w	#1,%a3			| decrement the execute pointer
 
 .endif
 
 LAB_1985:
 	BSR		LAB_IGBY			| increment & scan memory
 LAB_1986:
-	TST.b		Dtypef.w(%a3)		| test data type, $80=string, $40=integer,
+	TST.b		Dtypef.w(%a5)		| test data type, $80=string, $40=integer,
 							| $00=float
 	BPL.s		LAB_19B0			| branch if numeric
 
@@ -2380,23 +2157,23 @@ LAB_1986:
 
 	MOVEQ		#':',%d2			| set new search character
 	MOVEQ		#',',%d0			| other search character is ","
-	SUBQ.w	#1,%a5			| decrement BASIC execute pointer
+	SUBQ.w	#1,%a3			| decrement BASIC execute pointer
 LAB_1999:
-	ADDQ.w	#1,%a5			| increment BASIC execute pointer
+	ADDQ.w	#1,%a3			| increment BASIC execute pointer
 	MOVE.b	%d0,%d3			| set second search character
-	MOVEA.l	%a5,%a0			| BASIC execute pointer is source
+	MOVEA.l	%a3,%a0			| BASIC execute pointer is source
 
 	BSR		LAB_20B4			| print d2/d3 terminated string to FAC1 stack
 							| d2 = Srchc, d3 = Asrch, a0 is source
-	MOVEA.l	%a2,%a5			| copy end of string to BASIC execute pointer
+	MOVEA.l	%a2,%a3			| copy end of string to BASIC execute pointer
 	BSR		LAB_17D5			| go do string LET
 	BRA.s		LAB_19B6			| go check string terminator
 
 							| get numeric INPUT
 LAB_19B0:
-	MOVE.b	Dtypef.w(%a3),-(%sp)	| save variable data type
+	MOVE.b	Dtypef.w(%a5),-(%sp)	| save variable data type
 	BSR		LAB_2887			| get FAC1 from string
-	MOVE.b	(%sp)+,Dtypef.w(%a3)	| restore variable data type
+	MOVE.b	(%sp)+,Dtypef.w(%a5)	| restore variable data type
 	BSR		LAB_PFAC			| pack FAC1 into (Lvarpl)
 LAB_19B6:
 	BSR		LAB_GBYT			| scan memory
@@ -2405,11 +2182,11 @@ LAB_19B6:
 	CMP.b		#',',%d0			| else compare with ","
 	BNE		LAB_1904			| if not "," go handle bad input data
 
-	ADDQ.w	#1,%a5			| else was "," so point to next chr
+	ADDQ.w	#1,%a3			| else was "," so point to next chr
 							| got good input data
 LAB_19C2:
-	MOVE.l	%a5,Rdptrl.w(%a3)		| save the read pointer for now
-	MOVEA.l	(%sp)+,%a5			| restore the execute pointer
+	MOVE.l	%a3,Rdptrl.w(%a5)		| save the read pointer for now
+	MOVEA.l	(%sp)+,%a3			| restore the execute pointer
 	BSR		LAB_GBYT			| scan the memory
 	BEQ.s		LAB_1A03			| if null go do extra ignored message
 
@@ -2422,20 +2199,20 @@ LAB_19C2:
 LAB_19DD:
 	BSR		LAB_SNBS			| scan for next BASIC statement ([:] or [EOL])
 							| returns a0 as pointer to [:] or [EOL]
-	MOVEA.l	%a0,%a5			| add index, now = pointer to [EOL]/[EOS]
-	ADDQ.w	#1,%a5			| pointer to next character
+	MOVEA.l	%a0,%a3			| add index, now = pointer to [EOL]/[EOS]
+	ADDQ.w	#1,%a3			| pointer to next character
 	CMP.b		#':',%d0			| was it statement end?
 	BEQ.s		LAB_19F6			| branch if [:]
 
 							| was [EOL] so find next line
 
-	MOVE.w	%a5,%d1			| past pad byte(s)
+	MOVE.w	%a3,%d1			| past pad byte(s)
 	AND.w		#1,%d1			| mask odd bit
-	ADD.w		%d1,%a5			| add pointer
-	MOVE.l	(%a5)+,%d2			| get next line pointer
+	ADD.w		%d1,%a3			| add pointer
+	MOVE.l	(%a3)+,%d2			| get next line pointer
 	BEQ		LAB_ODER			| branch if end of program
 
-	MOVE.l	(%a5)+,Dlinel.w(%a3)	| save current DATA line
+	MOVE.l	(%a3)+,Dlinel.w(%a5)	| save current DATA line
 LAB_19F6:
 	BSR		LAB_GBYT			| scan memory
 	CMP.b		#TK_DATA,%d0		| compare with "DATA" token
@@ -2446,11 +2223,11 @@ LAB_19F6:
 # end of INPUT/READ routine
 
 LAB_1A03:
-	MOVEA.l	Rdptrl.w(%a3),%a0		| get temp READ pointer
-	TST.b		Imode.w(%a3)		| get input mode flag, $00=INPUT, $98=READ
+	MOVEA.l	Rdptrl.w(%a5),%a0		| get temp READ pointer
+	TST.b		Imode.w(%a5)		| get input mode flag, $00=INPUT, $98=READ
 	BPL.s		LAB_1A0E			| branch if INPUT
 
-	MOVE.l	%a0,Dptrl.w(%a3)		| else save temp READ pointer as DATA pointer
+	MOVE.l	%a0,Dptrl.w(%a5)		| else save temp READ pointer as DATA pointer
 	RTS
 
 							| we were getting INPUT
@@ -2500,27 +2277,27 @@ LAB_11A6:
 	BNE.s		LAB_11A5			| loop if no match found
 
 LAB_11BD:
-	MOVE.w	6(%sp),FAC2_e.w(%a3)	| get STEP value exponent and sign
-	MOVE.l	8(%sp),FAC2_m.w(%a3)	| get STEP value mantissa
+	MOVE.w	6(%sp),FAC2_e.w(%a5)	| get STEP value exponent and sign
+	MOVE.l	8(%sp),FAC2_m.w(%a5)	| get STEP value mantissa
 
-	MOVE.b	18(%sp),Dtypef.w(%a3)	| restore FOR variable data type
+	MOVE.b	18(%sp),Dtypef.w(%a5)	| restore FOR variable data type
 	BSR		LAB_1C19			| check type and unpack (%a0)
 
-	MOVE.b	FAC2_s.w(%a3),FAC_sc.w(%a3)	| save FAC2 sign as sign compare
-	MOVE.b	FAC1_s.w(%a3),%d0		| get FAC1 sign
-	EOR.b		%d0,FAC_sc.w(%a3)		| EOR to create sign compare
+	MOVE.b	FAC2_s.w(%a5),FAC_sc.w(%a5)	| save FAC2 sign as sign compare
+	MOVE.b	FAC1_s.w(%a5),%d0		| get FAC1 sign
+	EOR.b		%d0,FAC_sc.w(%a5)		| EOR to create sign compare
 
-	MOVE.l	%a0,Lvarpl.w(%a3)		| save variable pointer
+	MOVE.l	%a0,Lvarpl.w(%a5)		| save variable pointer
 	BSR		LAB_ADD			| add STEP value to FOR variable
-	MOVE.b	18(%sp),Dtypef.w(%a3)	| restore FOR variable data type (again)
+	MOVE.b	18(%sp),Dtypef.w(%a5)	| restore FOR variable data type (again)
 	BSR		LAB_PFAC			| pack FAC1 into FOR variable (Lvarpl)
 
-	MOVE.w	12(%sp),FAC2_e.w(%a3)	| get TO value exponent and sign
-	MOVE.l	14(%sp),FAC2_m.w(%a3)	| get TO value mantissa
+	MOVE.w	12(%sp),FAC2_e.w(%a5)	| get TO value exponent and sign
+	MOVE.l	14(%sp),FAC2_m.w(%a5)	| get TO value mantissa
 
-	MOVE.b	FAC2_s.w(%a3),FAC_sc.w(%a3)	| save FAC2 sign as sign compare
-	MOVE.b	FAC1_s.w(%a3),%d0		| get FAC1 sign
-	EOR.b		%d0,FAC_sc.w(%a3)		| EOR to create sign compare
+	MOVE.b	FAC2_s.w(%a5),FAC_sc.w(%a5)	| save FAC2 sign as sign compare
+	MOVE.b	FAC1_s.w(%a5),%d0		| get FAC1 sign
+	EOR.b		%d0,FAC_sc.w(%a5)		| EOR to create sign compare
 
 	BSR		LAB_27FA			| compare FAC1 with FAC2 (TO value)
 							| returns d0=+1 if FAC1 > FAC2
@@ -2538,8 +2315,8 @@ LAB_11BD:
 
 							| loop back and do it all again
 LAB_1A90:
-	MOVE.l	20(%sp),Clinel.w(%a3)	| reset current line
-	MOVE.l	24(%sp),%a5			| reset BASIC execute pointer
+	MOVE.l	20(%sp),Clinel.w(%a5)	| reset current line
+	MOVE.l	24(%sp),%a3			| reset BASIC execute pointer
 	BRA		LAB_15C2			| go do interpreter inner loop
 
 							| loop complete so carry on
@@ -2575,7 +2352,7 @@ LAB_CTNM:
 # type match check, set C for string, clear C for numeric
 
 LAB_CKTM:
-	BTST.b	#7,Dtypef.w(%a3)		| test data type flag, don't change carry
+	BTST.b	#7,Dtypef.w(%a5)		| test data type flag, don't change carry
 	BNE.s		LAB_1ABA			| branch if data type is string
 
 							| else data type was numeric
@@ -2605,10 +2382,10 @@ LAB_1ABA:
 # evaluate expression
 
 LAB_EVEX:
-	SUBQ.w	#1,%a5			| decrement BASIC execute pointer
+	SUBQ.w	#1,%a3			| decrement BASIC execute pointer
 LAB_EVEZ:
 	MOVEQ		#0,%d1			| clear precedence word
-	MOVE.b	%d1,Dtypef.w(%a3)		| clear the data type, $80=string, $40=integer,
+	MOVE.b	%d1,Dtypef.w(%a5)		| clear the data type, $80=string, $40=integer,
 							| $00=float
 	BRA.s		LAB_1ACD			| enter loop
 
@@ -2619,15 +2396,15 @@ LAB_1B43:						|
 	MOVE.w	2(%a0,%d1.w),%d0		| get vector offset
 	PEA		(%a0,%d0.w)			| push vector
 
-	MOVE.l	FAC1_m.w(%a3),-(%sp)	| push FAC1 mantissa
-	MOVE.w	FAC1_e.w(%a3),-(%sp)	| push sign and exponent
-	MOVE.b	comp_f.w(%a3),-(%sp)	| push comparison evaluation flag
+	MOVE.l	FAC1_m.w(%a5),-(%sp)	| push FAC1 mantissa
+	MOVE.w	FAC1_e.w(%a5),-(%sp)	| push sign and exponent
+	MOVE.b	comp_f.w(%a5),-(%sp)	| push comparison evaluation flag
 
 	MOVE.w	(%a0,%d1.w),%d1		| get precedence value
 LAB_1ACD:
 	MOVE.w	%d1,-(%sp)			| push precedence value
 	BSR		LAB_GVAL			| get value from line
-	MOVE.b	#0x00,comp_f.w(%a3)	| clear compare function flag
+	MOVE.b	#0x00,comp_f.w(%a5)	| clear compare function flag
 LAB_1ADB:
 	BSR		LAB_GBYT			| scan memory
 LAB_1ADE:
@@ -2637,7 +2414,7 @@ LAB_1ADE:
 	CMP.b		#0x03,%d0			| compare with ">" to "<" tokens
 	BCS.s		LAB_1AE0			| branch if <= TK_SGN (is compare function)
 
-	TST.b		comp_f.w(%a3)		| test compare function flag
+	TST.b		comp_f.w(%a5)		| test compare function flag
 	BNE.s		LAB_1B2A			| branch if compare function
 
 	BRA		LAB_1B78			| go do functions
@@ -2646,9 +2423,9 @@ LAB_1ADE:
 LAB_1AE0:
 	MOVEQ		#1,%d1			| set to 0000 0001
 	ASL.b		%d0,%d1			| 1 if >, 2 if =, 4 if <
-	MOVE.b	comp_f.w(%a3),%d0		| copy old compare function flag
-	EOR.b		%d1,comp_f.w(%a3)		| EOR in this compare function bit
-	CMP.b		comp_f.w(%a3),%d0		| compare old with new compare function flag
+	MOVE.b	comp_f.w(%a5),%d0		| copy old compare function flag
+	EOR.b		%d1,comp_f.w(%a5)		| EOR in this compare function bit
+	CMP.b		comp_f.w(%a5),%d0		| compare old with new compare function flag
 	BCC		LAB_SNER			| if new <= old comp_f do syntax error and warm
 							| start, there was more than one <, = or >
 	BSR		LAB_IGBY			| increment & scan memory
@@ -2656,7 +2433,7 @@ LAB_1AE0:
 
 							| token is < ">" or > "<" tokens
 LAB_1AFA:
-	TST.b		comp_f.w(%a3)		| test compare function flag
+	TST.b		comp_f.w(%a5)		| test compare function flag
 	BNE.s		LAB_1B2A			| branch if compare function
 
 							| was < TK_GT so is operator or lower
@@ -2665,7 +2442,7 @@ LAB_1AFA:
 
 	BNE.s		LAB_1B0B			| branch if not + token
 
-	TST.b		Dtypef.w(%a3)		| test data type, $80=string, $40=integer,
+	TST.b		Dtypef.w(%a5)		| test data type, $80=string, $40=integer,
 							| $00=float
 	BMI		LAB_224D			| type is string & token was +
 
@@ -2687,7 +2464,7 @@ LAB_1B1D:
 	BSR		LAB_1B43			| get vector, set-up operator and continue
 							| evaluation
 	MOVE.w	(%sp)+,%d0			| restore precedence
-	MOVE.l	prstk.w(%a3),%d1		| get stacked function pointer
+	MOVE.l	prstk.w(%a5),%d1		| get stacked function pointer
 	BPL.s		LAB_1B3C			| branch if stacked values
 
 	MOVE.w	%d0,%d0			| copy precedence (set flags)
@@ -2697,14 +2474,14 @@ LAB_1B1D:
 
 							| was compare function (< = >)
 LAB_1B2A:
-	MOVE.b	Dtypef.w(%a3),%d0		| get data type flag
-	MOVE.b	comp_f.w(%a3),%d1		| get compare function flag
+	MOVE.b	Dtypef.w(%a5),%d0		| get data type flag
+	MOVE.b	comp_f.w(%a5),%d1		| get compare function flag
 	ADD.b		%d0,%d0			| string bit flag into X bit
 	ADDX.b	%d1,%d1			| shift compare function flag
 
-	MOVE.b	#0,Dtypef.w(%a3)		| clear data type flag, $00=float
-	MOVE.b	%d1,comp_f.w(%a3)		| save new compare function flag
-	SUBQ.w	#1,%a5			| decrement BASIC execute pointer
+	MOVE.b	#0,Dtypef.w(%a5)		| clear data type flag, $00=float
+	MOVE.b	%d1,comp_f.w(%a5)		| save new compare function flag
+	SUBQ.w	#1,%a3			| decrement BASIC execute pointer
 	MOVEQ		#(TK_LT-TK_PLUS)*4,%d1	| set offset to last operator entry
 	BRA.s		LAB_1B13			| branch always
 
@@ -2729,25 +2506,25 @@ LAB_1B7D:
 
 	BSR		LAB_CTNM			| check if source is numeric, else type mismatch
 LAB_1B84:
-	MOVE.l	%d1,prstk.w(%a3)		| save current operator index
+	MOVE.l	%d1,prstk.w(%a5)		| save current operator index
 
 							| pop FAC2 & return
 LAB_1B86:
 	MOVE.b	(%sp)+,%d0			| pop comparison evaluation flag
 	MOVE.b	%d0,%d1			| copy comparison evaluation flag
 	LSR.b		#1,%d0			| shift out comparison evaluation lowest bit
-	MOVE.b	%d0,Cflag.w(%a3)		| save comparison evaluation flag
-	MOVE.w	(%sp)+,FAC2_e.w(%a3)	| pop exponent and sign
-	MOVE.l	(%sp)+,FAC2_m.w(%a3)	| pop mantissa
-	MOVE.b	FAC2_s.w(%a3),FAC_sc.w(%a3)	| copy FAC2 sign
-	MOVE.b	FAC1_s.w(%a3),%d0		| get FAC1 sign
-	EOR.b		%d0,FAC_sc.w(%a3)		| EOR FAC1 sign and set sign compare
+	MOVE.b	%d0,Cflag.w(%a5)		| save comparison evaluation flag
+	MOVE.w	(%sp)+,FAC2_e.w(%a5)	| pop exponent and sign
+	MOVE.l	(%sp)+,FAC2_m.w(%a5)	| pop mantissa
+	MOVE.b	FAC2_s.w(%a5),FAC_sc.w(%a5)	| copy FAC2 sign
+	MOVE.b	FAC1_s.w(%a5),%d0		| get FAC1 sign
+	EOR.b		%d0,FAC_sc.w(%a5)		| EOR FAC1 sign and set sign compare
 
 	LSR.b		#1,%d1			| type bit into X and C
 	RTS
 
 LAB_1B9D:
-	MOVE.b	FAC1_e.w(%a3),%d0		| get FAC1 exponent
+	MOVE.b	FAC1_e.w(%a5),%d0		| get FAC1 exponent
 	RTS
 
 
@@ -2784,11 +2561,11 @@ LAB_GVAL:
 # print "..." string to string stack
 
 LAB_1BC1:
-	MOVE.b	(%a5)+,%d0			| increment BASIC execute pointer (past ")
+	MOVE.b	(%a3)+,%d0			| increment BASIC execute pointer (past ")
 							| fastest/shortest method
-	MOVEA.l	%a5,%a0			| copy basic execute pointer (string start)
+	MOVEA.l	%a3,%a0			| copy basic execute pointer (string start)
 	BSR		LAB_20AE			| print " terminated string to stack
-	MOVEA.l	%a2,%a5			| restore BASIC execute pointer from temp
+	MOVEA.l	%a2,%a3			| restore BASIC execute pointer from temp
 	RTS
 
 # get value from line .. continued
@@ -2839,7 +2616,7 @@ LAB_1C01:
 # scan for CHR$(d0) , else do syntax error, then warm start
 
 LAB_SCCA:
-	CMP.b		(%a5)+,%d0			| check next byte is = d0
+	CMP.b		(%a3)+,%d0			| check next byte is = d0
 	BEQ.s		LAB_GBYT			| if so go get next
 
 	BRA		LAB_SNER			| else do syntax error/warm start
@@ -2850,13 +2627,13 @@ LAB_SCCA:
 # BASIC increment and scan memory routine
 
 LAB_IGBY:
-	MOVE.b	(%a5)+,%d0			| get byte & increment pointer
+	MOVE.b	(%a3)+,%d0			| get byte & increment pointer
 
 # scan memory routine, exit with Cb = 1 if numeric character
 # also skips any spaces encountered
 
 LAB_GBYT:
-	MOVE.b	(%a5),%d0			| get byte
+	MOVE.b	(%a3),%d0			| get byte
 
 	CMP.b		#0x20,%d0			| compare with " "
 	BEQ.s		LAB_IGBY			| if " " go do next
@@ -2910,7 +2687,7 @@ LAB_1C18:
 # return existing variable value
 
 LAB_1C19:
-	TST.b		Dtypef.w(%a3)		| test data type, $80=string, $40=integer,
+	TST.b		Dtypef.w(%a5)		| test data type, $80=string, $40=integer,
 							| $00=float
 	BEQ		LAB_UFAC			| if float unpack memory (%a0) into FAC1 and
 							| return
@@ -2918,7 +2695,7 @@ LAB_1C19:
 	BPL.s		LAB_1C1A			| if integer unpack memory (%a0) into FAC1
 							| and return
 
-	MOVE.l	%a0,FAC1_m.w(%a3)		| else save descriptor pointer in FAC1
+	MOVE.l	%a0,FAC1_m.w(%a5)		| else save descriptor pointer in FAC1
 	RTS
 
 LAB_1C1A:
@@ -2989,7 +2766,7 @@ LAB_1BE7:
 
 LAB_PPFS:
 	BSR		LAB_1BF7			| process expression in parenthesis
-	TST.b		Dtypef.w(%a3)		| test data type
+	TST.b		Dtypef.w(%a5)		| test data type
 	BPL		LAB_TMER			| if numeric do Type missmatch Error/warm start
 
 LAB_1C2A:
@@ -3002,7 +2779,7 @@ LAB_1C2A:
 
 LAB_PPFN:
 	BSR		LAB_1BF7			| process expression in parenthesis
-	TST.b		Dtypef.w(%a3)		| test data type
+	TST.b		Dtypef.w(%a5)		| test data type
 	BMI		LAB_TMER			| if string do Type missmatch Error/warm start
 
 	RTS						| else do function
@@ -3013,8 +2790,8 @@ LAB_PPFN:
 # set numeric data type and increment BASIC execute pointer
 
 LAB_PPBI:
-	MOVE.b	#0x00,Dtypef.w(%a3)	| clear data type flag, $00=float
-	MOVE.b	(%a5)+,%d0			| get next BASIC byte
+	MOVE.b	#0x00,Dtypef.w(%a5)	| clear data type flag, $00=float
+	MOVE.b	(%a3)+,%d0			| get next BASIC byte
 	RTS						| do function
 
 
@@ -3024,14 +2801,14 @@ LAB_PPBI:
 
 LAB_LRMS:
 	BSR		LAB_EVEZ			| evaluate (should be string) expression
-	TST.b		Dtypef.w(%a3)		| test data type flag
+	TST.b		Dtypef.w(%a5)		| test data type flag
 	BPL		LAB_TMER			| if type is not string do type mismatch error
 
-	MOVE.b	(%a5)+,%d2			| get BASIC byte
+	MOVE.b	(%a3)+,%d2			| get BASIC byte
 	CMP.b		#',',%d2			| compare with comma
 	BNE		LAB_SNER			| if not "," go do syntax error/warm start
 
-	MOVE.l	FAC1_m.w(%a3),-(%sp)	| save descriptor pointer
+	MOVE.l	FAC1_m.w(%a5),-(%sp)	| save descriptor pointer
 	BSR		LAB_GTWO			| get word parameter, result in d0 and Itemp
 	MOVEA.l	(%sp)+,%a0			| restore descriptor pointer
 	RTS						| do function
@@ -3043,13 +2820,13 @@ LAB_LRMS:
 
 LAB_BHSS:
 	BSR		LAB_EVEZ			| evaluate expression (no decrement)
-	TST.b		Dtypef.w(%a3)		| test data type
+	TST.b		Dtypef.w(%a5)		| test data type
 	BMI		LAB_TMER			| if string do Type missmatch Error/warm start
 
 	BSR		LAB_2831			| convert FAC1 floating to fixed
 							| result in d0 and Itemp
 	MOVEQ		#0,%d1			| set default to no leading "0"s
-	MOVE.b	(%a5)+,%d2			| get BASIC byte
+	MOVE.b	(%a3)+,%d2			| get BASIC byte
 	CMP.b		#',',%d2			| compare with comma
 	BNE.s		LAB_BHCB			| if not "," go check close bracket
 
@@ -3057,7 +2834,7 @@ LAB_BHSS:
 	BSR		LAB_GTBY			| get byte value
 	MOVE.l	%d0,%d1			| copy leading 0s #
 	MOVE.l	(%sp)+,%d0			| restore number from stack
-	MOVE.b	(%a5)+,%d2			| get BASIC byte
+	MOVE.b	(%a3)+,%d2			| get BASIC byte
 LAB_BHCB:
 	CMP.b		#')',%d2			| compare with close bracket
 	BNE		LAB_SNER			| if not ")" do Syntax Error/warm start
@@ -3142,14 +2919,14 @@ LAB_LTHAN:
 
 							| do string < compare
 LAB_1CAE:
-	MOVE.b	#0x00,Dtypef.w(%a3)	| clear data type, $80=string, $40=integer,
+	MOVE.b	#0x00,Dtypef.w(%a5)	| clear data type, $80=string, $40=integer,
 							| $00=float
 	BSR		LAB_22B6			| pop string off descriptor stack, or from top
 							| of string space returns d0 = length,
 							| a0 = pointer
 	MOVEA.l	%a0,%a1			| copy string 2 pointer
 	MOVE.l	%d0,%d1			| copy string 2 length
-	MOVEA.l	FAC2_m.w(%a3),%a0		| get string 1 descriptor pointer
+	MOVEA.l	FAC2_m.w(%a5),%a0		| get string 1 descriptor pointer
 	BSR		LAB_22BA			| pop (%a0) descriptor, returns with ..
 							| d0 = length, a0 = pointer
 	MOVE.l	%d0,%d2			| copy length
@@ -3198,7 +2975,7 @@ LAB_1CF2:
 	MOVE.b	%d0,%d1			| copy to d1
 	MOVEQ		#1,%d0			| set d0 longword
 	ROL.b		%d1,%d0			| make 1, 2 or 4 (result = flag bit)
-	AND.b		Cflag.w(%a3),%d0		| AND with comparison evaluation flag
+	AND.b		Cflag.w(%a5),%d0		| AND with comparison evaluation flag
 	BEQ		LAB_27DB			| exit if not a wanted result (i.e. false)
 
 	MOVEQ		#-1,%d0			| else set -1 (true)
@@ -3342,7 +3119,7 @@ LAB_GVAR:
 	MOVEQ		#0x00,%d1			| set DIM flag = $00
 	BSR		LAB_GBYT			| scan memory (1st character)
 LAB_1D10:
-	MOVE.b	%d1,Defdim.w(%a3)		| save DIM flag
+	MOVE.b	%d1,Defdim.w(%a5)		| save DIM flag
 
 # search for FN name entry point
 
@@ -3352,9 +3129,9 @@ LAB_1D12:
 
 							| it is a variable name so ...
 	MOVEQ		#0x0,%d1			| set index for name byte
-	LEA		Varname.w(%a3),%a0	| pointer to variable name
+	LEA		Varname.w(%a5),%a0	| pointer to variable name
 	MOVE.l	%d1,(%a0)			| clear the variable name
-	MOVE.b	%d1,Dtypef.w(%a3)		| clear the data type, $80=string, $40=integer,
+	MOVE.b	%d1,Dtypef.w(%a5)		| clear the data type, $80=string, $40=integer,
 							| $00=float
 
 LAB_1D2D:
@@ -3376,7 +3153,7 @@ LAB_1D2E:
 	BNE.s		LAB_1D44			| branch if not string
 
 							| type is string
-	OR.b		#0x80,Varname+1.w(%a3)	| set top bit of 2nd character, indicate string
+	OR.b		#0x80,Varname+1.w(%a5)	| set top bit of 2nd character, indicate string
 	BSR		LAB_IGBY			| increment & scan memory
 	BRA.s		LAB_1D45			| skip integer check
 
@@ -3386,7 +3163,7 @@ LAB_1D44:
 	BNE.s		LAB_1D45			| branch if not integer
 
 							| type is integer
-	OR.b		#0x80,Varname+2.w(%a3)	| set top bit of 3rd character, indicate integer
+	OR.b		#0x80,Varname+2.w(%a5)	| set top bit of 3rd character, indicate integer
 	BSR		LAB_IGBY			| increment & scan memory
 
 # after we have determined the variable type we need to determine
@@ -3394,15 +3171,15 @@ LAB_1D44:
 
 							| gets here with character after var name in d0
 LAB_1D45:
-	TST.b		Sufnxf.w(%a3)		| test function name flag
+	TST.b		Sufnxf.w(%a5)		| test function name flag
 	BEQ.s		LAB_1D48			| if not FN or FN variable continue
 
 	BPL.s		LAB_1D49			| if FN variable go find or create it
 
 							| else was FN name
-	MOVE.l	Varname.w(%a3),%d0	| get whole function name
+	MOVE.l	Varname.w(%a5),%d0	| get whole function name
 	MOVEQ		#8,%d1			| set step to next function size -4
-	LEA		Sfncl.w(%a3),%a0		| get pointer to start of functions
+	LEA		Sfncl.w(%a5),%a0		| get pointer to start of functions
 	BRA.s		LAB_1D4B			| go find function
 
 LAB_1D48:
@@ -3415,10 +3192,10 @@ LAB_1D48:
 							| variable name wasn't var( .. so look for
 							| plain variable
 LAB_1D49:
-	MOVE.l	Varname.w(%a3),%d0	| get whole variable name
+	MOVE.l	Varname.w(%a5),%d0	| get whole variable name
 LAB_1D4A:
 	MOVEQ		#4,%d1			| set step to next variable size -4
-	LEA		Svarl.w(%a3),%a0		| get pointer to start of variables
+	LEA		Svarl.w(%a5),%a0		| get pointer to start of variables
 
 	BTST.l	#23,%d0			| test if string name
 	BEQ.s		LAB_1D4B			| branch if not
@@ -3440,7 +3217,7 @@ LAB_1D5E:
 	CMPA.l	%a1,%a0			| compare address with variable space end
 	BNE.s		LAB_1D5D			| if not end go check next
 
-	TST.b		Sufnxf.w(%a3)		| is it a function or function variable
+	TST.b		Sufnxf.w(%a5)		| is it a function or function variable
 	BNE.s		LAB_1D94			| if was go do DEF or function variable
 
 							| reached end of variable mem without match
@@ -3454,20 +3231,20 @@ LAB_1D5E:
 # this will only branch if the call to LAB_GVAR wasn't from LAB_SVAR
 
 LAB_1D94:
-	BTST.b	#0,Sufnxf.w(%a3)		| test function search flag
+	BTST.b	#0,Sufnxf.w(%a5)		| test function search flag
 	BNE		LAB_UFER			| if not doing DEF then go do undefined
 							| function error
 
 							| else create new variable/function
 LAB_1D98:
-	MOVEA.l	Earryl.w(%a3),%a2		| get end of block to move
+	MOVEA.l	Earryl.w(%a5),%a2		| get end of block to move
 	MOVE.l	%a2,%d2			| copy end of block to move
 	SUB.l		%a1,%d2			| calculate block to move size
 
 	MOVEA.l	%a2,%a0			| copy end of block to move
 	ADDQ.l	#4,%d1			| space for one variable/function + name
 	ADDA.l	%d1,%a2			| add space for one variable/function
-	MOVE.l	%a2,Earryl.w(%a3)		| set new array mem end
+	MOVE.l	%a2,Earryl.w(%a5)		| set new array mem end
 	LSR.l		#1,%d2			| /2 for word copy
 	BEQ.s		LAB_1DAF			| skip move if zero length block
 
@@ -3488,7 +3265,7 @@ LAB_1DAE:
 # if string set array start
 
 LAB_1DAF:
-	TST.b		Sufnxf.w(%a3)		| was it function
+	TST.b		Sufnxf.w(%a5)		| was it function
 	BMI.s		LAB_1DB0			| branch if was FN
 
 	BTST.l	#23,%d0			| was it string
@@ -3497,11 +3274,11 @@ LAB_1DAF:
 	BRA.s		LAB_1DB1			| branch if was plain variable
 
 LAB_1DB0:
-	ADD.l		%d1,Svarl.w(%a3)		| set new variable memory start
+	ADD.l		%d1,Svarl.w(%a5)		| set new variable memory start
 LAB_1DB1:
-	ADD.l		%d1,Sstrl.w(%a3)		| set new start of strings
+	ADD.l		%d1,Sstrl.w(%a5)		| set new start of strings
 LAB_1DB2:
-	ADD.l		%d1,Sarryl.w(%a3)		| set new array memory start
+	ADD.l		%d1,Sarryl.w(%a5)		| set new array memory start
 	MOVE.l	%d0,(%a0)+			| save variable/function name
 	MOVE.l	#0x00,(%a0)			| initialise variable
 	BTST.l	#23,%d0			| was it string
@@ -3517,9 +3294,9 @@ LAB_1DD7:
 	ROR.b		#1,%d1			| ........ .......0 .......$ &.......
 	LSR.w		#1,%d1			| ........ .......0 0....... $&.....­.
 	AND.b		#0xC0,%d1			| mask the type bits
-	MOVE.b	%d1,Dtypef.w(%a3)		| save the data type
+	MOVE.b	%d1,Dtypef.w(%a5)		| save the data type
 
-	MOVE.b	#0x00,Sufnxf.w(%a3)	| clear FN flag byte
+	MOVE.b	#0x00,Sufnxf.w(%a5)	| clear FN flag byte
 
 # if you want a non existant variable to return a null value then set the novar
 # value at the top of this file to some non zero value
@@ -3540,7 +3317,7 @@ LAB_1DD7:
 
 LAB_1DE6:
 	MOVEQ		#5,%d0			| set d0 to 5 (*2 = 10, later)
-	ADD.b		Dimcnt.w(%a3),%d0		| add # of dimensions (1, 2 or 3)
+	ADD.b		Dimcnt.w(%a5),%d0		| add # of dimensions (1, 2 or 3)
 	ADD.l		%d0,%d0			| *2 (bytes per dimension size)
 	ADD.l		%a0,%d0			| add array start pointer
 	RTS
@@ -3561,7 +3338,7 @@ LAB_EVIN:
 # evaluate positive integer expression, result in d0 and Itemp
 
 LAB_EVPI:
-	TST.b		FAC1_s.w(%a3)		| test FAC1 sign (b7)
+	TST.b		FAC1_s.w(%a5)		| test FAC1 sign (b7)
 	BMI		LAB_FCER			| do function call error if -ve
 
 
@@ -3571,19 +3348,19 @@ LAB_EVPI:
 # result in d0 and Itemp, exit with flags set correctly
 
 LAB_EVIR:
-	CMPI.b	#0xA0,FAC1_e.w(%a3)	| compare exponent with exponent = 2^32 (n>2^31)
+	CMPI.b	#0xA0,FAC1_e.w(%a5)	| compare exponent with exponent = 2^32 (n>2^31)
 	BCS		LAB_2831			| convert FAC1 floating to fixed
 							| result in d0 and Itemp
 	BNE		LAB_FCER			| if > do function call error, then warm start
 
-	TST.b		FAC1_s.w(%a3)		| test sign of FAC1
+	TST.b		FAC1_s.w(%a5)		| test sign of FAC1
 	BPL		LAB_2831			| if +ve then ok
 
-	MOVE.l	FAC1_m.w(%a3),%d0		| get mantissa
+	MOVE.l	FAC1_m.w(%a5),%d0		| get mantissa
 	NEG.l		%d0				| do -d0
 	BVC		LAB_FCER			| if not $80000000 do FC error, then warm start
 
-	MOVE.l	%d0,Itemp.w(%a3)		| else just set it
+	MOVE.l	%d0,Itemp.w(%a5)		| else just set it
 	RTS
 
 
@@ -3592,56 +3369,56 @@ LAB_EVIR:
 # find or make array
 
 LAB_1E17:
-	MOVE.w	Defdim.w(%a3),-(%sp)	| get DIM flag and data type flag (word in mem)
+	MOVE.w	Defdim.w(%a5),-(%sp)	| get DIM flag and data type flag (word in mem)
 	MOVEQ		#0,%d1			| clear dimensions count
 
 # now get the array dimension(s) and stack it (them) before the data type and DIM flag
 
 LAB_1E1F:
 	MOVE.w	%d1,-(%sp)			| save dimensions count
-	MOVE.l	Varname.w(%a3),-(%sp)	| save variable name
+	MOVE.l	Varname.w(%a5),-(%sp)	| save variable name
 	BSR.s		LAB_EVIN			| evaluate integer expression
 
 	SWAP		%d0				| swap high word to low word
 	TST.w		%d0				| test swapped high word
 	BNE		LAB_ABER			| if too big do array bounds error
 
-	MOVE.l	(%sp)+,Varname.w(%a3)	| restore variable name
+	MOVE.l	(%sp)+,Varname.w(%a5)	| restore variable name
 	MOVE.w	(%sp)+,%d1			| restore dimensions count
 	MOVE.w	(%sp)+,%d0			| restore DIM and data type flags
-	MOVE.w	Itemp+2.w(%a3),-(%sp)	| stack this dimension size
+	MOVE.w	Itemp+2.w(%a5),-(%sp)	| stack this dimension size
 	MOVE.w	%d0,-(%sp)			| save DIM and data type flags
 	ADDQ.w	#1,%d1			| increment dimensions count
 	BSR		LAB_GBYT			| scan memory
 	CMP.b		#0x2C,%d0			| compare with ","
 	BEQ.s		LAB_1E1F			| if found go do next dimension
 
-	MOVE.b	%d1,Dimcnt.w(%a3)		| store dimensions count
+	MOVE.b	%d1,Dimcnt.w(%a5)		| store dimensions count
 	BSR		LAB_1BFB			| scan for ")", else do syntax error/warm start
-	MOVE.w	(%sp)+,Defdim.w(%a3)	| restore DIM and data type flags (word in mem)
-	MOVEA.l	Sarryl.w(%a3),%a0		| get array mem start
+	MOVE.w	(%sp)+,Defdim.w(%a5)	| restore DIM and data type flags (word in mem)
+	MOVEA.l	Sarryl.w(%a5),%a0		| get array mem start
 
 # now check to see if we are at the end of array memory (we would be if there were
 # no arrays).
 
 LAB_1E5C:
-	MOVE.l	%a0,Astrtl.w(%a3)		| save as array start pointer
-	CMPA.l	Earryl.w(%a3),%a0		| compare with array mem end
+	MOVE.l	%a0,Astrtl.w(%a5)		| save as array start pointer
+	CMPA.l	Earryl.w(%a5),%a0		| compare with array mem end
 	BEQ.s		LAB_1EA1			| go build array if not found
 
 							| search for array
 	MOVE.l	(%a0),%d0			| get this array name
-	CMP.l		Varname.w(%a3),%d0	| compare with array name
+	CMP.l		Varname.w(%a5),%d0	| compare with array name
 	BEQ.s		LAB_1E8D			| array found so branch
 
 							| no match
 	MOVEA.l	4(%a0),%a0			| get this array size
-	ADDA.l	Astrtl.w(%a3),%a0		| add to array start pointer
+	ADDA.l	Astrtl.w(%a5),%a0		| add to array start pointer
 	BRA.s		LAB_1E5C			| go check next array
 
 							| found array, are we trying to dimension it?
 LAB_1E8D:
-	TST.b		Defdim.w(%a3)		| are we trying to dimension it?
+	TST.b		Defdim.w(%a5)		| are we trying to dimension it?
 	BNE		LAB_DDER			| if so do double dimension error/warm start
 
 # found the array and we're not dimensioning it so we must find an element in it
@@ -3650,21 +3427,21 @@ LAB_1E8D:
 							| in the array
 	ADDQ.w	#8,%a0			| index to dimension count
 	MOVE.w	(%a0)+,%d0			| get no of dimensions
-	CMP.b		Dimcnt.w(%a3),%d0		| compare with dimensions count
+	CMP.b		Dimcnt.w(%a5),%d0		| compare with dimensions count
 	BEQ		LAB_1F28			| found array so go get element
 
 	BRA		LAB_WDER			| else wrong so do "Wrong dimensions" error
 
 							| array not found, so possibly build it
 LAB_1EA1:
-	TST.b		Defdim.w(%a3)		| test the default DIM flag
+	TST.b		Defdim.w(%a5)		| test the default DIM flag
 	BEQ		LAB_UDER			| if default flag is clear then we are not
 							| explicitly dimensioning an array so go
 							| do an "Undimensioned array" error
 
 	BSR		LAB_1DE6			| set data pointer, d0, to the first element
 							| in the array
-	MOVE.l	Varname.w(%a3),%d0	| get array name
+	MOVE.l	Varname.w(%a5),%d0	| get array name
 	MOVE.l	%d0,(%a0)+			| save array name
 	MOVEQ		#4,%d1			| set 4 bytes per element
 	BTST.l	#23,%d0			| test if string array
@@ -3672,8 +3449,8 @@ LAB_1EA1:
 
 	MOVEQ		#6,%d1			| else 6 bytes per element
 LAB_1EDF:
-	MOVE.l	%d1,Asptl.w(%a3)		| set array data size (bytes per element)
-	MOVE.b	Dimcnt.w(%a3),%d1		| get dimensions count
+	MOVE.l	%d1,Asptl.w(%a5)		| set array data size (bytes per element)
+	MOVE.b	Dimcnt.w(%a5),%d1		| get dimensions count
 	ADDQ.w	#4,%a0			| skip the array size now (don't know it yet!)
 	MOVE.w	%d1,(%a0)+			| set array's dimensions count
 
@@ -3685,7 +3462,7 @@ LAB_1EC0:
 # above and uncomment the next three code lines and the label LAB_1ED0
 
 #	MOVE.w	#0x0A,%d1			| set default dimension value, allow 0 to 9
-#	TST.b		Defdim.w(%a3)		| test default DIM flag
+#	TST.b		Defdim.w(%a5)		| test default DIM flag
 #	BNE.s		LAB_1ED0			| branch if b6 of Defdim is clear
 
 	MOVE.w	(%sp)+,%d1			| get dimension size
@@ -3693,25 +3470,25 @@ LAB_1EC0:
 	MOVE.w	%d1,(%a0)+			| save to array header
 	BSR		LAB_1F7C			| do this dimension size+1 * array size
 							| (d1+1)*(Asptl), result in d0
-	MOVE.l	%d0,Asptl.w(%a3)		| save array data size
-	SUBQ.b	#1,Dimcnt.w(%a3)		| decrement dimensions count
+	MOVE.l	%d0,Asptl.w(%a5)		| save array data size
+	SUBQ.b	#1,Dimcnt.w(%a5)		| decrement dimensions count
 	BNE.s		LAB_1EC0			| loop while not = 0
 
-	ADDA.l	Asptl.w(%a3),%a0		| add size to first element address
+	ADDA.l	Asptl.w(%a5),%a0		| add size to first element address
 	BCS		LAB_OMER			| if overflow go do "Out of memory" error
 
-	CMPA.l	Sstorl.w(%a3),%a0		| compare with bottom of string memory
+	CMPA.l	Sstorl.w(%a5),%a0		| compare with bottom of string memory
 	BCS.s		LAB_1ED6			| branch if less (is ok)
 
 	BSR		LAB_GARB			| do garbage collection routine
-	CMPA.l	Sstorl.w(%a3),%a0		| compare with bottom of string memory
+	CMPA.l	Sstorl.w(%a5),%a0		| compare with bottom of string memory
 	BCC		LAB_OMER			| if Sstorl <= a0 do "Out of memory"
 							| error then warm start
 
 LAB_1ED6:						| ok exit, carry set
-	MOVE.l	%a0,Earryl.w(%a3)		| save array mem end
+	MOVE.l	%a0,Earryl.w(%a5)		| save array mem end
 	MOVEQ		#0,%d0			| zero d0
-	MOVE.l	Asptl.w(%a3),%d1		| get size in bytes
+	MOVE.l	Asptl.w(%a5),%d1		| get size in bytes
 	LSR.l		#1,%d1			| /2 for word fill (may be odd # words)
 	SUBQ.w	#1,%d1			| adjust for DBF loop
 LAB_1ED8:
@@ -3729,22 +3506,22 @@ LAB_1ED8:
 # now we need to calculate the array size by doing Earryl - Astrtl
 
 LAB_1F07:
-	MOVEA.l	Astrtl.w(%a3),%a0		| get for calculation and as pointer
-	MOVE.l	Earryl.w(%a3),%d0		| get array memory end
+	MOVEA.l	Astrtl.w(%a5),%a0		| get for calculation and as pointer
+	MOVE.l	Earryl.w(%a5),%d0		| get array memory end
 	SUB.l		%a0,%d0			| calculate array size
 	MOVE.l	%d0,4(%a0)			| save size to array
-	TST.b		Defdim.w(%a3)		| test default DIM flag
+	TST.b		Defdim.w(%a5)		| test default DIM flag
 	BNE.s		RTS_011			| exit (RET) if this was a DIM command
 
 							| else, find element
 	ADDQ.w	#8,%a0			| index to dimension count
-	MOVE.w	(%a0)+,Dimcnt.w(%a3)	| get array's dimension count
+	MOVE.w	(%a0)+,Dimcnt.w(%a5)	| get array's dimension count
 
 # we have found, or built, the array. now we need to find the element
 
 LAB_1F28:
 	MOVEQ		#0,%d0			| clear first result
-	MOVE.l	%d0,Asptl.w(%a3)		| clear array data pointer
+	MOVE.l	%d0,Asptl.w(%a5)		| clear array data pointer
 
 # compare nth dimension bound (%a0) with nth index (%sp)+
 # if greater do array bounds error
@@ -3764,25 +3541,25 @@ LAB_1F5A:
 	MOVEQ		#0,%d1			| clear longword
 	MOVE.w	(%sp)+,%d1			| get nth dimension index
 	ADD.l		%d1,%d0			| add index to size
-	MOVE.l	%d0,Asptl.w(%a3)		| save array data pointer
+	MOVE.l	%d0,Asptl.w(%a5)		| save array data pointer
 
-	SUBQ.b	#1,Dimcnt.w(%a3)		| decrement dimensions count
+	SUBQ.b	#1,Dimcnt.w(%a5)		| decrement dimensions count
 	BNE.s		LAB_1F2C			| loop if dimensions still to do
 
-	MOVE.b	#0,Dtypef.w(%a3)		| set data type to float
+	MOVE.b	#0,Dtypef.w(%a5)		| set data type to float
 	MOVEQ		#3,%d1			| set for numeric array
-	TST.b		Varname+1.w(%a3)		| test if string array
+	TST.b		Varname+1.w(%a5)		| test if string array
 	BPL.s		LAB_1F6A			| branch if not string
 
 	MOVEQ		#5,%d1			| else set for string array
-	MOVE.b	#0x80,Dtypef.w(%a3)	| and set data type to string
+	MOVE.b	#0x80,Dtypef.w(%a5)	| and set data type to string
 	BRA.s		LAB_1F6B			| skip integer test
 
 LAB_1F6A:
-	TST.b		Varname+2.w(%a3)		| test if integer array
+	TST.b		Varname+2.w(%a5)		| test if integer array
 	BPL.s		LAB_1F6B			| branch if not integer
 
-	MOVE.b	#0x40,Dtypef.w(%a3)	| else set data type to integer
+	MOVE.b	#0x40,Dtypef.w(%a5)	| else set data type to integer
 LAB_1F6B:
 	BSR.s		LAB_1F7C			| do element size (d1) * array size (Asptl)
 	ADDA.l	%d0,%a0			| add array data start pointer
@@ -3804,7 +3581,7 @@ RTS_011:
 # d0	rrrr	rrrr
 
 LAB_1F7C:
-	MOVE.l	Asptl.w(%a3),%d0		| get result
+	MOVE.l	Asptl.w(%a5),%d0		| get result
 	MOVE.l	%d0,%d2			| copy it
 	SWAP		%d2				| shift high word to low word
 	MULU.w	%d1,%d0			| d1 * low word = low result
@@ -3816,7 +3593,7 @@ LAB_1F7C:
 	ADD.l		%d2,%d0			| calculate result
 	BCS		LAB_OMER			| if overflow go do "Out of memory" error
 
-	ADD.l		Asptl.w(%a3),%d0		| add original
+	ADD.l		Asptl.w(%a5),%d0		| add original
 	BCS		LAB_OMER			| if overflow go do "Out of memory" error
 
 	RTS
@@ -3827,7 +3604,7 @@ LAB_1F7C:
 # perform FRE()
 
 LAB_FRE:
-	TST.b		Dtypef.w(%a3)		| test data type, $80=string, $40=integer,
+	TST.b		Dtypef.w(%a5)		| test data type, $80=string, $40=integer,
 							| $00=float
 	BPL.s		LAB_1FB4			| branch if numeric
 
@@ -3838,8 +3615,8 @@ LAB_FRE:
 							| FRE(n) was numeric so do this
 LAB_1FB4:
 	BSR		LAB_GARB			| go do garbage collection
-	MOVE.l	Sstorl.w(%a3),%d0		| get bottom of string space
-	SUB.l		Earryl.w(%a3),%d0		| subtract array mem end
+	MOVE.l	Sstorl.w(%a5),%d0		| get bottom of string space
+	SUB.l		Earryl.w(%a5),%d0		| subtract array mem end
 
 
 #####################################################################################
@@ -3847,10 +3624,10 @@ LAB_1FB4:
 # convert d0 to signed longword in FAC1
 
 LAB_AYFC:
-	MOVE.b	#0x00,Dtypef.w(%a3)	| clear data type, $80=string, $40=integer,
+	MOVE.b	#0x00,Dtypef.w(%a5)	| clear data type, $80=string, $40=integer,
 							| $00=float
-	MOVE.w	#0xA000,FAC1_e.w(%a3)	| set FAC1 exponent and clear sign (b7)
-	MOVE.l	%d0,FAC1_m.w(%a3)		| save FAC1 mantissa
+	MOVE.w	#0xA000,FAC1_e.w(%a5)	| set FAC1 exponent and clear sign (b7)
+	MOVE.l	%d0,FAC1_m.w(%a5)		| save FAC1 mantissa
 	BPL		LAB_24D0			| convert if +ve
 
 	ORI.b		#1,%CCR			| else set carry
@@ -3865,7 +3642,7 @@ LAB_AYFC:
 # perform POS()
 
 LAB_POS:
-	MOVE.b	TPos.w(%a3),%d0		| get terminal position
+	MOVE.b	TPos.w(%a5),%d0		| get terminal position
 
 # convert d0 to unsigned byte in FAC1
 
@@ -3876,7 +3653,7 @@ LAB_1FD0:
 # check not direct (used by DEF and INPUT)
 
 LAB_CKRN:
-	TST.b		Clinel.w(%a3)		| test current line #
+	TST.b		Clinel.w(%a5)		| test current line #
 	BMI		LAB_IDER			| if -ve go do illegal direct error then warm
 							| start
 
@@ -3892,25 +3669,25 @@ LAB_DEF:
 	BSR		LAB_SCCA			| scan for CHR$(d0), else syntax error and
 							| warm start
 							| return character after d0
-	MOVE.b	#0x80,Sufnxf.w(%a3)	| set FN flag bit
+	MOVE.b	#0x80,Sufnxf.w(%a5)	| set FN flag bit
 	BSR		LAB_1D12			| get FN name
-	MOVE.l	%a0,func_l.w(%a3)		| save function pointer
+	MOVE.l	%a0,func_l.w(%a5)		| save function pointer
 
 	BSR.s		LAB_CKRN			| check not direct (back here if ok)
-	CMP.b		#0x28,(%a5)+		| check next byte is "(" and increment
+	CMP.b		#0x28,(%a3)+		| check next byte is "(" and increment
 	BNE		LAB_SNER			| else do syntax error/warm start
 
-	MOVE.b	#0x7E,Sufnxf.w(%a3)	| set FN variable flag bits
+	MOVE.b	#0x7E,Sufnxf.w(%a5)	| set FN variable flag bits
 	BSR		LAB_SVAR			| search for or create a variable
 							| return the variable address in a0
 	BSR		LAB_1BFB			| scan for ")", else do syntax error/warm start
 	MOVEQ		#-1-(TK_EQUAL^255),%d0	| = token
 	BSR		LAB_SCCA			| scan for CHR$(A), else syntax error/warm start
 							| return character after d0
-	MOVE.l	Varname.w(%a3),-(%sp)	| push current variable name
-	MOVE.l	%a5,-(%sp)			| push BASIC execute pointer
+	MOVE.l	Varname.w(%a5),-(%sp)	| push current variable name
+	MOVE.l	%a3,-(%sp)			| push BASIC execute pointer
 	BSR		LAB_DATA			| go perform DATA, find end of DEF FN statement
-	MOVEA.l	func_l.w(%a3),%a0		| get the function pointer
+	MOVEA.l	func_l.w(%a5),%a0		| get the function pointer
 	MOVE.l	(%sp)+,(%a0)		| save BASIC execute pointer to function
 	MOVE.l	(%sp)+,4(%a0)		| save current variable name to function
 	RTS
@@ -3921,18 +3698,18 @@ LAB_DEF:
 # evaluate FNx
 
 LAB_201E:
-	MOVE.b	#0x81,Sufnxf.w(%a3)	| set FN flag (find not create)
+	MOVE.b	#0x81,Sufnxf.w(%a5)	| set FN flag (find not create)
 	BSR		LAB_IGBY			| increment & scan memory
 	BSR		LAB_1D12			| get FN name
-	MOVE.b	Dtypef.w(%a3),-(%sp)	| push data type flag (function type)
+	MOVE.b	Dtypef.w(%a5),-(%sp)	| push data type flag (function type)
 	MOVE.l	%a0,-(%sp)			| push function pointer
-	CMP.b		#0x28,(%a5)			| check next byte is "(", no increment
+	CMP.b		#0x28,(%a3)			| check next byte is "(", no increment
 	BNE		LAB_SNER			| else do syntax error/warm start
 
 	BSR		LAB_1BF7			| evaluate expression within parentheses
 	MOVEA.l	(%sp)+,%a0			| pop function pointer
-	MOVE.l	%a0,func_l.w(%a3)		| set function pointer
-	MOVE.b	Dtypef.w(%a3),-(%sp)	| push data type flag (function expression type)
+	MOVE.l	%a0,func_l.w(%a5)		| set function pointer
+	MOVE.b	Dtypef.w(%a5),-(%sp)	| push data type flag (function expression type)
 
 	MOVE.l	4(%a0),%d0			| get function variable name
 	BSR		LAB_1D4A			| go find function variable (already created)
@@ -3946,7 +3723,7 @@ LAB_201E:
 							| use
 	BEQ.s		LAB_2043			| branch if not string
 
-	LEA		des_sk_e.w(%a3),%a1	| get string stack pointer max+1
+	LEA		des_sk_e.w(%a5),%a1	| get string stack pointer max+1
 	CMPA.l	%a1,%a4			| compare string stack pointer with max+1
 	BEQ		LAB_SCER			| if no space on the stack go do string too
 							| complex error
@@ -3959,19 +3736,19 @@ LAB_2043:
 	MOVE.l	(%a0),-(%sp)		| push variable
 LAB_204S:
 	MOVE.l	%a0,-(%sp)			| push variable address
-	MOVE.b	Dtypef.w(%a3),-(%sp)	| push variable data type
+	MOVE.b	Dtypef.w(%a5),-(%sp)	| push variable data type
 
 	BSR.s		LAB_2045			| pack function expression value into (%a0)
 							| (function variable)
-	MOVE.l	%a5,-(%sp)			| push BASIC execute pointer
-	MOVEA.l	func_l.w(%a3),%a0		| get function pointer
-	MOVEA.l	(%a0),%a5			| save function execute ptr as BASIC execute ptr
+	MOVE.l	%a3,-(%sp)			| push BASIC execute pointer
+	MOVEA.l	func_l.w(%a5),%a0		| get function pointer
+	MOVEA.l	(%a0),%a3			| save function execute ptr as BASIC execute ptr
 	BSR		LAB_EVEX			| evaluate expression
 	BSR		LAB_GBYT			| scan memory
 	BNE		LAB_SNER			| if not [EOL] or [EOS] do syntax error and
 							| warm start
 
-	MOVE.l	(%sp)+,%a5			| restore BASIC execute pointer
+	MOVE.l	(%sp)+,%a3			| restore BASIC execute pointer
 
 # restore variable from stack and test data type
 
@@ -3993,7 +3770,7 @@ LAB_2044:
 	RTS
 
 LAB_2045:
-	TST.b		Dtypef.w(%a3)		| test data type
+	TST.b		Dtypef.w(%a5)		| test data type
 	BPL		LAB_2778			| if numeric pack FAC1 into variable (%a0)
 							| and return
 
@@ -4043,11 +3820,11 @@ LAB_20CB:
 LAB_20D0:
 	ADDA.l	%d1,%a2			| add longowrd length to make string end+1
 
-	CMPA.l	%a3,%a0			| is string in ram
+	CMPA.l	%a5,%a0			| is string in ram
 	BCS.s		LAB_RTST			| if not go push descriptor on stack & exit
 							| (could be message string from ROM)
 
-	CMPA.l	Smeml.w(%a3),%a0		| is string in utility ram
+	CMPA.l	Smeml.w(%a5),%a0		| is string in utility ram
 	BCC.s		LAB_RTST			| if not go push descriptor on stack & exit
 							| (is in string or program space)
 
@@ -4078,7 +3855,7 @@ LAB_20E0:
 # start is in a0, length is in d1
 
 LAB_RTST:
-	LEA		des_sk_e.w(%a3),%a1	| get string stack pointer max+1
+	LEA		des_sk_e.w(%a5),%a1	| get string stack pointer max+1
 	CMPA.l	%a1,%a4			| compare string stack pointer with max+1
 	BEQ		LAB_SCER			| if no space on string stack ..
 							| .. go do 'string too complex' error
@@ -4086,8 +3863,8 @@ LAB_RTST:
 							| push string & update pointers
 	MOVE.w	%d1,-(%a4)			| string length on descriptor stack
 	MOVE.l	%a0,-(%a4)			| string address on stack
-	MOVE.l	%a4,FAC1_m.w(%a3)		| string descriptor pointer in FAC1
-	MOVE.b	#0x80,Dtypef.w(%a3)	| save data type flag, $80=string
+	MOVE.l	%a4,FAC1_m.w(%a5)		| string descriptor pointer in FAC1
+	MOVE.b	#0x80,Dtypef.w(%a5)	| save data type flag, $80=string
 	RTS
 
 
@@ -4104,7 +3881,7 @@ LAB_2115:
 							| make space for string d1 long
 	MOVE.l	%d0,-(%sp)			| save d0
 	MOVEQ		#0,%d0			| clear longword
-	MOVE.b	%d0,Gclctd.w(%a3)		| clear garbage collected flag (b7)
+	MOVE.b	%d0,Gclctd.w(%a5)		| clear garbage collected flag (b7)
 	MOVEQ		#1,%d0			| +1 to possibly round up
 	AND.w		%d1,%d0			| mask odd bit
 	ADD.w		%d1,%d0			| ensure d0 is even length
@@ -4113,13 +3890,13 @@ LAB_2115:
 	MOVEQ		#1,%d0			| set to allocate 65536 bytes
 	SWAP		%d0				| makes $00010000
 LAB_2117:
-	MOVEA.l	Sstorl.w(%a3),%a0		| get bottom of string space
+	MOVEA.l	Sstorl.w(%a5),%a0		| get bottom of string space
 	SUBA.l	%d0,%a0			| subtract string length
-	CMPA.l	Earryl.w(%a3),%a0		| compare with top of array space
+	CMPA.l	Earryl.w(%a5),%a0		| compare with top of array space
 	BCS.s		LAB_2137			| if less do out of memory error
 
-	MOVE.l	%a0,Sstorl.w(%a3)		| save bottom of string space
-	MOVE.l	%a0,Sutill.w(%a3)		| save string utility pointer
+	MOVE.l	%a0,Sstorl.w(%a5)		| save bottom of string space
+	MOVE.l	%a0,Sutill.w(%a5)		| save string utility pointer
 	MOVE.l	(%sp)+,%d0			| restore d0
 	TST.w		%d1				| set flags on length
 	RTS
@@ -4129,13 +3906,13 @@ LAB_2128:
 	RTS
 
 LAB_2137:
-	TST.b		Gclctd.w(%a3)		| get garbage collected flag
+	TST.b		Gclctd.w(%a5)		| get garbage collected flag
 	BMI		LAB_OMER			| do "Out of memory" error, then warm start
 
 	MOVE.l	%a1,-(%sp)			| save a1
 	BSR.s		LAB_GARB			| else go do garbage collection
 	MOVEA.l	(%sp)+,%a1			| restore a1
-	MOVE.b	#0x80,Gclctd.w(%a3)	| set garbage collected flag
+	MOVE.b	#0x80,Gclctd.w(%a5)	| set garbage collected flag
 	BRA.s		LAB_2117			| go try again
 
 
@@ -4145,16 +3922,16 @@ LAB_2137:
 
 LAB_GARB:
 	MOVEM.l	%d0-%d2/%a0-%a2,-(%sp)	| save registers
-	MOVE.l	Ememl.w(%a3),Sstorl.w(%a3)	| start with no strings
+	MOVE.l	Ememl.w(%a5),Sstorl.w(%a5)	| start with no strings
 
 							| re-run routine from last ending
 LAB_214B:
-	MOVE.l	Earryl.w(%a3),%d1		| set highest uncollected string so far
+	MOVE.l	Earryl.w(%a5),%d1		| set highest uncollected string so far
 	MOVEQ		#0,%d0			| clear longword
 	MOVEA.l	%d0,%a1			| clear string to move pointer
-	MOVEA.l	Sstrl.w(%a3),%a0		| set pointer to start of strings
+	MOVEA.l	Sstrl.w(%a5),%a0		| set pointer to start of strings
 	LEA		4(%a0),%a0			| index to string pointer
-	MOVEA.l	Sarryl.w(%a3),%a2		| set end pointer to start of arrays (end of
+	MOVEA.l	Sarryl.w(%a5),%a2		| set end pointer to start of arrays (end of
 							| strings)
 	BRA.s		LAB_2176			| branch into loop at end loop test
 
@@ -4168,7 +3945,7 @@ LAB_2176:
 # done strings, now do arrays.
 
 	LEA		-4(%a0),%a0			| decrement pointer to start of arrays
-	MOVEA.l	Earryl.w(%a3),%a2		| set end pointer to end of arrays
+	MOVEA.l	Earryl.w(%a5),%a2		| set end pointer to end of arrays
 	BRA.s		LAB_218F			| branch into loop at end loop test
 
 LAB_217E:
@@ -4198,7 +3975,7 @@ LAB_218F:
 # done arrays and variables, now just the descriptor stack to do
 
 	MOVEA.l	%a4,%a0			| get descriptor stack pointer
-	LEA		des_sk.w(%a3),%a2		| set end pointer to end of stack
+	LEA		des_sk.w(%a5),%a2		| set end pointer to end of stack
 	BRA.s		LAB_21C4			| branch into loop at end loop test
 
 LAB_21C2:
@@ -4219,7 +3996,7 @@ LAB_21C4:
 	ADDQ.l	#1,%d1			| +1
 	AND.b		#0xFE,%d1			| make even length
 	ADDA.l	%d1,%a0			| pointer is now to string end+1
-	MOVEA.l	Sstorl.w(%a3),%a2		| is destination end+1
+	MOVEA.l	Sstorl.w(%a5),%a2		| is destination end+1
 	CMPA.l	%a2,%a0			| does the string need moving
 	BEQ.s		LAB_2240			| branch if not
 
@@ -4231,7 +4008,7 @@ LAB_2216:
 
 	MOVE.l	%a2,(%a1)			| save new string start
 LAB_2240:
-	MOVE.l	(%a1),Sstorl.w(%a3)	| string start is new string mem start
+	MOVE.l	(%a1),Sstorl.w(%a5)	| string start is new string mem start
 	BRA		LAB_214B			| re-run routine from last ending
 							| (but don't collect this string)
 
@@ -4248,14 +4025,14 @@ LAB_2206:
 	CMP.l		%d0,%d1			| compare with highest uncollected string so far
 	BCC.s		RTS_012			| exit if <= with highest so far
 
-	CMP.l		Sstorl.w(%a3),%d0		| compare with bottom of string space
+	CMP.l		Sstorl.w(%a5),%d0		| compare with bottom of string space
 	BCC.s		RTS_012			| exit if >= bottom of string space
 
 	MOVEQ		#-1,%d0			| d0 = $FFFFFFFF
 	MOVE.w	4(%a0),%d0			| d0 is string length
 	NEG.w		%d0				| make -ve
 	AND.b		#0xFE,%d0			| make -ve even length
-	ADD.l		Sstorl.w(%a3),%d0		| add string store to -ve length
+	ADD.l		Sstorl.w(%a5),%d0		| add string store to -ve length
 	CMP.l		(%a0),%d0			| compare with string address
 	BEQ.s		LAB_2212			| if = go move string store pointer down
 
@@ -4264,7 +4041,7 @@ LAB_2206:
 	RTS
 
 LAB_2212:
-	MOVE.l	%d0,Sstorl.w(%a3)		| set new string store start
+	MOVE.l	%d0,Sstorl.w(%a5)		| set new string store start
 RTS_012:
 	RTS
 
@@ -4276,10 +4053,10 @@ RTS_012:
 
 LAB_224D:
 	PEA		LAB_1ADB(%pc)		| continue evaluation after concatenate
-	MOVE.l	FAC1_m.w(%a3),-(%sp)	| stack descriptor pointer for string 1
+	MOVE.l	FAC1_m.w(%a5),-(%sp)	| stack descriptor pointer for string 1
 
 	BSR		LAB_GVAL			| get value from line
-	TST.b		Dtypef.w(%a3)		| test data type flag
+	TST.b		Dtypef.w(%a5)		| test data type flag
 	BPL		LAB_TMER			| if type is not string do type mismatch error
 
 	MOVEA.l	(%sp)+,%a0			| restore descriptor pointer for string 1
@@ -4290,21 +4067,21 @@ LAB_224D:
 # string descriptor 1 is in a0, string descriptor 2 is in FAC1_m
 
 LAB_224E:
-	MOVEA.l	FAC1_m.w(%a3),%a1		| copy descriptor pointer 2
+	MOVEA.l	FAC1_m.w(%a5),%a1		| copy descriptor pointer 2
 	MOVE.w	4(%a0),%d1			| get length 1
 	ADD.w		4(%a1),%d1			| add length 2
 	BCS		LAB_SLER			| if overflow go do 'string too long' error
 
 	MOVE.l	%a0,-(%sp)			| save descriptor pointer 1
 	BSR		LAB_2115			| make space d1 bytes long
-	MOVE.l	%a0,FAC2_m.w(%a3)		| save new string start pointer
+	MOVE.l	%a0,FAC2_m.w(%a5)		| save new string start pointer
 	MOVEA.l	(%sp),%a0			| copy descriptor pointer 1 from stack
 	MOVE.w	4(%a0),%d0			| get length
 	MOVEA.l	(%a0),%a0			| get string pointer
 	BSR.s		LAB_229E			| copy string d0 bytes long from a0 to Sutill
 							| return with a0 = pointer, d1 = length
 
-	MOVEA.l	FAC1_m.w(%a3),%a0		| get descriptor pointer for string 2
+	MOVEA.l	FAC1_m.w(%a5),%a0		| get descriptor pointer for string 2
 	BSR.s		LAB_22BA			| pop (%a0) descriptor, returns with ..
 							| a0 = pointer, d0 = length
 	BSR.s		LAB_229E			| copy string d0 bytes long from a0 to Sutill
@@ -4314,13 +4091,13 @@ LAB_224E:
 	BSR.s		LAB_22BA			| pop (%a0) descriptor, returns with ..
 							| d0 = length, a0 = pointer
 
-	MOVEA.l	FAC2_m.w(%a3),%a0		| retreive the result string pointer
+	MOVEA.l	FAC2_m.w(%a5),%a0		| retreive the result string pointer
 	MOVE.l	%a0,%d1			| copy the result string pointer
 	BEQ		LAB_RTST			| if it is a null string just return it
 							| a0 = pointer, d1 = length
 
 	NEG.l		%d1				| else make the start pointer negative
-	ADD.l		Sutill.w(%a3),%d1		| add the end pointert to give the length
+	ADD.l		Sutill.w(%a5),%d1		| add the end pointert to give the length
 	BRA		LAB_RTST			| push string on descriptor stack
 							| a0 = pointer, d1 = length
 
@@ -4334,14 +4111,14 @@ LAB_229E:
 	MOVE.w	%d0,%d1			| copy and check length
 	BEQ.s		RTS_013			| skip copy if null
 
-	MOVEA.l	Sutill.w(%a3),%a1		| get destination pointer
+	MOVEA.l	Sutill.w(%a5),%a1		| get destination pointer
 	MOVE.l	%a1,-(%sp)			| save destination string pointer
 	SUBQ.w	#1,%d0			| subtract for DBF loop
 LAB_22A0:
 	MOVE.b	(%a0)+,(%a1)+		| copy byte
 	DBF		%d0,LAB_22A0		| loop if not done
 
-	MOVE.l	%a1,Sutill.w(%a3)		| update Sutill to end of copied string
+	MOVE.l	%a1,Sutill.w(%a5)		| update Sutill to end of copied string
 	MOVEA.l	(%sp)+,%a0			| restore destination string pointer
 RTS_013:
 	RTS
@@ -4353,7 +4130,7 @@ RTS_013:
 # returns with d0.l = length, a0 = pointer
 
 LAB_22B6:
-	MOVEA.l	FAC1_m.w(%a3),%a0		| get descriptor pointer
+	MOVEA.l	FAC1_m.w(%a5),%a0		| get descriptor pointer
 
 
 #####################################################################################
@@ -4375,7 +4152,7 @@ LAB_22BD:
 	CMPA.l	%a0,%a4			| was it on the descriptor stack
 	BNE.s		LAB_22E6			| branch if it wasn't
 
-	CMPA.l	Sstorl.w(%a3),%a1		| compare string address with bottom of string
+	CMPA.l	Sstorl.w(%a5),%a1		| compare string address with bottom of string
 							| space
 	BNE.s		LAB_22E6			| branch if <>
 
@@ -4383,7 +4160,7 @@ LAB_22BD:
 	AND.w		%d0,%d1			| AND length
 	ADD.l		%d0,%d1			| make it fit word aligned length
 
-	ADD.l		%d1,Sstorl.w(%a3)		| add to bottom of string space
+	ADD.l		%d1,Sstorl.w(%a5)		| add to bottom of string space
 LAB_22E6:
 	MOVEA.l	%a1,%a0			| copy to a0
 	MOVEM.l	(%sp)+,%a1/%d1		| restore other regs
@@ -4486,7 +4263,7 @@ LAB_MIDS:
 	CMP.b		#',',%d0			| was it ","
 	BNE.s		LAB_2358			| branch if not "," (skip second byte get)
 
-	MOVE.b	(%a5)+,%d0			| increment pointer past ","
+	MOVE.b	(%a3)+,%d0			| increment pointer past ","
 	MOVE.l	%a0,-(%sp)			| save descriptor pointer
 	BSR		LAB_GTWO			| get word parameter, result in d0 and Itemp
 	MOVEA.l	(%sp)+,%a0			| restore descriptor pointer
@@ -4593,10 +4370,10 @@ NoString:
 # perform SADD()
 
 LAB_SADD:
-	MOVE.b	(%a5)+,%d0			| increment pointer
+	MOVE.b	(%a3)+,%d0			| increment pointer
 	BSR		LAB_GVAR			| get variable address in a0
 	BSR		LAB_1BFB			| scan for ")", else do syntax error/warm start
-	TST.b		Dtypef.w(%a3)		| test data type flag
+	TST.b		Dtypef.w(%a5)		| test data type flag
 	BPL		LAB_TMER			| if numeric do Type missmatch Error
 
 # if you want a non existant variable to return a null value then set the novar
@@ -4697,8 +4474,8 @@ LAB_VAL:
 	BEQ.s		LAB_VALZ			| string was null so set result = $00
 							| clear FAC1 exponent & sign & return
 
-	MOVEA.l	%a5,%a6			| save BASIC execute pointer
-	MOVEA.l	%a0,%a5			| copy string pointer to execute pointer
+	MOVEA.l	%a3,%a6			| save BASIC execute pointer
+	MOVEA.l	%a0,%a3			| copy string pointer to execute pointer
 	ADDA.l	%d0,%a0			| string end+1
 	MOVE.b	(%a0),%d0			| get byte from string+1
 	MOVE.w	%d0,-(%sp)			| save it
@@ -4709,11 +4486,11 @@ LAB_VAL:
 	MOVEA.l	(%sp)+,%a0			| restore pointer
 	MOVE.w	(%sp)+,%d0			| pop byte
 	MOVE.b	%d0,(%a0)			| restore to memory
-	MOVEA.l	%a6,%a5			| restore BASIC execute pointer
+	MOVEA.l	%a6,%a3			| restore BASIC execute pointer
 	RTS
 
 LAB_VALZ:
-	MOVE.w	%d0,FAC1_e.w(%a3)		| clear FAC1 exponent & sign
+	MOVE.w	%d0,FAC1_e.w(%a5)		| clear FAC1 exponent & sign
 	RTS
 
 
@@ -4868,13 +4645,13 @@ RTS_015:
 LAB_SWAP:
 	BSR		LAB_GVAR			| get variable 1 address in a0
 	MOVE.l	%a0,-(%sp)			| save variable 1 address
-	MOVE.b	Dtypef.w(%a3),%d4		| copy variable 1 data type, $80=string,
+	MOVE.b	Dtypef.w(%a5),%d4		| copy variable 1 data type, $80=string,
 							| $40=inetger, $00=float
 
 	BSR		LAB_1C01			| scan for ",", else do syntax error/warm start
 	BSR		LAB_GVAR			| get variable 2 address in a0
 	MOVEA.l	(%sp)+,%a2			| restore variable 1 address
-	CMP.b		Dtypef.w(%a3),%d4		| compare variable 1 data type with variable 2
+	CMP.b		Dtypef.w(%a5),%d4		| compare variable 1 data type with variable 2
 							| data type
 	BNE		LAB_TMER			| if not both the same type do "Type mismatch"
 							| error then warm start
@@ -4949,7 +4726,7 @@ EXIT_SWAP:
 # perform USR
 
 LAB_USR:
-	JSR		Usrjmp.w(%a3)		| do user vector
+	JSR		Usrjmp.w(%a5)		| do user vector
 	BRA		LAB_1BFB			| scan for ")", else do syntax error/warm start
 
 
@@ -4958,7 +4735,7 @@ LAB_USR:
 # perform LOAD
 
 LAB_LOAD:
-	JMP		V_LOAD.w(%a3)		| do load vector
+	JMP		V_LOAD.w(%a5)		| do load vector
 
 
 #####################################################################################
@@ -4966,7 +4743,7 @@ LAB_LOAD:
 # perform SAVE
 
 LAB_SAVE:
-	JMP		V_SAVE.w(%a3)		| do save vector
+	JMP		V_SAVE.w(%a5)		| do save vector
 
 
 #####################################################################################
@@ -5016,11 +4793,11 @@ LAB_2445:
 # perform subtraction, FAC1 from FAC2
 
 LAB_SUBTRACT:
-	EORI.b	#0x80,FAC1_s.w(%a3)	| complement FAC1 sign
-	MOVE.b	FAC2_s.w(%a3),FAC_sc.w(%a3)	| copy FAC2 sign byte
+	EORI.b	#0x80,FAC1_s.w(%a5)	| complement FAC1 sign
+	MOVE.b	FAC2_s.w(%a5),FAC_sc.w(%a5)	| copy FAC2 sign byte
 
-	MOVE.b	FAC1_s.w(%a3),%d0		| get FAC1 sign byte
-	EOR.b		%d0,FAC_sc.w(%a3)		| EOR with FAC2 sign
+	MOVE.b	FAC1_s.w(%a5),%d0		| get FAC1 sign byte
+	EOR.b		%d0,FAC_sc.w(%a5)		| EOR with FAC2 sign
 
 
 #####################################################################################
@@ -5028,21 +4805,21 @@ LAB_SUBTRACT:
 # add FAC2 to FAC1
 
 LAB_ADD:
-	MOVE.b	FAC1_e.w(%a3),%d0		| get exponent
+	MOVE.b	FAC1_e.w(%a5),%d0		| get exponent
 	BEQ		LAB_279B			| FAC1 was zero so copy FAC2 to FAC1 & return
 
 							| FAC1 is non zero
-	LEA		FAC2_m.w(%a3),%a0		| set pointer1 to FAC2 mantissa
-	MOVE.b	FAC2_e.w(%a3),%d0		| get FAC2 exponent
+	LEA		FAC2_m.w(%a5),%a0		| set pointer1 to FAC2 mantissa
+	MOVE.b	FAC2_e.w(%a5),%d0		| get FAC2 exponent
 	BEQ.s		RTS_016			| exit if zero
 
-	SUB.b		FAC1_e.w(%a3),%d0		| subtract FAC1 exponent
+	SUB.b		FAC1_e.w(%a5),%d0		| subtract FAC1 exponent
 	BEQ.s		LAB_24A8			| branch if = (go add mantissa)
 
 	BCS.s		LAB_249C			| branch if FAC2 < FAC1
 
 							| FAC2 > FAC1
-	MOVE.w	FAC2_e.w(%a3),FAC1_e.w(%a3)	| copy sign and exponent of FAC2
+	MOVE.w	FAC2_e.w(%a5),FAC1_e.w(%a5)	| copy sign and exponent of FAC2
 	NEG.b		%d0				| negate exponent difference (make diff -ve)
 	SUBQ.w	#8,%a0			| pointer1 to FAC1
 
@@ -5065,24 +4842,24 @@ LAB_2468:
 							| exponents are equal now do mantissa add or
 							| subtract
 LAB_24A8:
-	TST.b		FAC_sc.w(%a3)		| test sign compare (FAC1 EOR FAC2)
+	TST.b		FAC_sc.w(%a5)		| test sign compare (FAC1 EOR FAC2)
 	BMI.s		LAB_24F8			| if <> go do subtract
 
-	MOVE.l	FAC2_m.w(%a3),%d0		| get FAC2 mantissa
-	ADD.l		FAC1_m.w(%a3),%d0		| add FAC1 mantissa
+	MOVE.l	FAC2_m.w(%a5),%d0		| get FAC2 mantissa
+	ADD.l		FAC1_m.w(%a5),%d0		| add FAC1 mantissa
 	BCC.s		LAB_24F7			| save and exit if no carry (FAC1 is normal)
 
 	ROXR.l	#1,%d0			| else shift carry back into mantissa
-	ADDQ.b	#1,FAC1_e.w(%a3)		| increment FAC1 exponent
+	ADDQ.b	#1,FAC1_e.w(%a5)		| increment FAC1 exponent
 	BCS		LAB_OFER			| if carry do overflow error & warm start
 
 LAB_24F7:
-	MOVE.l	%d0,FAC1_m.w(%a3)		| save mantissa
+	MOVE.l	%d0,FAC1_m.w(%a5)		| save mantissa
 RTS_016:
 	RTS
 							| signs are different
 LAB_24F8:
-	LEA		FAC1_m.w(%a3),%a1		| pointer 2 to FAC1
+	LEA		FAC1_m.w(%a5),%a1		| pointer 2 to FAC1
 	CMPA.l	%a0,%a1			| compare pointers
 	BNE.s		LAB_24B4			| branch if <>
 
@@ -5092,8 +4869,8 @@ LAB_24F8:
 LAB_24B4:
 	MOVE.l	(%a1),%d0			| get larger mantissa
 	MOVE.l	(%a0),%d1			| get smaller mantissa
-	MOVE.l	%d0,FAC1_m.w(%a3)		| save larger mantissa
-	SUB.l		%d1,FAC1_m.w(%a3)		| subtract smaller
+	MOVE.l	%d0,FAC1_m.w(%a5)		| save larger mantissa
+	SUB.l		%d1,FAC1_m.w(%a5)		| subtract smaller
 
 
 #####################################################################################
@@ -5105,8 +4882,8 @@ LAB_24D0:
 
 							| erk! subtract is the wrong way round so
 							| negate everything
-	EORI.b	#0xFF,FAC1_s.w(%a3)	| complement FAC1 sign
-	NEG.l		FAC1_m.w(%a3)		| negate FAC1 mantissa
+	EORI.b	#0xFF,FAC1_s.w(%a5)	| complement FAC1 sign
+	NEG.l		FAC1_m.w(%a5)		| negate FAC1 mantissa
 
 
 #####################################################################################
@@ -5114,19 +4891,19 @@ LAB_24D0:
 # normalise FAC1
 
 LAB_24D5:
-	MOVE.l	FAC1_m.w(%a3),%d0		| get mantissa
+	MOVE.l	FAC1_m.w(%a5),%d0		| get mantissa
 	BMI.s		LAB_24DA			| mantissa is normal so just exit
 
 	BNE.s		LAB_24D9			| mantissa is not zero so go normalise FAC1
 
-	MOVE.w	%d0,FAC1_e.w(%a3)		| else make FAC1 = +zero
+	MOVE.w	%d0,FAC1_e.w(%a5)		| else make FAC1 = +zero
 	RTS
 
 LAB_24D9:
 	MOVE.l	%d1,-(%sp)			| save d1
 	MOVE.l	%d0,%d1			| mantissa to d1
 	MOVEQ		#0,%d0			| clear d0
-	MOVE.b	FAC1_e.w(%a3),%d0		| get exponent byte
+	MOVE.b	FAC1_e.w(%a5),%d0		| get exponent byte
 	BEQ.s		LAB_24D8			| if exponent is zero then clean up and exit
 LAB_24D6:
 	ADD.l		%d1,%d1			| shift mantissa, ADD is quicker for a single
@@ -5142,10 +4919,10 @@ LAB_24D6:
 	MOVEQ		#1,%d0			| else set for zero after correction
 LAB_24D7:
 	SUBQ.b	#1,%d0			| adjust exponent for loop
-	MOVE.l	%d1,FAC1_m.w(%a3)		| save normalised mantissa
+	MOVE.l	%d1,FAC1_m.w(%a5)		| save normalised mantissa
 LAB_24D8:
 	MOVE.l	(%sp)+,%d1			| restore d1
-	MOVE.b	%d0,FAC1_e.w(%a3)		| save corrected exponent
+	MOVE.b	%d0,FAC1_e.w(%a5)		| save corrected exponent
 LAB_24DA:
 	RTS
 
@@ -5155,39 +4932,39 @@ LAB_24DA:
 # perform LOG()
 
 LAB_LOG:
-	TST.b		FAC1_s.w(%a3)		| test sign
+	TST.b		FAC1_s.w(%a5)		| test sign
 	BMI		LAB_FCER			| if -ve do function call error/warm start
 
 	MOVEQ		#0,%d7			| clear d7
-	MOVE.b	%d7,FAC_sc.w(%a3)		| clear sign compare
-	MOVE.b	FAC1_e.w(%a3),%d7		| get exponent
+	MOVE.b	%d7,FAC_sc.w(%a5)		| clear sign compare
+	MOVE.b	FAC1_e.w(%a5),%d7		| get exponent
 	BEQ		LAB_FCER			| if 0 do function call error/warm start
 
 	SUB.l		#0x81,%d7			| normalise exponent
-	MOVE.b	#0x81,FAC1_e.w(%a3)	| force a value between 1 and 2
-	MOVE.l	FAC1_m.w(%a3),%d6		| copy mantissa
+	MOVE.b	#0x81,FAC1_e.w(%a5)	| force a value between 1 and 2
+	MOVE.l	FAC1_m.w(%a5),%d6		| copy mantissa
 
-	MOVE.l	#0x80000000,FAC2_m.w(%a3)	| set mantissa for 1
-	MOVE.w	#0x8100,FAC2_e.w(%a3)	| set exponent for 1
+	MOVE.l	#0x80000000,FAC2_m.w(%a5)	| set mantissa for 1
+	MOVE.w	#0x8100,FAC2_e.w(%a5)	| set exponent for 1
 	BSR		LAB_ADD			| find arg+1
 	MOVEQ		#0,%d0			| setup for calc skip
-	MOVE.w	%d0,FAC2_e.w(%a3)		| set FAC1 for zero result
+	MOVE.w	%d0,FAC2_e.w(%a5)		| set FAC1 for zero result
 	ADD.l		%d6,%d6			| shift 1 bit out
-	MOVE.l	%d6,FAC2_m.w(%a3)		| put back FAC2
+	MOVE.l	%d6,FAC2_m.w(%a5)		| put back FAC2
 	BEQ.s		LAB_LONN			| if 0 skip calculation
 
-	MOVE.w	#0x8000,FAC2_e.w(%a3)	| set exponent for .5
+	MOVE.w	#0x8000,FAC2_e.w(%a5)	| set exponent for .5
 	BSR		LAB_DIVIDE			| do (arg-1)/(arg+1)
-	TST.b		FAC1_e.w(%a3)		| test exponent
+	TST.b		FAC1_e.w(%a5)		| test exponent
 	BEQ.s		LAB_LONN			| if 0 skip calculation
 
-	MOVE.b	FAC1_e.w(%a3),%d1		| get exponent
+	MOVE.b	FAC1_e.w(%a5),%d1		| get exponent
 	SUB.b		#0x82,%d1			| normalise and two integer bits
 	NEG.b		%d1				| negate for shift
 ##	CMP.b		#0x1F,%d1			| will mantissa vanish?
 ##	BGT.s		LAB_dunno			| if so do ???
 
-	MOVE.l	FAC1_m.w(%a3),%d0		| get mantissa
+	MOVE.l	FAC1_m.w(%a5),%d0		| get mantissa
 	LSR.l		%d1,%d0			| shift in two integer bits
 
 # d0 = arg
@@ -5243,7 +5020,7 @@ LAB_LONN:
 	NEG.l		%d7				| make original exponent +ve
 	MOVEQ		#0x80-0x100,%d5		| make sign -ve
 LAB_LOXP:
-	MOVE.b	%d5,FAC1_s.w(%a3)		| save original exponent sign
+	MOVE.b	%d5,FAC1_s.w(%a5)		| save original exponent sign
 	SWAP		%d7				| 16 bit shift
 	LSL.l		#8,%d7			| easy first part
 	MOVEQ		#0x88-0x100,%d5		| start with byte
@@ -5253,17 +5030,17 @@ LAB_LONE:
 	BPL.s		LAB_LONE			| loop if not normal
 
 LAB_LOXO:
-	MOVE.l	%d7,FAC1_m.w(%a3)		| save original exponent as mantissa
-	MOVE.b	%d5,FAC1_e.w(%a3)		| save exponent for this
-	MOVE.l	#0xB17217F8,FAC2_m.w(%a3)	| LOG(2) mantissa
-	MOVE.w	#0x8000,FAC2_e.w(%a3)	| LOG(2) exponent & sign
-	MOVE.b	FAC1_s.w(%a3),FAC_sc.w(%a3)	| make sign compare = FAC1 sign
+	MOVE.l	%d7,FAC1_m.w(%a5)		| save original exponent as mantissa
+	MOVE.b	%d5,FAC1_e.w(%a5)		| save exponent for this
+	MOVE.l	#0xB17217F8,FAC2_m.w(%a5)	| LOG(2) mantissa
+	MOVE.w	#0x8000,FAC2_e.w(%a5)	| LOG(2) exponent & sign
+	MOVE.b	FAC1_s.w(%a5),FAC_sc.w(%a5)	| make sign compare = FAC1 sign
 	BSR.s		LAB_MULTIPLY		| do multiply
-	MOVE.l	%d4,FAC2_m.w(%a3)		| save cordic result
+	MOVE.l	%d4,FAC2_m.w(%a5)		| save cordic result
 	BEQ.s		LAB_LOWZ			| branch if zero
 
-	MOVE.w	#0x8200,FAC2_e.w(%a3)	| set exponent & sign
-	MOVE.b	FAC1_s.w(%a3),FAC_sc.w(%a3)	| clear sign compare
+	MOVE.w	#0x8200,FAC2_e.w(%a5)	| set exponent & sign
+	MOVE.b	FAC1_s.w(%a5),FAC_sc.w(%a5)	| clear sign compare
 	BSR		LAB_ADD			| and add for final result
 
 LAB_LOWZ:
@@ -5276,15 +5053,15 @@ LAB_LOWZ:
 
 LAB_MULTIPLY:
 	MOVEM.l	%d0-%d4,-(%sp)		| save registers
-	TST.b		FAC1_e.w(%a3)		| test FAC1 exponent
+	TST.b		FAC1_e.w(%a5)		| test FAC1 exponent
 	BEQ.s		LAB_MUUF			| if exponent zero go make result zero
 
-	MOVE.b	FAC2_e.w(%a3),%d0		| get FAC2 exponent
+	MOVE.b	FAC2_e.w(%a5),%d0		| get FAC2 exponent
 	BEQ.s		LAB_MUUF			| if exponent zero go make result zero
 
-	MOVE.b	FAC_sc.w(%a3),FAC1_s.w(%a3)	| sign compare becomes sign
+	MOVE.b	FAC_sc.w(%a5),FAC1_s.w(%a5)	| sign compare becomes sign
 
-	ADD.b		FAC1_e.w(%a3),%d0		| multiply exponents by adding
+	ADD.b		FAC1_e.w(%a5),%d0		| multiply exponents by adding
 	BCC.s		LAB_MNOC			| branch if no carry
 
 	SUB.b		#0x80,%d0			| normalise result
@@ -5298,11 +5075,11 @@ LAB_MNOC:
 	BCS.s		LAB_MUUF			| return zero if underflow
 
 LAB_MADD:
-	MOVE.b	%d0,FAC1_e.w(%a3)		| save exponent
+	MOVE.b	%d0,FAC1_e.w(%a5)		| save exponent
 
 							| d1 (FAC1) x d2 (FAC2)
-	MOVE.l	FAC1_m.w(%a3),%d1		| get FAC1 mantissa
-	MOVE.l	FAC2_m.w(%a3),%d2		| get FAC2 mantissa
+	MOVE.l	FAC1_m.w(%a5),%d1		| get FAC1 mantissa
+	MOVE.l	FAC2_m.w(%a5),%d2		| get FAC2 mantissa
 
 	MOVE.w	%d1,%d4			| copy low word FAC1
 	MOVE.l	%d1,%d0			| copy long word FAC1
@@ -5340,19 +5117,19 @@ LAB_MUF2:
 	BMI.s		LAB_MUF3			| branch if normalisation not needed
 
 	ADD.l		%d1,%d1			| shift mantissa
-	SUBQ.b	#1,FAC1_e.w(%a3)		| adjust exponent
+	SUBQ.b	#1,FAC1_e.w(%a5)		| adjust exponent
 	BEQ.s		LAB_MUUF			| branch if underflow
 
 LAB_MUF3:
-	MOVE.l	%d1,FAC1_m.w(%a3)		| save mantissa
+	MOVE.l	%d1,FAC1_m.w(%a5)		| save mantissa
 LAB_MUEX:
 	MOVEM.l	(%sp)+,%d0-%d4		| restore registers
 	RTS
 							| either zero or underflow result
 LAB_MUUF:
 	MOVEQ		#0,%d0			| quick clear
-	MOVE.l	%d0,FAC1_m.w(%a3)		| clear mantissa
-	MOVE.w	%d0,FAC1_e.w(%a3)		| clear sign and exponent
+	MOVE.l	%d0,FAC1_m.w(%a5)		| clear mantissa
+	MOVE.w	%d0,FAC1_e.w(%a5)		| clear sign and exponent
 	BRA.s		LAB_MUEX			| restore regs & exit
 
 
@@ -5366,36 +5143,36 @@ LAB_DIVIDE:
 	MOVEQ		#0,%d0			| clear FAC2 exponent
 	MOVE.l	%d0,%d2			| clear FAC1 exponent
 
-	MOVE.b	FAC1_e.w(%a3),%d2		| get FAC1 exponent
+	MOVE.b	FAC1_e.w(%a5),%d2		| get FAC1 exponent
 	BEQ		LAB_DZER			| if zero go do /0 error
 
-	MOVE.b	FAC2_e.w(%a3),%d0		| get FAC2 exponent
+	MOVE.b	FAC2_e.w(%a5),%d0		| get FAC2 exponent
 	BEQ.s		LAB_DIV0			| if zero return zero
 
 	SUB.w		%d2,%d0			| get result exponent by subtracting
 	ADD.w		#0x80,%d0			| correct 16 bit exponent result
 
-	MOVE.b	FAC_sc.w(%a3),FAC1_s.w(%a3)	| sign compare is result sign
+	MOVE.b	FAC_sc.w(%a5),FAC1_s.w(%a5)	| sign compare is result sign
 
 # now to do 32/32 bit mantissa divide
 
-	CLR.b		flag.w(%a3)			| clear 'flag' byte
-	MOVE.l	FAC1_m.w(%a3),%d3		| get FAC1 mantissa
-	MOVE.l	FAC2_m.w(%a3),%d4		| get FAC2 mantissa
+	CLR.b		flag.w(%a5)			| clear 'flag' byte
+	MOVE.l	FAC1_m.w(%a5),%d3		| get FAC1 mantissa
+	MOVE.l	FAC2_m.w(%a5),%d4		| get FAC2 mantissa
 	CMP.l		%d3,%d4			| compare FAC2 with FAC1 mantissa
 	BEQ.s		LAB_MAN1			| set mantissa result = 1 if equal
 
 	BCS.s		AC1gtAC2			| branch if FAC1 > FAC2
 
 	SUB.l		%d3,%d4			| subtract FAC1 from FAC2, result now must be <1
-	ADDQ.b	#3,flag.w(%a3)		| FAC2>FAC1 so set 'flag' byte
+	ADDQ.b	#3,flag.w(%a5)		| FAC2>FAC1 so set 'flag' byte
 AC1gtAC2:
 	BSR.s		LAB_32_16			| do 32/16 divide
 	SWAP		%d1				| move 16 bit result to high word
 	MOVE.l	%d2,%d4			| copy remainder longword
 	BSR.s		LAB_3216			| do 32/16 divide again (skip copy d4 to d2)
 	DIVU.w	%d5,%d2			| now divide remainder to make guard word
-	MOVE.b	flag.w(%a3),%d7		| now normalise, get flag byte back
+	MOVE.b	flag.w(%a5),%d7		| now normalise, get flag byte back
 	BEQ.s		LAB_DIVX			| skip add if null
 
 # else result was >1 so we need to add 1 to result mantissa and adjust exponent
@@ -5429,8 +5206,8 @@ L_DIVRND:
 							| move result into FAC1
 LAB_XDIV:
 	MOVE.l	(%sp)+,%d7			| restore d7
-	MOVE.b	%d0,FAC1_e.w(%a3)		| save result exponent
-	MOVE.l	%d1,FAC1_m.w(%a3)		| save result mantissa
+	MOVE.b	%d0,FAC1_e.w(%a5)		| save result exponent
+	MOVE.l	%d1,FAC1_m.w(%a5)		| save result mantissa
 	RTS
 
 # FAC1 mantissa = FAC2 mantissa so set result mantissa
@@ -5574,16 +5351,16 @@ L_DDIV:
 LAB_UFAC:
 	MOVE.l	(%a0),%d0			| get packed value
 	SWAP		%d0				| exponent and sign into least significant word
-	MOVE.w	%d0,FAC1_e.w(%a3)		| save exponent and sign
+	MOVE.w	%d0,FAC1_e.w(%a5)		| save exponent and sign
 	BEQ.s		LAB_NB1T			| branch if exponent (and the rest) zero
 
 	OR.w		#0x80,%d0			| set MSb
 	SWAP		%d0				| word order back to normal
 	ASL.l		#8,%d0			| shift exponent & clear guard byte
 LAB_NB1T:
-	MOVE.l	%d0,FAC1_m.w(%a3)		| move into FAC1
+	MOVE.l	%d0,FAC1_m.w(%a5)		| move into FAC1
 
-	MOVE.b	FAC1_e.w(%a3),%d0		| get FAC1 exponent
+	MOVE.b	FAC1_e.w(%a5),%d0		| get FAC1 exponent
 	RTS
 
 
@@ -5593,8 +5370,8 @@ LAB_NB1T:
 
 LAB_PFAC:
 	MOVE.l	%a0,-(%sp)			| save pointer
-	MOVEA.l	Lvarpl.w(%a3),%a0		| get destination pointer
-	BTST		#6,Dtypef.w(%a3)		| test data type
+	MOVEA.l	Lvarpl.w(%a5),%a0		| get destination pointer
+	BTST		#6,Dtypef.w(%a5)		| test data type
 	BEQ.s		LAB_277C			| branch if floating
 
 	BSR		LAB_2831			| convert FAC1 floating to fixed
@@ -5613,12 +5390,12 @@ LAB_2778:
 LAB_277C:
 	BSR		LAB_24D5			| normalise FAC1
 	BSR.s		LAB_27BA			| round FAC1
-	MOVE.l	FAC1_m.w(%a3),%d0		| get FAC1 mantissa
+	MOVE.l	FAC1_m.w(%a5),%d0		| get FAC1 mantissa
 	ROR.l		#8,%d0			| align 24/32 bit mantissa
 	SWAP		%d0				| exponent/sign into 0-15
 	AND.w		#0x7F,%d0			| clear exponent and sign bit
-	ANDI.b	#0x80,FAC1_s.w(%a3)	| clear non sign bits in sign
-	OR.w		FAC1_e.w(%a3),%d0		| OR in exponent and sign
+	ANDI.b	#0x80,FAC1_s.w(%a5)	| clear non sign bits in sign
+	OR.w		FAC1_e.w(%a5),%d0		| OR in exponent and sign
 	SWAP		%d0				| move exponent and sign back to 16-31
 	MOVE.l	%d0,(%a0)			| store in destination
 	MOVE.l	(%sp)+,%a0			| restore pointer
@@ -5630,8 +5407,8 @@ LAB_277C:
 # copy FAC2 to FAC1
 
 LAB_279B:
-	MOVE.w	FAC2_e.w(%a3),FAC1_e.w(%a3)	| copy exponent & sign
-	MOVE.l	FAC2_m.w(%a3),FAC1_m.w(%a3)	| copy mantissa
+	MOVE.w	FAC2_e.w(%a5),FAC1_e.w(%a5)	| copy exponent & sign
+	MOVE.l	FAC2_m.w(%a5),FAC1_m.w(%a5)	| copy mantissa
 	RTS
 
 
@@ -5640,24 +5417,24 @@ LAB_279B:
 # round FAC1
 
 LAB_27BA:
-	MOVE.b	FAC1_e.w(%a3),%d0		| get FAC1 exponent
+	MOVE.b	FAC1_e.w(%a5),%d0		| get FAC1 exponent
 	BEQ.s		LAB_27C4			| branch if zero
 
-	MOVE.l	FAC1_m.w(%a3),%d0		| get FAC1
+	MOVE.l	FAC1_m.w(%a5),%d0		| get FAC1
 	ADD.l		#0x80,%d0			| round to 24 bit
 	BCC.s		LAB_27C3			| branch if no overflow
 
 	ROXR.l	#1,%d0			| shift FAC1 mantissa
-	ADDQ.b	#1,FAC1_e.w(%a3)		| correct exponent
+	ADDQ.b	#1,FAC1_e.w(%a5)		| correct exponent
 	BCS		LAB_OFER			| if carry do overflow error & warm start
 
 LAB_27C3:
 	AND.b		#0x00,%d0			| clear guard byte
-	MOVE.l	%d0,FAC1_m.w(%a3)		| save back to FAC1
+	MOVE.l	%d0,FAC1_m.w(%a5)		| save back to FAC1
 	RTS
 
 LAB_27C4:
-	MOVE.b	%d0,FAC1_s.w(%a3)		| make zero always +ve
+	MOVE.b	%d0,FAC1_s.w(%a5)		| make zero always +ve
 RTS_017:
 	RTS
 
@@ -5669,7 +5446,7 @@ RTS_017:
 
 LAB_27CA:
 	MOVEQ		#0,%d0			| clear d0
-	MOVE.b	FAC1_e.w(%a3),%d0		| get FAC1 exponent
+	MOVE.b	FAC1_e.w(%a5),%d0		| get FAC1 exponent
 	BEQ.s		RTS_017			| exit if zero (already correct SGN(0)=0)
 
 
@@ -5679,7 +5456,7 @@ LAB_27CA:
 # no = 0 check
 
 LAB_27CE:
-	MOVE.b	FAC1_s.w(%a3),%d0		| else get FAC1 sign (b7)
+	MOVE.b	FAC1_s.w(%a5),%d0		| else get FAC1 sign (b7)
 
 
 #####################################################################################
@@ -5711,8 +5488,8 @@ LAB_SGN:
 # save d0 as integer longword
 
 LAB_27DB:
-	MOVE.l	%d0,FAC1_m.w(%a3)		| save FAC1 mantissa
-	MOVE.w	#0xA000,FAC1_e.w(%a3)	| set FAC1 exponent & sign
+	MOVE.l	%d0,FAC1_m.w(%a5)		| save FAC1 mantissa
+	MOVE.w	#0xA000,FAC1_e.w(%a5)	| set FAC1 exponent & sign
 	ADD.l		%d0,%d0			| top bit into carry
 	BRA		LAB_24D0			| do +/- (carry is sign) & normalise FAC1
 
@@ -5722,7 +5499,7 @@ LAB_27DB:
 # perform ABS()
 
 LAB_ABS:
-	MOVE.b	#0,FAC1_s.w(%a3)		| clear FAC1 sign
+	MOVE.b	#0,FAC1_s.w(%a5)		| clear FAC1 sign
 	RTS
 
 
@@ -5734,20 +5511,20 @@ LAB_ABS:
 # returns d0=-1 Cb=1 if FAC1 < FAC2
 
 LAB_27FA:
-	MOVE.b	FAC2_e.w(%a3),%d1		| get FAC2 exponent
+	MOVE.b	FAC2_e.w(%a5),%d1		| get FAC2 exponent
 	BEQ.s		LAB_27CA			| branch if FAC2 exponent=0 & get FAC1 sign
 							| d0=-1,C=1/-ve d0=+1,C=0/+ve
 
-	MOVE.b	FAC_sc.w(%a3),%d0		| get FAC sign compare
+	MOVE.b	FAC_sc.w(%a5),%d0		| get FAC sign compare
 	BMI.s		LAB_27CE			| if signs <> do return d0=-1,C=1/-ve
 							| d0=+1,C=0/+ve & return
 
-	MOVE.b	FAC1_s.w(%a3),%d0		| get FAC1 sign
-	CMP.b		FAC1_e.w(%a3),%d1		| compare FAC1 exponent with FAC2 exponent
+	MOVE.b	FAC1_s.w(%a5),%d0		| get FAC1 sign
+	CMP.b		FAC1_e.w(%a5),%d1		| compare FAC1 exponent with FAC2 exponent
 	BNE.s		LAB_2828			| branch if different
 
-	MOVE.l	FAC2_m.w(%a3),%d1		| get FAC2 mantissa
-	CMP.l		FAC1_m.w(%a3),%d1		| compare mantissas
+	MOVE.l	FAC2_m.w(%a5),%d1		| get FAC2 mantissa
+	CMP.l		FAC1_m.w(%a5),%d1		| compare mantissas
 	BEQ.s		LAB_282F			| exit if mantissas equal
 
 # gets here if number <> FAC1
@@ -5771,17 +5548,17 @@ LAB_282F:
 # result in d0 and Itemp, sets flags correctly
 
 LAB_2831:
-	MOVE.l	FAC1_m.w(%a3),%d0		| copy mantissa
+	MOVE.l	FAC1_m.w(%a5),%d0		| copy mantissa
 	BEQ.s		LAB_284J			| branch if mantissa = 0
 
 	MOVE.l	%d1,-(%sp)			| save d1
 	MOVEQ		#-0x60,%d1			| set for no floating bits
-	SUB.b		FAC1_e.w(%a3),%d1		| subtract FAC1 exponent
+	SUB.b		FAC1_e.w(%a5),%d1		| subtract FAC1 exponent
 	BCS		LAB_OFER			| do overflow if too big
 
 	BNE.s		LAB_284G			| branch if exponent was not $A0
 
-	TST.b		FAC1_s.w(%a3)			| test FAC1 sign
+	TST.b		FAC1_s.w(%a5)			| test FAC1 sign
 	BPL.s		LAB_284H			| branch if FAC1 +ve
 
 	NEG.l		%d0
@@ -5797,14 +5574,14 @@ LAB_284G:
 LAB_284L:
 	LSR.l		%d1,%d0			| shift integer
 
-	TST.b		FAC1_s.w(%a3)		| test FAC1 sign (b7)
+	TST.b		FAC1_s.w(%a5)		| test FAC1 sign (b7)
 	BPL.s		LAB_284H			| branch if FAC1 +ve
 
 	NEG.l		%d0				| negate integer value
 LAB_284H:
 	MOVE.l	(%sp)+,%d1			| restore d1
 LAB_284J:
-	MOVE.l	%d0,Itemp.w(%a3)		| save result to Itemp
+	MOVE.l	%d0,Itemp.w(%a5)		| save result to Itemp
 	RTS
 
 
@@ -5814,7 +5591,7 @@ LAB_284J:
 
 LAB_INT:
 	MOVEQ		#-0x60,%d0			| set for no floating bits
-	SUB.b		FAC1_e.w(%a3),%d0		| subtract FAC1 exponent
+	SUB.b		FAC1_e.w(%a5),%d0		| subtract FAC1 exponent
 	BLS.s		LAB_IRTS			| exit if exponent >= $A0
 							| (too big for fraction part!)
 
@@ -5824,7 +5601,7 @@ LAB_INT:
 
 	MOVEQ		#-1,%d1			| set integer mask
 	ASL.l		%d0,%d1			| shift mask [8+2*d0]
-	AND.l		%d1,FAC1_m.w(%a3)		| mask mantissa
+	AND.l		%d1,FAC1_m.w(%a5)		| mask mantissa
 LAB_IRTS:
 	RTS
 
@@ -5838,7 +5615,7 @@ LAB_2953:
 	BSR		LAB_18C3			| print null terminated string
 
 							| Print Basic line #
-	MOVE.l	Clinel.w(%a3),%d0		| get current line
+	MOVE.l	Clinel.w(%a5),%d0		| get current line
 
 
 #####################################################################################
@@ -5848,7 +5625,7 @@ LAB_2953:
 LAB_295E:
 	LEA		Bin2dec(%pc),%a1		| get table address
 	MOVEQ		#0,%d1			| table index
-	LEA		Usdss.w(%a3),%a0		| output string start
+	LEA		Usdss.w(%a5),%a0		| output string start
 	MOVE.l	%d1,%d2			| output string index
 LAB_2967:
 	MOVE.l	(%a1,%d1.w),%d3		| get table value
@@ -5874,7 +5651,7 @@ LAB_2969:
 							| now find non zero start of string
 LAB_296A:
 	ADDQ.w	#1,%a0			| increment a0 (this will never carry to b16)
-	LEA		BHsend-1.w(%a3),%a1	| get string end
+	LEA		BHsend-1.w(%a5),%a1	| get string end
 	CMPA.l	%a1,%a0			| are we at end
 	BEQ		LAB_18C3			| if so print null terminated string and RETURN
 
@@ -5898,16 +5675,16 @@ LAB_296A:
 # a0 is output string pointer
 
 LAB_2970:
-	LEA		Decss.w(%a3),%a1		| set output string start
+	LEA		Decss.w(%a5),%a1		| set output string start
 
 	MOVEQ		#' ',%d2			| character = " ", assume +ve
-	BCLR.b	#7,FAC1_s.w(%a3)		| test and clear FAC1 sign (b7)
+	BCLR.b	#7,FAC1_s.w(%a5)		| test and clear FAC1 sign (b7)
 	BEQ.s		LAB_2978			| branch if +ve
 
 	MOVEQ		#'-',%d2			| else character = "-"
 LAB_2978:
 	MOVE.b	%d2,(%a1)			| save the sign character
-	MOVE.b	FAC1_e.w(%a3),%d2		| get FAC1 exponent
+	MOVE.b	FAC1_e.w(%a5),%d2		| get FAC1 exponent
 	BNE.s		LAB_2989			| branch if FAC1<>0
 
 							| exponent was $00 so FAC1 is 0
@@ -5917,34 +5694,34 @@ LAB_2978:
 
 							| FAC1 is some non zero value
 LAB_2989:
-	MOVE.b	#0,numexp.w(%a3)		| clear number exponent count
+	MOVE.b	#0,numexp.w(%a5)		| clear number exponent count
 	CMP.b		#0x81,%d2			| compare FAC1 exponent with $81 (>1.00000)
 
 	BCC.s		LAB_299C			| branch if FAC1=>1
 
 							| else FAC1 < 1
-	MOVE.l	#0x98968000,FAC2_m.w(%a3)	| 10000000 mantissa
-	MOVE.w	#0x9800,FAC2_e.w(%a3)	| 10000000 exponent & sign
-	MOVE.b	FAC1_s.w(%a3),FAC_sc.w(%a3)	| make FAC1 sign sign compare
+	MOVE.l	#0x98968000,FAC2_m.w(%a5)	| 10000000 mantissa
+	MOVE.w	#0x9800,FAC2_e.w(%a5)	| 10000000 exponent & sign
+	MOVE.b	FAC1_s.w(%a5),FAC_sc.w(%a5)	| make FAC1 sign sign compare
 	BSR		LAB_MULTIPLY		| do FAC2*FAC1
 
-	MOVE.b	#0xF9,numexp.w(%a3)	| set number exponent count (-7)
+	MOVE.b	#0xF9,numexp.w(%a5)	| set number exponent count (-7)
 	BRA.s		LAB_299C			| go test for fit
 
 LAB_29B9:
-	MOVE.w	FAC1_e.w(%a3),FAC2_e.w(%a3)	| copy exponent & sign from FAC1 to FAC2
-	MOVE.l	FAC1_m.w(%a3),FAC2_m.w(%a3)	| copy FAC1 mantissa to FAC2 mantissa
-	MOVE.b	FAC1_s.w(%a3),FAC_sc.w(%a3)	| save FAC1_s as sign compare
+	MOVE.w	FAC1_e.w(%a5),FAC2_e.w(%a5)	| copy exponent & sign from FAC1 to FAC2
+	MOVE.l	FAC1_m.w(%a5),FAC2_m.w(%a5)	| copy FAC1 mantissa to FAC2 mantissa
+	MOVE.b	FAC1_s.w(%a5),FAC_sc.w(%a5)	| save FAC1_s as sign compare
 
-	MOVE.l	#0xCCCCCCCD,FAC1_m.w(%a3)	| 1/10 mantissa
-	MOVE.w	#0x7D00,FAC1_e.w(%a3)	| 1/10 exponent & sign
+	MOVE.l	#0xCCCCCCCD,FAC1_m.w(%a5)	| 1/10 mantissa
+	MOVE.w	#0x7D00,FAC1_e.w(%a5)	| 1/10 exponent & sign
 	BSR		LAB_MULTIPLY		| do FAC2*FAC1, effectively divide by 10 but
 							| faster
 
-	ADDQ.b	#1,numexp.w(%a3)		| increment number exponent count
+	ADDQ.b	#1,numexp.w(%a5)		| increment number exponent count
 LAB_299C:
-	MOVE.l	#0x98967F70,FAC2_m.w(%a3)	| 9999999.4375 mantissa
-	MOVE.w	#0x9800,FAC2_e.w(%a3)	| 9999999.4375 exponent & sign
+	MOVE.l	#0x98967F70,FAC2_m.w(%a5)	| 9999999.4375 mantissa
+	MOVE.w	#0x9800,FAC2_e.w(%a5)	| 9999999.4375 exponent & sign
 							| (max before scientific notation)
 	BSR		LAB_27F0			| fast compare FAC1 with FAC2
 							| returns d0=+1 C=0 if FAC1 > FAC2
@@ -5955,10 +5732,10 @@ LAB_299C:
 	BEQ.s		LAB_29C3			| branch if FAC1 = 9999999.4375
 
 							| FAC1 < 9999999.4375
-	MOVE.l	#0xF423F800,FAC2_m.w(%a3)	| set mantissa for 999999.5
-	MOVE.w	#0x9400,FAC2_e.w(%a3)	| set exponent for 999999.5
+	MOVE.l	#0xF423F800,FAC2_m.w(%a5)	| set mantissa for 999999.5
+	MOVE.w	#0x9400,FAC2_e.w(%a5)	| set exponent for 999999.5
 
-	LEA		FAC1_m.w(%a3),%a0		| set pointer for x10
+	LEA		FAC1_m.w(%a5),%a0		| set pointer for x10
 LAB_29A7:
 	BSR		LAB_27F0			| fast compare FAC1 with FAC2
 							| returns d0=+1 C=0 if FAC1 > FAC2
@@ -5981,21 +5758,21 @@ LAB_29B7:
 							| (never overflows)
 	MOVE.l	%d0,(%a0)			| save new mantissa
 	MOVE.b	%d1,4(%a0)			| save new exponent
-	SUBQ.b	#1,numexp.w(%a3)		| decrement number exponent count
+	SUBQ.b	#1,numexp.w(%a5)		| decrement number exponent count
 	BRA.s		LAB_29A7			| go test again
 
 							| now we have just the digits to do
 LAB_29C0:
-	MOVE.l	#0x80000000,FAC2_m.w(%a3)	| set mantissa for 0.5
-	MOVE.w	#0x8000,FAC2_e.w(%a3)	| set exponent for 0.5
-	MOVE.b	FAC1_s.w(%a3),FAC_sc.w(%a3)	| sign compare = sign
+	MOVE.l	#0x80000000,FAC2_m.w(%a5)	| set mantissa for 0.5
+	MOVE.w	#0x8000,FAC2_e.w(%a5)	| set exponent for 0.5
+	MOVE.b	FAC1_s.w(%a5),FAC_sc.w(%a5)	| sign compare = sign
 	BSR		LAB_ADD			| add the 0.5 to FAC1 (round FAC1)
 
 LAB_29C3:
 	BSR		LAB_2831			| convert FAC1 floating to fixed
 							| result in d0 and Itemp
 	MOVEQ		#0x01,%d2			| set default digits before dp = 1
-	MOVE.b	numexp.w(%a3),%d0		| get number exponent count
+	MOVE.b	numexp.w(%a5),%d0		| get number exponent count
 	ADD.b		#8,%d0			| allow 7 digits before point
 	BMI.s		LAB_29D9			| if -ve then 1 digit before dp
 
@@ -6009,8 +5786,8 @@ LAB_29C3:
 LAB_29D9:
 	MOVEQ		#0,%d1			| set output string index
 	SUBQ.b	#2,%d0			| -2
-	MOVE.b	%d0,expcnt.w(%a3)		| save exponent adjust
-	MOVE.b	%d2,numexp.w(%a3)		| save digits before dp count
+	MOVE.b	%d0,expcnt.w(%a5)		| save exponent adjust
+	MOVE.b	%d2,numexp.w(%a5)		| save digits before dp count
 	MOVE.b	%d2,%d0			| copy digits before dp count
 	BEQ.s		LAB_29E4			| branch if no digits before dp
 
@@ -6033,7 +5810,7 @@ LAB_29FB:
 	MOVE.l	(%a0,%d2.w),%d3		| get table value
 LAB_29FD:
 	ADDQ.b	#1,%d0			| increment output character
-	ADD.l		%d3,Itemp.w(%a3)		| add to (now fixed) mantissa
+	ADD.l		%d3,Itemp.w(%a5)		| add to (now fixed) mantissa
 	BTST		#7,%d0			| set test sense (z flag only)
 	BCS.s		LAB_2A18			| did carry so has wrapped past zero
 
@@ -6056,7 +5833,7 @@ LAB_2A21:
 	MOVE.b	%d0,%d3			| copy character to d3
 	AND.b		#0x7F,%d3			| mask out top bit
 	MOVE.b	%d3,(%a1,%d1.w)		| save to output string
-	SUB.b		#1,numexp.w(%a3)		| decrement # of characters before the dp
+	SUB.b		#1,numexp.w(%a5)		| decrement # of characters before the dp
 	BNE.s		LAB_2A3B			| branch if still characters to do
 
 							| else output the point
@@ -6082,17 +5859,17 @@ LAB_2A4B:
 	ADDQ.l	#1,%d1			| increment output string index
 LAB_2A58:
 	MOVE.b	#'+',2(%a1,%d1.w)		| save character "+" to output string
-	TST.b		expcnt.w(%a3)		| test exponent count
+	TST.b		expcnt.w(%a5)		| test exponent count
 	BEQ.s		LAB_2A8C			| if zero go set null terminator & exit
 
 							| exponent isn't zero so write exponent
 	BPL.s		LAB_2A68			| branch if exponent count +ve
 
 	MOVE.b	#'-',2(%a1,%d1.w)		| save character "-" to output string
-	NEG.b		expcnt.w(%a3)		| convert -ve to +ve
+	NEG.b		expcnt.w(%a5)		| convert -ve to +ve
 LAB_2A68:
 	MOVE.b	#'E',1(%a1,%d1.w)		| save character "E" to output string
-	MOVE.b	expcnt.w(%a3),%d2		| get exponent count
+	MOVE.b	expcnt.w(%a5),%d2		| get exponent count
 	MOVEQ		#0x2F,%d0			| one less than "0" character
 LAB_2A74:
 	ADDQ.b	#1,%d0			| increment 10's character
@@ -6124,12 +5901,12 @@ LAB_2A91:
 
 LAB_27F0:
 	MOVEQ		#0,%d0			| set for FAC1 = FAC2
-	MOVE.b	FAC2_e.w(%a3),%d1		| get FAC2 exponent
-	CMP.b		FAC1_e.w(%a3),%d1		| compare FAC1 exponent with FAC2 exponent
+	MOVE.b	FAC2_e.w(%a5),%d1		| get FAC2 exponent
+	CMP.b		FAC1_e.w(%a5),%d1		| compare FAC1 exponent with FAC2 exponent
 	BNE.s		LAB_27F1			| branch if different
 
-	MOVE.l	FAC2_m.w(%a3),%d1		| get FAC2 mantissa
-	CMP.l		FAC1_m.w(%a3),%d1		| compare mantissas
+	MOVE.l	FAC2_m.w(%a5),%d1		| get FAC2 mantissa
+	CMP.l		FAC1_m.w(%a5),%d1		| compare mantissas
 	BEQ.s		LAB_27F3			| exit if mantissas equal
 
 LAB_27F1:
@@ -6149,8 +5926,8 @@ LAB_27F3:
 # make FAC1 = 1
 
 LAB_POON:
-	MOVE.l	#0x80000000,FAC1_m.w(%a3)	| 1 mantissa
-	MOVE.w	#0x8100,FAC1_e.w(%a3)	| 1 exonent & sign
+	MOVE.l	#0x80000000,FAC1_m.w(%a5)	| 1 mantissa
+	MOVE.w	#0x8100,FAC1_e.w(%a5)	| 1 exonent & sign
 	RTS
 
 
@@ -6160,8 +5937,8 @@ LAB_POON:
 
 LAB_POZE:
 	MOVEQ		#0,%d0			| clear longword
-	MOVE.l	%d0,FAC1_m.w(%a3)		| 0 mantissa
-	MOVE.w	%d0,FAC1_e.w(%a3)		| 0 exonent & sign
+	MOVE.l	%d0,FAC1_m.w(%a5)		| 0 mantissa
+	MOVE.w	%d0,FAC1_e.w(%a5)		| 0 exonent & sign
 	RTS
 
 
@@ -6172,27 +5949,27 @@ LAB_POZE:
 # no longer trashes Itemp
 
 LAB_POWER:
-	TST.b		FAC1_e.w(%a3)		| test power
+	TST.b		FAC1_e.w(%a5)		| test power
 	BEQ.s		LAB_POON			| if zero go return 1
 
-	TST.b		FAC2_e.w(%a3)		| test number
+	TST.b		FAC2_e.w(%a5)		| test number
 	BEQ.s		LAB_POZE			| if zero go return 0
 
-	MOVE.b	FAC2_s.w(%a3),-(%sp)	| save number sign
+	MOVE.b	FAC2_s.w(%a5),-(%sp)	| save number sign
 	BPL.s		LAB_POWP			| power of positive number
 
 	MOVEQ		#0,%d1			| clear d1
-	MOVE.b	%d1,FAC2_s.w(%a3)		| make sign +ve
+	MOVE.b	%d1,FAC2_s.w(%a5)		| make sign +ve
 
 							| number sign was -ve and can only be raised to
 							| an integer power which gives an x +j0 result,
 							| else do 'function call' error
-	MOVE.b	FAC1_e.w(%a3),%d1		| get power exponent
+	MOVE.b	FAC1_e.w(%a5),%d1		| get power exponent
 	SUB.w		#0x80,%d1			| normalise to .5
 	BLS		LAB_FCER			| if 0<power<1 then do 'function call' error
 
 							| now shift all the integer bits out
-	MOVE.l	FAC1_m.w(%a3),%d0		| get power mantissa
+	MOVE.l	FAC1_m.w(%a5),%d0		| get power mantissa
 	ASL.l		%d1,%d0			| shift mantissa
 	BNE		LAB_FCER			| if power<>INT(power) then do 'function call'
 							| error
@@ -6201,22 +5978,22 @@ LAB_POWER:
 
 	MOVE.b	%d0,(%sp)			| save result sign +ve
 LAB_POWP:
-	MOVE.l	FAC1_m.w(%a3),-(%sp)	| save power mantissa
-	MOVE.w	FAC1_e.w(%a3),-(%sp)	| save power sign & exponent
+	MOVE.l	FAC1_m.w(%a5),-(%sp)	| save power mantissa
+	MOVE.w	FAC1_e.w(%a5),-(%sp)	| save power sign & exponent
 
 	BSR		LAB_279B			| copy number to FAC1
 	BSR		LAB_LOG			| find log of number
 
 	MOVE.w	(%sp)+,%d0			| get power sign & exponent
-	MOVE.l	(%sp)+,FAC2_m.w(%a3)	| get power mantissa
-	MOVE.w	%d0,FAC2_e.w(%a3)		| save sign & exponent to FAC2
-	MOVE.b	%d0,FAC_sc.w(%a3)		| save sign as sign compare
-	MOVE.b	FAC1_s.w(%a3),%d0		| get FAC1 sign
-	EOR.b		%d0,FAC_sc.w(%a3)		| make sign compare (FAC1_s EOR FAC2_s)
+	MOVE.l	(%sp)+,FAC2_m.w(%a5)	| get power mantissa
+	MOVE.w	%d0,FAC2_e.w(%a5)		| save sign & exponent to FAC2
+	MOVE.b	%d0,FAC_sc.w(%a5)		| save sign as sign compare
+	MOVE.b	FAC1_s.w(%a5),%d0		| get FAC1 sign
+	EOR.b		%d0,FAC_sc.w(%a5)		| make sign compare (FAC1_s EOR FAC2_s)
 
 	BSR		LAB_MULTIPLY		| multiply by power
 	BSR.s		LAB_EXP			| find exponential
-	MOVE.b	(%sp)+,FAC1_s.w(%a3)	| restore number sign
+	MOVE.b	(%sp)+,FAC1_s.w(%a5)	| restore number sign
 	RTS
 
 
@@ -6225,10 +6002,10 @@ LAB_POWP:
 # do - FAC1
 
 LAB_GTHAN:
-	TST.b		FAC1_e.w(%a3)		| test for non zero FAC1
+	TST.b		FAC1_e.w(%a5)		| test for non zero FAC1
 	BEQ.s		RTS_020			| branch if null
 
-	EORI.b	#0x80,FAC1_s.w(%a3)	| (else) toggle FAC1 sign bit
+	EORI.b	#0x80,FAC1_s.w(%a5)	| (else) toggle FAC1 sign bit
 RTS_020:
 	RTS
 
@@ -6237,45 +6014,45 @@ RTS_020:
 #
 							| return +1
 LAB_EX1:
-	MOVE.l	#0x80000000,FAC1_m.w(%a3)	| +1 mantissa
-	MOVE.w	#0x8100,FAC1_e.w(%a3)	| +1 sign & exponent
+	MOVE.l	#0x80000000,FAC1_m.w(%a5)	| +1 mantissa
+	MOVE.w	#0x8100,FAC1_e.w(%a5)	| +1 sign & exponent
 	RTS
 							| do over/under flow
 LAB_EXOU:
-	TST.b		FAC1_s.w(%a3)		| test sign
+	TST.b		FAC1_s.w(%a5)		| test sign
 	BPL		LAB_OFER			| was +ve so do overflow error
 
 							| else underflow so return zero
 	MOVEQ		#0,%d0			| clear longword
-	MOVE.l	%d0,FAC1_m.w(%a3)		| 0 mantissa
-	MOVE.w	%d0,FAC1_e.w(%a3)		| 0 sign & exponent
+	MOVE.l	%d0,FAC1_m.w(%a5)		| 0 mantissa
+	MOVE.w	%d0,FAC1_e.w(%a5)		| 0 sign & exponent
 	RTS
 							| fraction was zero so do 2^n
 LAB_EXOF:
-	MOVE.l	#0x80000000,FAC1_m.w(%a3)	| +n mantissa
-	MOVE.b	#0,FAC1_s.w(%a3)		| clear sign
-	TST.b		cosout.w(%a3)		| test sign flag
+	MOVE.l	#0x80000000,FAC1_m.w(%a5)	| +n mantissa
+	MOVE.b	#0,FAC1_s.w(%a5)		| clear sign
+	TST.b		cosout.w(%a5)		| test sign flag
 	BPL.s		LAB_EXOL			| branch if +ve
 
 	NEG.l		%d1				| else do 1/2^n
 LAB_EXOL:
 	ADD.b		#0x81,%d1			| adjust exponent
-	MOVE.b	%d1,FAC1_e.w(%a3)		| save exponent
+	MOVE.b	%d1,FAC1_e.w(%a5)		| save exponent
 	RTS
 
 # perform EXP()	(x^e)
 # valid input range is -88 to +88
 
 LAB_EXP:
-	MOVE.b	FAC1_e.w(%a3),%d0		| get exponent
+	MOVE.b	FAC1_e.w(%a5),%d0		| get exponent
 	BEQ.s		LAB_EX1			| return 1 for zero in
 
 	CMP.b		#0x64,%d0			| compare exponent with min
 	BCS.s		LAB_EX1			| if smaller just return 1
 
 **	MOVEM.l	%d1-%d6/a0,-(%sp)		| save the registers
-	MOVE.b	#0,cosout.w(%a3)		| flag +ve number
-	MOVE.l	FAC1_m.w(%a3),%d1		| get mantissa
+	MOVE.b	#0,cosout.w(%a5)		| flag +ve number
+	MOVE.l	FAC1_m.w(%a5),%d1		| get mantissa
 	CMP.b		#0x87,%d0			| compare exponent with max
 	BHI.s		LAB_EXOU			| go do over/under flow if greater
 
@@ -6286,50 +6063,50 @@ LAB_EXP:
 	BCC.s		LAB_EXOU			| if => go over/underflow
 
 LAB_EXCM:
-	TST.b		FAC1_s.w(%a3)		| test sign
+	TST.b		FAC1_s.w(%a5)		| test sign
 	BPL.s		LAB_EXPS			| branch if arg +ve
 
-	MOVE.b	#0xFF,cosout.w(%a3)	| flag -ve number
-	MOVE.b	#0,FAC1_s.w(%a3)		| take absolute value
+	MOVE.b	#0xFF,cosout.w(%a5)	| flag -ve number
+	MOVE.b	#0,FAC1_s.w(%a5)		| take absolute value
 LAB_EXPS:
 							| now do n/LOG(2)
-	MOVE.l	#0xB8AA3B29,FAC2_m.w(%a3)	| 1/LOG(2) mantissa
-	MOVE.w	#0x8100,FAC2_e.w(%a3)	| 1/LOG(2) exponent & sign
-	MOVE.b	#0,FAC_sc.w(%a3)		| we know they're both +ve
+	MOVE.l	#0xB8AA3B29,FAC2_m.w(%a5)	| 1/LOG(2) mantissa
+	MOVE.w	#0x8100,FAC2_e.w(%a5)	| 1/LOG(2) exponent & sign
+	MOVE.b	#0,FAC_sc.w(%a5)		| we know they're both +ve
 	BSR		LAB_MULTIPLY		| effectively divide by log(2)
 
 							| max here is +/- 127
 							| now separate integer and fraction
-	MOVE.b	#0,tpower.w(%a3)		| clear exponent add byte
-	MOVE.b	FAC1_e.w(%a3),%d5		| get exponent
+	MOVE.b	#0,tpower.w(%a5)		| clear exponent add byte
+	MOVE.b	FAC1_e.w(%a5),%d5		| get exponent
 	SUB.b		#0x80,%d5			| normalise
 	BLS.s		LAB_ESML			| branch if < 1 (d5 is 0 or -ve)
 
 							| result is > 1
-	MOVE.l	FAC1_m.w(%a3),%d0		| get mantissa
+	MOVE.l	FAC1_m.w(%a5),%d0		| get mantissa
 	MOVE.l	%d0,%d1			| copy it
 	MOVE.l	%d5,%d6			| copy normalised exponent
 
 	NEG.w		%d6				| make -ve
 	ADD.w		#32,%d6			| is now 32-d6
 	LSR.l		%d6,%d1			| just integer bits
-	MOVE.b	%d1,tpower.w(%a3)		| set exponent add byte
+	MOVE.b	%d1,tpower.w(%a5)		| set exponent add byte
 
 	LSL.l		%d5,%d0			| shift out integer bits
 	BEQ		LAB_EXOF			| fraction is zero so do 2^n
 
-	MOVE.l	%d0,FAC1_m.w(%a3)		| fraction to FAC1
-	MOVE.w	#0x8000,FAC1_e.w(%a3)	| set exponent & sign
+	MOVE.l	%d0,FAC1_m.w(%a5)		| fraction to FAC1
+	MOVE.w	#0x8000,FAC1_e.w(%a5)	| set exponent & sign
 
 							| multiple was < 1
 LAB_ESML:
-	MOVE.l	#0xB17217F8,FAC2_m.w(%a3)	| LOG(2) mantissa
-	MOVE.w	#0x8000,FAC2_e.w(%a3)	| LOG(2) exponent & sign
-	MOVE.b	#0,FAC_sc.w(%a3)		| clear sign compare
+	MOVE.l	#0xB17217F8,FAC2_m.w(%a5)	| LOG(2) mantissa
+	MOVE.w	#0x8000,FAC2_e.w(%a5)	| LOG(2) exponent & sign
+	MOVE.b	#0,FAC_sc.w(%a5)		| clear sign compare
 	BSR		LAB_MULTIPLY		| multiply by log(2)
 
-	MOVE.l	FAC1_m.w(%a3),%d0		| get mantissa
-	MOVE.b	FAC1_e.w(%a3),%d5		| get exponent
+	MOVE.l	FAC1_m.w(%a5),%d0		| get mantissa
+	MOVE.b	FAC1_e.w(%a5),%d5		| get exponent
 	SUB.w		#0x82,%d5			| normalise and -2 (result is -1 to -30)
 	NEG.w		%d5				| make +ve
 	LSR.l		%d5,%d0			| shift for 2 integer bits
@@ -6359,11 +6136,11 @@ LAB_ESML:
 	BSR.s		LAB_EXCC			| do loops 13 (again) through 31
 
 							| now get the result
-	TST.b		cosout.w(%a3)		| test sign flag
+	TST.b		cosout.w(%a5)		| test sign flag
 	BPL.s		LAB_EXPL			| branch if +ve
 
 	NEG.l		%d1				| do -y
-	NEG.b		tpower.w(%a3)		| do -exp
+	NEG.b		tpower.w(%a5)		| do -exp
 LAB_EXPL:
 	MOVEQ		#0x83-0x100,%d0		| set exponent
 	ADD.l		%d1,%d6			| y = y +/- x
@@ -6375,9 +6152,9 @@ LAB_EXNN:
 	BPL.s		LAB_EXNN			| loop if not normal
 
 LAB_EXRN:
-	MOVE.l	%d6,FAC1_m.w(%a3)		| save exponent result
-	ADD.b		tpower.w(%a3),%d0		| add integer part
-	MOVE.b	%d0,FAC1_e.w(%a3)		| save exponent
+	MOVE.l	%d6,FAC1_m.w(%a5)		| save exponent result
+	ADD.b		tpower.w(%a5),%d0		| add integer part
+	MOVE.b	%d0,FAC1_e.w(%a5)		| save exponent
 **	MOVEM.l	(%sp)+,%d1-%d6/a0		| restore registers
 	RTS
 
@@ -6424,16 +6201,16 @@ LAB_EXAD:
 # Serial correlation coefficient is -0.000370, totally uncorrelated would be 0.0
 
 LAB_RND:
-	TST.b		FAC1_e.w(%a3)		| get FAC1 exponent
+	TST.b		FAC1_e.w(%a5)		| get FAC1 exponent
 	BEQ.s		NextPRN			| do next random number if zero
 
 							| else get seed into random number store
-	LEA		PRNlword.w(%a3),%a0	| set PRNG pointer
+	LEA		PRNlword.w(%a5),%a0	| set PRNG pointer
 	BSR		LAB_2778			| pack FAC1 into (%a0)
 NextPRN:
 	MOVEQ		#0xAF-0x100,%d1		| set EOR value
 	MOVEQ		#18,%d2			| do this 19 times
-	MOVE.l	PRNlword.w(%a3),%d0	| get current
+	MOVE.l	PRNlword.w(%a5),%d0	| get current
 Ninc0:
 	ADD.l		%d0,%d0			| shift left 1 bit
 	BCC.s		Ninc1				| branch if bit 32 not set
@@ -6442,9 +6219,9 @@ Ninc0:
 Ninc1:
 	DBF		%d2,Ninc0			| loop
 
-	MOVE.l	%d0,PRNlword.w(%a3)	| save back to seed word
-	MOVE.l	%d0,FAC1_m.w(%a3)		| copy to FAC1 mantissa
-	MOVE.w	#0x8000,FAC1_e.w(%a3)	| set the exponent and clear the sign
+	MOVE.l	%d0,PRNlword.w(%a5)	| save back to seed word
+	MOVE.l	%d0,FAC1_m.w(%a5)		| copy to FAC1 mantissa
+	MOVE.w	#0x8000,FAC1_e.w(%a5)	| set the exponent and clear the sign
 	BRA		LAB_24D5			| normalise FAC1 & return
 
 
@@ -6455,10 +6232,10 @@ Ninc1:
 
 LAB_TAN:
 	BSR.s		LAB_SIN			| go do SIN/COS cordic compute
-	MOVE.w	FAC1_e.w(%a3),FAC2_e.w(%a3)	| copy exponent & sign from FAC1 to FAC2
-	MOVE.l	FAC1_m.w(%a3),FAC2_m.w(%a3)	| copy FAC1 mantissa to FAC2 mantissa
-	MOVE.l	%d1,FAC1_m.w(%a3)		| get COS(x) mantissa
-	MOVE.b	%d3,FAC1_e.w(%a3)		| get COS(x) exponent
+	MOVE.w	FAC1_e.w(%a5),FAC2_e.w(%a5)	| copy exponent & sign from FAC1 to FAC2
+	MOVE.l	FAC1_m.w(%a5),FAC2_m.w(%a5)	| copy FAC1 mantissa to FAC2 mantissa
+	MOVE.l	%d1,FAC1_m.w(%a5)		| get COS(x) mantissa
+	MOVE.b	%d3,FAC1_e.w(%a5)		| get COS(x) exponent
 	BEQ		LAB_OFER			| do overflow if COS = 0
 
 	BSR		LAB_24D5			| normalise FAC1
@@ -6472,10 +6249,10 @@ LAB_TAN:
 # x = angle in radians
 
 LAB_COS:
-	MOVE.l	#0xC90FDAA3,FAC2_m.w(%a3)	| pi/2 mantissa (LSB is rounded up so
+	MOVE.l	#0xC90FDAA3,FAC2_m.w(%a5)	| pi/2 mantissa (LSB is rounded up so
 							| COS(PI/2)=0)
-	MOVE.w	#0x8100,FAC2_e.w(%a3)	| pi/2 exponent and sign
-	MOVE.b	FAC1_s.w(%a3),FAC_sc.w(%a3)	| sign = FAC1 sign (b7)
+	MOVE.w	#0x8100,FAC2_e.w(%a5)	| pi/2 exponent and sign
+	MOVE.b	FAC1_s.w(%a5),FAC_sc.w(%a5)	| sign = FAC1 sign (b7)
 	BSR		LAB_ADD			| add FAC2 to FAC1, adjust for COS(x)
 
 
@@ -6484,18 +6261,18 @@ LAB_COS:
 # SIN/COS cordic calculator
 
 LAB_SIN:
-	MOVE.b	#0,cosout.w(%a3)		| set needed result
+	MOVE.b	#0,cosout.w(%a5)		| set needed result
 
-	MOVE.l	#0xA2F9836F,FAC2_m.w(%a3)	| 1/pi mantissa (LSB is rounded up so SIN(PI)=0)
-	MOVE.w	#0x7F00,FAC2_e.w(%a3)	| 1/pi exponent & sign
-	MOVE.b	FAC1_s.w(%a3),FAC_sc.w(%a3)	| sign = FAC1 sign (b7)
+	MOVE.l	#0xA2F9836F,FAC2_m.w(%a5)	| 1/pi mantissa (LSB is rounded up so SIN(PI)=0)
+	MOVE.w	#0x7F00,FAC2_e.w(%a5)	| 1/pi exponent & sign
+	MOVE.b	FAC1_s.w(%a5),FAC_sc.w(%a5)	| sign = FAC1 sign (b7)
 	BSR		LAB_MULTIPLY		| multiply by 1/pi
 
-	MOVE.b	FAC1_e.w(%a3),%d0		| get FAC1 exponent
+	MOVE.b	FAC1_e.w(%a5),%d0		| get FAC1 exponent
 	BEQ.s		LAB_SCZE			| branch if zero
 
 	LEA		TAB_SNCO(%pc),%a0		| get pointer to constants table
-	MOVE.l	FAC1_m.w(%a3),%d6		| get FAC1 mantissa
+	MOVE.l	FAC1_m.w(%a5),%d6		| get FAC1 mantissa
 	SUBQ.b	#1,%d0			| 2 radians in 360 degrees so /2
 	BEQ.s		LAB_SCZE			| branch if zero
 
@@ -6529,17 +6306,17 @@ LAB_SCL0:
 # table pointer in a0, returns in d0-d3
 
 LAB_CORD:
-	MOVE.b	FAC1_s.w(%a3),FAC_sc.w(%a3)	| copy as sign compare for TAN
+	MOVE.b	FAC1_s.w(%a5),FAC_sc.w(%a5)	| copy as sign compare for TAN
 	ADD.l		%d6,%d6			| shift 0.5 bit into carry
 	BCC.s		LAB_LTPF			| branch if less than 0.5
 
-	EORI.b	#0xFF,FAC1_s.w(%a3)	| toggle result sign
+	EORI.b	#0xFF,FAC1_s.w(%a5)	| toggle result sign
 LAB_LTPF:
 	ADD.l		%d6,%d6			| shift 0.25 bit into carry
 	BCC.s		LAB_LTPT			| branch if less than 0.25
 
-	EORI.b	#0xFF,cosout.w(%a3)	| toggle needed result
-	EORI.b	#0xFF,FAC_sc.w(%a3)	| toggle sign compare for TAN
+	EORI.b	#0xFF,cosout.w(%a5)	| toggle needed result
+	EORI.b	#0xFF,FAC_sc.w(%a5)	| toggle sign compare for TAN
 
 LAB_LTPT:
 	LSR.l		#2,%d6			| shift the bits back (clear integer bits)
@@ -6578,14 +6355,14 @@ nexta:
 	MOVEQ		#0x81-0x100,%d2		| set exponent for 0 to .99 rec.
 	MOVE.l	%d2,%d3			| copy it for cos output
 outloop:
-	TST.b		cosout.w(%a3)		| did we want cos output?
+	TST.b		cosout.w(%a5)		| did we want cos output?
 	BMI.s		subexit			| if so skip
 
 	EXG		%d0,%d1			| swap SIN and COS mantissas
 	EXG		%d2,%d3			| swap SIN and COS exponents
 subexit:
-	MOVE.l	%d0,FAC1_m.w(%a3)		| set result mantissa
-	MOVE.b	%d2,FAC1_e.w(%a3)		| set result exponent
+	MOVE.l	%d0,FAC1_m.w(%a5)		| set result mantissa
+	MOVE.b	%d2,FAC1_e.w(%a5)		| set result exponent
 	BRA		LAB_24D5			| normalise FAC1 & return
 
 
@@ -6595,29 +6372,29 @@ subexit:
 # perform ATN()
 
 LAB_ATN:
-	MOVE.b	FAC1_e.w(%a3),%d0		| get FAC1 exponent
+	MOVE.b	FAC1_e.w(%a5),%d0		| get FAC1 exponent
 	BEQ		RTS_021			| ATN(0) = 0 so skip calculation
 
-	MOVE.b	#0,cosout.w(%a3)		| set result needed
+	MOVE.b	#0,cosout.w(%a5)		| set result needed
 	CMP.b		#0x81,%d0			| compare exponent with 1
 	BCS.s		LAB_ATLE			| branch if n<1
 
 	BNE.s		LAB_ATGO			| branch if n>1
 
-	MOVE.l	FAC1_m.w(%a3),%d0		| get mantissa
+	MOVE.l	FAC1_m.w(%a5),%d0		| get mantissa
 	ADD.l		%d0,%d0			| shift left
 	BEQ.s		LAB_ATLE			| branch if n=1
 
 LAB_ATGO:
-	MOVE.l	#0x80000000,FAC2_m.w(%a3)	| set mantissa for 1
-	MOVE.w	#0x8100,FAC2_e.w(%a3)	| set exponent for 1
-	MOVE.b	FAC1_s.w(%a3),FAC_sc.w(%a3)	| sign compare = sign
+	MOVE.l	#0x80000000,FAC2_m.w(%a5)	| set mantissa for 1
+	MOVE.w	#0x8100,FAC2_e.w(%a5)	| set exponent for 1
+	MOVE.b	FAC1_s.w(%a5),FAC_sc.w(%a5)	| sign compare = sign
 	BSR		LAB_DIVIDE			| do 1/n
-	MOVE.b	#0xFF,cosout.w(%a3)	| set inverse result needed
+	MOVE.b	#0xFF,cosout.w(%a5)	| set inverse result needed
 LAB_ATLE:
-	MOVE.l	FAC1_m.w(%a3),%d0		| get FAC1 mantissa
+	MOVE.l	FAC1_m.w(%a5),%d0		| get FAC1 mantissa
 	MOVEQ		#-0x7E,%d1			| set to correct exponent
-	SUB.b		FAC1_e.w(%a3),%d1		| subtract FAC1 exponent (always <= 1)
+	SUB.b		FAC1_e.w(%a5),%d1		| subtract FAC1 exponent (always <= 1)
 	LSR.l		%d1,%d0			| shift in two integer part bits
 	LEA		TAB_ATNC(%pc),%a0		| get pointer to arctan table
 	MOVEQ		#0,%d6			| Z = 0
@@ -6644,20 +6421,20 @@ LAB_CATN:
 	ASR.l		#1,%d3			| y1 / 2^i
 	DBF		%d5,LAB_CATN		| decrement and loop if not done
 
-	MOVE.b	#0x82,FAC1_e.w(%a3)	| set new exponent
-	MOVE.l	%d6,FAC1_m.w(%a3)		| save mantissa
+	MOVE.b	#0x82,FAC1_e.w(%a5)	| set new exponent
+	MOVE.l	%d6,FAC1_m.w(%a5)		| save mantissa
 	BSR		LAB_24D5			| normalise FAC1
 
-	TST.b		cosout.w(%a3)		| was it > 1 ?
+	TST.b		cosout.w(%a5)		| was it > 1 ?
 	BPL.s		RTS_021			| branch if not
 
-	MOVE.b	FAC1_s.w(%a3),%d7		| get sign
-	MOVE.b	#0,FAC1_s.w(%a3)		| clear sign
-	MOVE.l	#0xC90FDAA2,FAC2_m.w(%a3)	| set -(pi/2)
-	MOVE.w	#0x8180,FAC2_e.w(%a3)	| set exponent and sign
-	MOVE.b	#0xFF,FAC_sc.w(%a3)		| set sign compare
+	MOVE.b	FAC1_s.w(%a5),%d7		| get sign
+	MOVE.b	#0,FAC1_s.w(%a5)		| clear sign
+	MOVE.l	#0xC90FDAA2,FAC2_m.w(%a5)	| set -(pi/2)
+	MOVE.w	#0x8180,FAC2_e.w(%a5)	| set exponent and sign
+	MOVE.b	#0xFF,FAC_sc.w(%a5)		| set sign compare
 	BSR		LAB_ADD			| perform addition, FAC2 to FAC1
-	MOVE.b	%d7,FAC1_s.w(%a3)		| restore sign
+	MOVE.b	%d7,FAC1_s.w(%a5)		| restore sign
 RTS_021:
 	RTS
 
@@ -6695,7 +6472,7 @@ LAB_BITCLR:
 # perform BITTST()
 
 LAB_BTST:
-	MOVE.b	(%a5)+,%d0			| increment BASIC pointer
+	MOVE.b	(%a3)+,%d0			| increment BASIC pointer
 	BSR		LAB_GADB			| get two parameters for POKE or WAIT
 							| first parameter in a0, second in d0
 	CMP.b		#0x08,%d0			| only 0 to 7 are allowed
@@ -6729,10 +6506,10 @@ fend	=	12-4					|  x(%sp) end-4, fsd is popped by itself
 ofchr	=	'#'					| the overflow character
 
 LAB_USINGS:
-	TST.b		Dtypef.w(%a3)		| test data type, $80=string
+	TST.b		Dtypef.w(%a5)		| test data type, $80=string
 	BPL		LAB_FOER			| if not string type go do format error
 
-	MOVEA.l	FAC1_m.w(%a3),%a2		| get the format string descriptor pointer
+	MOVEA.l	FAC1_m.w(%a5),%a2		| get the format string descriptor pointer
 	MOVE.w	4(%a2),%d7			| get the format string length
 	BEQ		LAB_FOER			| if null string go do format error
 
@@ -6754,7 +6531,7 @@ LAB_USINGS:
 
 # do the USING$() function next value
 
-	MOVE.b	(%a5)+,%d0			| get the next BASIC byte
+	MOVE.b	(%a3)+,%d0			| get the next BASIC byte
 LAB_U002:
 	CMP.b		#',',%d0			| compare with comma
 	BNE		LAB_SNER			| if not "," go do syntax error
@@ -6764,10 +6541,10 @@ LAB_U002:
 	BEQ		LAB_FOER			| if no %special characters go do format error
 
 	BSR		LAB_EVEX			| evaluate the expression
-	TST.b		Dtypef.w(%a3)		| test the data type
+	TST.b		Dtypef.w(%a5)		| test the data type
 	BMI		LAB_TMER			| if string type go do type missmatch error
 
-	TST.b		FAC1_e.w(%a3)		| test FAC1 exponent
+	TST.b		FAC1_e.w(%a5)		| test FAC1 exponent
 	BEQ.s		LAB_U004			| if FAC1 = 0 skip the rounding
 
 	MOVE.w	fsdc(%sp),%d1		| get the format string decimal character count
@@ -6779,11 +6556,11 @@ LAB_U002:
 	ADD.w		%d0,%d1			| * 3
 	ADD.w		%d1,%d1			| * 6
 	LEA		LAB_P_10(%pc),%a0		| get the rounding table base
-	MOVE.l	2(%a0,%d1.w),FAC2_m.w(%a3)| get the rounding mantissa
+	MOVE.l	2(%a0,%d1.w),FAC2_m.w(%a5)| get the rounding mantissa
 	MOVE.w	(%a0,%d1.w),%d0		| get the rounding exponent
 	SUB.w		#0x100,%d0			| effectively divide the mantissa by 2
-	MOVE.w	%d0,FAC2_e.w(%a3)		| save the rounding exponent
-	MOVE.b	#0x00,FAC_sc.w(%a3)	| clear the sign compare
+	MOVE.w	%d0,FAC2_e.w(%a5)		| save the rounding exponent
+	MOVE.b	#0x00,FAC_sc.w(%a5)	| clear the sign compare
 	BSR		LAB_ADD			| round the value to n places
 LAB_U004:
 	BSR		LAB_2970			| convert FAC1 to string - not on stack
@@ -6793,7 +6570,7 @@ LAB_U004:
 
 # process the number string, length in d6, decimal point index in d2
 
-	LEA		Decss.w(%a3),%a2		| set the number string start
+	LEA		Decss.w(%a5),%a2		| set the number string start
 	MOVEQ		#0,%d6			| clear the number string index
 	MOVEQ		#'.',%d4			| set the decimal point character
 LAB_U005:
@@ -7078,7 +6855,7 @@ LAB_U048:
 
 LAB_U04A:
 	LEA		6(%a4),%a0			| get the descriptor pointer for string 1
-	MOVE.l	%a4,FAC1_m.w(%a3)		| save the descriptor pointer for string 2
+	MOVE.l	%a4,FAC1_m.w(%a5)		| save the descriptor pointer for string 2
 	BSR		LAB_224E			| concatenate the strings
 
 # now check for any tail on the format string
@@ -7099,23 +6876,23 @@ LAB_U04A:
 # add the new string to the previous string
 
 	LEA		6(%a4),%a0			| get the descriptor pointer for string 1
-	MOVE.l	%a4,FAC1_m.w(%a3)		| save the descriptor pointer for string 2
+	MOVE.l	%a4,FAC1_m.w(%a5)		| save the descriptor pointer for string 2
 	BSR		LAB_224E			| concatenate the strings
 
 # check for another value or end of function
 
 LAB_U04C:
-	MOVE.b	(%a5)+,%d0			| get the next BASIC byte
+	MOVE.b	(%a3)+,%d0			| get the next BASIC byte
 	CMP.b		#')',%d0			| compare with close bracket
 	BNE		LAB_U002			| if not ")" go do next value
 
 # pop the result string off the descriptor stack
 
 	MOVEA.l	%a4,%a0			| copy the result string descriptor pointer
-	MOVE.l	Sstorl.w(%a3),%d1		| save the bottom of string space
+	MOVE.l	Sstorl.w(%a5),%d1		| save the bottom of string space
 	BSR		LAB_22BA			| pop (%a0) descriptor, returns with ..
 							| d0 = length, a0 = pointer
-	MOVE.l	%d1,Sstorl.w(%a3)		| restore the bottom of string space
+	MOVE.l	%d1,Sstorl.w(%a5)		| restore the bottom of string space
 	MOVEA.l	%a0,%a1			| copy the string result pointer
 	MOVE.w	%d0,%d1			| copy the string result length
 
@@ -7271,7 +7048,7 @@ LAB_BINS:
 	BCC		LAB_FCER			| exit if too big ( > or = )
 
 	MOVEQ		#0x1F,%d2			| bit count-1
-	LEA		Binss.w(%a3),%a0		| point to string
+	LEA		Binss.w(%a5),%a0		| point to string
 	MOVEQ		#0x30,%d4			| "0" character for ADDX
 NextB1:
 	MOVEQ		#0,%d3			| clear byte
@@ -7283,13 +7060,13 @@ NextB1:
 # this is the exit code and is also used by HEX$()
 
 EndBHS:
-	MOVE.b	#0,BHsend.w(%a3)		| null terminate the string
+	MOVE.b	#0,BHsend.w(%a5)		| null terminate the string
 	TST.b		%d1				| test # of characters
 	BEQ.s		NextB2			| go truncate string
 
 	NEG.l		%d1				| make -ve
 	ADD.l		#BHsend,%d1			| effectively (end-length)
-	LEA		0(%a3,%d1.w),%a0		| effectively add (end-length) to pointer
+	LEA		0(%a5,%d1.w),%a0		| effectively add (end-length) to pointer
 	BRA.s		BinPr				| go print string
 
 # truncate string to remove leading "0"s
@@ -7308,7 +7085,7 @@ NextB2:
 # make fixed length output string - ignore overflows!
 
 BinPr:
-	LEA		BHsend.w(%a3),%a1		| get string end
+	LEA		BHsend.w(%a5),%a1		| get string end
 	CMPA.l	%a1,%a0			| are we at the string end
 	BNE.s		GoPr				| branch if not
 
@@ -7327,7 +7104,7 @@ LAB_HEXS:
 	BCC		LAB_FCER			| exit if too big ( > or = )
 
 	MOVEQ		#0x07,%d2			| nibble count-1
-	LEA		Hexss.w(%a3),%a0		| point to string
+	LEA		Hexss.w(%a5),%a0		| point to string
 	MOVEQ		#0x30,%d4			| "0" character for ABCD
 NextH1:
 	MOVE.b	%d0,%d3			| copy lowest byte
@@ -7347,21 +7124,22 @@ NextH1:
 # ctrl-c check routine. includes limited "life" byte save for INGET routine
 
 VEC_CC:
-	TST.b		ccflag.w(%a3)		| check [CTRL-C] check flag
+	TST.b		ccflag.w(%a5)		| check [CTRL-C] check flag
 	BNE.s		RTS_022			| exit if [CTRL-C] check inhibited
 
-	JSR		V_INPT.w(%a3)		| scan input device
+      MOVEQ       #0,%d0                  | do not wait
+	JSR		V_INPT.w(%a5)		| scan input device
 	BCC.s		LAB_FBA0			| exit if buffer empty
 
-	MOVE.b	%d0,ccbyte.w(%a3)		| save received byte
-	MOVE.b	#0x20,ccnull.w(%a3)	| set "life" timer for bytes countdown
+	MOVE.b	%d0,ccbyte.w(%a5)		| save received byte
+	MOVE.b	#0x20,ccnull.w(%a5)	| set "life" timer for bytes countdown
 	BRA		LAB_1636			| return to BASIC
 
 LAB_FBA0:
-	TST.b		ccnull.w(%a3)		| get countdown byte
+	TST.b		ccnull.w(%a5)		| get countdown byte
 	BEQ.s		RTS_022			| exit if finished
 
-	SUBQ.b	#1,ccnull.w(%a3)		| else decrement countdown
+	SUBQ.b	#1,ccnull.w(%a5)		| else decrement countdown
 RTS_022:
 	RTS
 
@@ -7372,15 +7150,16 @@ RTS_022:
 # returns with carry set if byte in A
 
 INGET:
-	JSR		V_INPT.w(%a3)		| call scan input device
+      MOVEQ       #0,%d0                  | do not wait
+	JSR		V_INPT.w(%a5)		| call scan input device
 	BCS.s		LAB_FB95			| if byte go reset timer
 
-	MOVE.b	ccnull.w(%a3),%d0		| get countdown
+	MOVE.b	ccnull.w(%a5),%d0		| get countdown
 	BEQ.s		RTS_022			| exit if empty
 
-	MOVE.b	ccbyte.w(%a3),%d0		| get last received byte
+	MOVE.b	ccbyte.w(%a5),%d0		| get last received byte
 LAB_FB95:
-	MOVE.b	#0x00,ccnull.w(%a3)	| clear timer because we got a byte
+	MOVE.b	#0x00,ccnull.w(%a5)	| clear timer because we got a byte
 	ORI.b		#1,%CCR			| set carry, flag we got a byte
 	RTS
 
@@ -7391,7 +7170,7 @@ LAB_FB95:
 
 LAB_MAX:
 	BSR		LAB_EVEZ			| evaluate expression (no decrement)
-	TST.b		Dtypef.w(%a3)		| test data type
+	TST.b		Dtypef.w(%a5)		| test data type
 	BMI		LAB_TMER			| if string do Type missmatch Error/warm start
 
 LAB_MAXN:
@@ -7409,7 +7188,7 @@ LAB_MAXN:
 
 LAB_MIN:
 	BSR		LAB_EVEZ			| evaluate expression (no decrement)
-	TST.b		Dtypef.w(%a3)		| test data type
+	TST.b		Dtypef.w(%a5)		| test data type
 	BMI		LAB_TMER			| if string do Type missmatch Error/warm start
 
 LAB_MINN:
@@ -7439,21 +7218,21 @@ LAB_PHFA:
 	CMP.b		#',',%d0			| is there more ?
 	BNE.s		LAB_MMEC			| if not go do end check
 
-	MOVE.w	FAC1_e.w(%a3),-(%sp)	| push exponent and sign
-	MOVE.l	FAC1_m.w(%a3),-(%sp)	| push mantissa
+	MOVE.w	FAC1_e.w(%a5),-(%sp)	| push exponent and sign
+	MOVE.l	FAC1_m.w(%a5),-(%sp)	| push mantissa
 
 	BSR		LAB_EVEZ			| evaluate expression (no decrement)
-	TST.b		Dtypef.w(%a3)		| test data type
+	TST.b		Dtypef.w(%a5)		| test data type
 	BMI		LAB_TMER			| if string do Type missmatch Error/warm start
 
 
 							| pop FAC2 (MAX/MIN expression so far)
-	MOVE.l	(%sp)+,FAC2_m.w(%a3)	| pop mantissa
+	MOVE.l	(%sp)+,FAC2_m.w(%a5)	| pop mantissa
 
 	MOVE.w	(%sp)+,%d0			| pop exponent and sign
-	MOVE.w	%d0,FAC2_e.w(%a3)		| save exponent and sign
-	MOVE.b	FAC1_s.w(%a3),FAC_sc.w(%a3)	| get FAC1 sign
-	EOR.b		%d0,FAC_sc.w(%a3)		| EOR to create sign compare
+	MOVE.w	%d0,FAC2_e.w(%a5)		| save exponent and sign
+	MOVE.b	FAC1_s.w(%a5),FAC_sc.w(%a5)	| get FAC1 sign
+	EOR.b		%d0,FAC_sc.w(%a5)		| EOR to create sign compare
 	BRA		LAB_27FA			| compare FAC1 with FAC2 & return
 							| returns d0=+1 Cb=0 if FAC1 > FAC2
 							| returns d0= 0 Cb=0 if FAC1 = FAC2
@@ -7478,12 +7257,12 @@ LAB_WDTH:
 # this next compare ensures that we can't exit WIDTH via an error leaving the
 # tab size greater than the line length.
 
-	CMP.b		TabSiz.w(%a3),%d0		| compare with tab size
+	CMP.b		TabSiz.w(%a5),%d0		| compare with tab size
 	BCC.s		LAB_NSTT			| branch if >= tab size
 
-	MOVE.b	%d0,TabSiz.w(%a3)		| else make tab size = terminal width
+	MOVE.b	%d0,TabSiz.w(%a5)		| else make tab size = terminal width
 LAB_NSTT:
-	MOVE.b	%d0,TWidth.w(%a3)		| set the terminal width
+	MOVE.b	%d0,TWidth.w(%a5)		| set the terminal width
 	BSR		LAB_GBYT			| get BASIC byte back
 	BEQ.s		WExit				| exit if no following
 
@@ -7498,37 +7277,37 @@ LAB_TBSZ:
 	CMP.b		#1,%d0			| compare with min-1
 	BCS		LAB_FCER			| if <=1 do function call error & exit
 
-	MOVE.b	TWidth.w(%a3),%d1		| set flags for width
+	MOVE.b	TWidth.w(%a5),%d1		| set flags for width
 	BEQ.s		LAB_SVTB			| skip check if infinite line
 
-	CMP.b		TWidth.w(%a3),%d0		| compare TAB with width
+	CMP.b		TWidth.w(%a5),%d0		| compare TAB with width
 	BGT		LAB_FCER			| branch if too big
 
 LAB_SVTB:
-	MOVE.b	%d0,TabSiz.w(%a3)		| save TAB size
+	MOVE.b	%d0,TabSiz.w(%a5)		| save TAB size
 
 # calculate tab column limit from TAB size. The Iclim is set to the last tab
 # position on a line that still has at least one whole tab width between it
 # and the end of the line.
 
 WExit:
-	MOVE.b	TWidth.w(%a3),%d0		| get width
+	MOVE.b	TWidth.w(%a5),%d0		| get width
 	BEQ.s		LAB_WDLP			| branch if infinite line
 
-	CMP.b		TabSiz.w(%a3),%d0		| compare with tab size
+	CMP.b		TabSiz.w(%a5),%d0		| compare with tab size
 	BCC.s		LAB_WDLP			| branch if >= tab size
 
-	MOVE.b	%d0,TabSiz.w(%a3)		| else make tab size = terminal width
+	MOVE.b	%d0,TabSiz.w(%a5)		| else make tab size = terminal width
 LAB_WDLP:
-	SUB.b		TabSiz.w(%a3),%d0		| subtract tab size
+	SUB.b		TabSiz.w(%a5),%d0		| subtract tab size
 	BCC.s		LAB_WDLP			| loop while no borrow
 
-	ADD.b		TabSiz.w(%a3),%d0		| add tab size back
-	ADD.b		TabSiz.w(%a3),%d0		| add tab size back again
+	ADD.b		TabSiz.w(%a5),%d0		| add tab size back
+	ADD.b		TabSiz.w(%a5),%d0		| add tab size back again
 
 	NEG.b		%d0				| make -ve
-	ADD.b		TWidth.w(%a3),%d0		| subtract remainder from width
-	MOVE.b	%d0,Iclim.w(%a3)		| save tab column limit
+	ADD.b		TWidth.w(%a5),%d0		| subtract remainder from width
+	MOVE.b	%d0,Iclim.w(%a5)		| save tab column limit
 RTS_023:
 	RTS
 
@@ -7544,20 +7323,20 @@ RTS_023:
 # d4 is temp
 
 LAB_SQR:
-	TST.b		FAC1_s.w(%a3)		| test FAC1 sign
+	TST.b		FAC1_s.w(%a5)		| test FAC1 sign
 	BMI		LAB_FCER			| if -ve do function call error
 
-	TST.b		FAC1_e.w(%a3)		| test exponent
+	TST.b		FAC1_e.w(%a5)		| test exponent
 	BEQ.s		RTS_023			| exit if zero
 
 	MOVEM.l	%d1-%d4,-(%sp)		| save registers
-	MOVE.l	FAC1_m.w(%a3),%d0		| copy FAC1
+	MOVE.l	FAC1_m.w(%a5),%d0		| copy FAC1
 	MOVEQ		#0,%d2			| clear remainder
 	MOVE.l	%d2,%d1			| clear root
 
 	MOVEQ		#0x1F,%d3			| $1F for DBF, 64 pairs of bits to
 							| do for a 32 bit result
-	BTST		#0,FAC1_e.w(%a3)		| test exponent odd/even
+	BTST		#0,FAC1_e.w(%a5)		| test exponent odd/even
 	BNE.s		LAB_SQE2			| if odd only 1 shift first time
 
 LAB_SQE1:
@@ -7580,8 +7359,8 @@ LAB_SQE2:
 LAB_SQNS:
 	DBF		%d3,LAB_SQE1		| loop if not all done
 
-	MOVE.l	%d1,FAC1_m.w(%a3)		| save result mantissa
-	MOVE.b	FAC1_e.w(%a3),%d0		| get exponent (d0 is clear here)
+	MOVE.l	%d1,FAC1_m.w(%a5)		| save result mantissa
+	MOVE.b	FAC1_e.w(%a5),%d0		| get exponent (d0 is clear here)
 	SUB.w		#0x80,%d0			| normalise
 	LSR.w		#1,%d0			| /2
 	BCC.s		LAB_SQNA			| skip increment if carry clear
@@ -7589,7 +7368,7 @@ LAB_SQNS:
 	ADDQ.w	#1,%d0			| add bit zero back in (allow for half shift)
 LAB_SQNA:
 	ADD.w		#0x80,%d0			| re-bias to $80
-	MOVE.b	%d0,FAC1_e.w(%a3)		| save it
+	MOVE.b	%d0,FAC1_e.w(%a5)		| save it
 	MOVEM.l	(%sp)+,%d1-%d4		| restore registers
 	BRA		LAB_24D5			| normalise FAC1 & return
 
@@ -7599,7 +7378,7 @@ LAB_SQNA:
 # perform VARPTR()
 
 LAB_VARPTR:
-	MOVE.b	(%a5)+,%d0			| increment pointer
+	MOVE.b	(%a3)+,%d0			| increment pointer
 LAB_VARCALL:
 	BSR		LAB_GVAR			| get variable address in a0
 	BSR		LAB_1BFB			| scan for ")", else do syntax error/warm start
@@ -7612,7 +7391,7 @@ LAB_VARCALL:
 # perform RAMBASE
 
 LAB_RAM:
-	LEA		ram_base.w(%a3),%a0	| get start of EhBASIC RAM
+	LEA		ram_base.w(%a5),%a0	| get start of EhBASIC RAM
 	MOVE.l	%a0,%d0			| copy it
 	BRA		LAB_AYFC			| convert d0 to signed longword in FAC1 & return
 
@@ -7622,8 +7401,8 @@ LAB_RAM:
 # perform PI
 
 LAB_PI:
-	MOVE.l	#0xC90FDAA2,FAC1_m.w(%a3)	| pi mantissa (32 bit)
-	MOVE.w	#0x8200,FAC1_e.w(%a3)	| pi exponent and sign
+	MOVE.l	#0xC90FDAA2,FAC1_m.w(%a5)	| pi mantissa (32 bit)
+	MOVE.w	#0x8200,FAC1_e.w(%a5)	| pi exponent and sign
 	RTS
 
 
@@ -7632,8 +7411,8 @@ LAB_PI:
 # perform TWOPI
 
 LAB_TWOPI:
-	MOVE.l	#0xC90FDAA2,FAC1_m.w(%a3)	| 2pi mantissa (32 bit)
-	MOVE.w	#0x8300,FAC1_e.w(%a3)	| 2pi exponent and sign
+	MOVE.l	#0xC90FDAA2,FAC1_m.w(%a5)	| 2pi mantissa (32 bit)
+	MOVE.w	#0x8300,FAC1_e.w(%a5)	| 2pi exponent and sign
 	RTS
 
 
@@ -7659,16 +7438,16 @@ LAB_2887:
 	MOVEQ		#0x00,%d1			| clear temp accumulator
 	MOVE.l	%d1,%d3			| set mantissa decimal exponent count
 	MOVE.l	%d1,%d4			| clear decimal exponent
-	MOVE.b	%d1,FAC1_s.w(%a3)		| clear sign byte
-	MOVE.b	%d1,Dtypef.w(%a3)		| set float data type
-	MOVE.b	%d1,expneg.w(%a3)		| clear exponent sign
+	MOVE.b	%d1,FAC1_s.w(%a5)		| clear sign byte
+	MOVE.b	%d1,Dtypef.w(%a5)		| set float data type
+	MOVE.b	%d1,expneg.w(%a5)		| clear exponent sign
 	BSR		LAB_GBYT			| get first byte back
 	BCS.s		LAB_28FE			| go get floating if 1st character numeric
 
 	CMP.b		#'-',%d0			| or is it -ve number
 	BNE.s		LAB_289A			| branch if not
 
-	MOVE.b	#0xFF,FAC1_s.w(%a3)		| set sign byte
+	MOVE.b	#0xFF,FAC1_s.w(%a5)		| set sign byte
 	BRA.s		LAB_289C			| now go scan & check for hex/bin/int
 
 LAB_289A:
@@ -7734,7 +7513,7 @@ LAB_2901:
 	BNE.s		LAB_2X02			| branch if not
 
 LAB_2X01:
-	MOVE.b	#0xFF,expneg.w(%a3)	| set exponent sign
+	MOVE.b	#0xFF,expneg.w(%a5)	| set exponent sign
 	BRA.s		LAB_2X03			| now go scan & check exponent
 
 LAB_2X02:
@@ -7782,7 +7561,7 @@ LAB_2904:
 
 LAB_2Y01:
 							| now evaluate result
-	TST.b		expneg.w(%a3)		| test exponent sign
+	TST.b		expneg.w(%a5)		| test exponent sign
 	BPL.s		LAB_2Y02			| branch if sign positive
 
 	NEG.l		%d4				| negate decimal exponent
@@ -7811,14 +7590,14 @@ LAB_2Y04:
 	MULS		#6,%d4			| 6 bytes per entry
 	MOVE.l	%a0,-(%sp)			| save register
 	LEA		LAB_P_10(%pc),%a0		| point to table
-	MOVE.b	(%a0,%d4.w),FAC2_e.w(%a3)	| copy exponent for multiply
-	MOVE.l	2(%a0,%d4.w),FAC2_m.w(%a3)	| copy table mantissa
+	MOVE.b	(%a0,%d4.w),FAC2_e.w(%a5)	| copy exponent for multiply
+	MOVE.l	2(%a0,%d4.w),FAC2_m.w(%a5)	| copy table mantissa
 	MOVE.l	(%sp)+,%a0			| restore register
 
 	EORI.b	#0x80,%d3			| normalise input exponent
-	MOVE.l	%d1,FAC1_m.w(%a3)		| save input mantissa
-	MOVE.b	%d3,FAC1_e.w(%a3)		| save input exponent
-	MOVE.b	FAC1_s.w(%a3),FAC_sc.w(%a3)	| set sign as sign compare
+	MOVE.l	%d1,FAC1_m.w(%a5)		| save input mantissa
+	MOVE.b	%d3,FAC1_e.w(%a5)		| save input exponent
+	MOVE.b	FAC1_s.w(%a5),FAC_sc.w(%a5)	| set sign as sign compare
 
 	MOVEM.l	(%sp)+,%d1-%d5		| restore registers
 	BRA		LAB_MULTIPLY		| go multiply input by table
@@ -7827,8 +7606,8 @@ LAB_ret0:
 	MOVEQ		#0,%d1			| clear mantissa
 LAB_rtn0:
 	MOVE.l	%d1,%d3			| clear exponent
-	MOVE.b	%d3,FAC1_e.w(%a3)		| save exponent
-	MOVE.l	%d1,FAC1_m.w(%a3)		| save mantissa
+	MOVE.b	%d3,FAC1_e.w(%a5)		| save exponent
+	MOVE.l	%d1,FAC1_m.w(%a5)		| save mantissa
 	MOVEM.l	(%sp)+,%d1-%d5		| restore registers
 	RTS
 
@@ -7841,7 +7620,7 @@ LAB_rtn0:
 # get hex number
 
 LAB_CHEX:
-	MOVE.b	#0x40,Dtypef.w(%a3)	| set integer numeric data type
+	MOVE.b	#0x40,Dtypef.w(%a5)	| set integer numeric data type
 	MOVEQ		#32,%d3			| set up max binary exponent
 LAB_CHXX:
 	BSR		LAB_IGBY			| increment & scan memory
@@ -7888,8 +7667,8 @@ LAB_CHX2:
 
 LAB_exxf:
 	EORI.b	#0x80,%d3			| normalise exponent
-	MOVE.b	%d3,FAC1_e.w(%a3)		| save exponent
-	MOVE.l	%d1,FAC1_m.w(%a3)		| save mantissa
+	MOVE.b	%d3,FAC1_e.w(%a5)		| save exponent
+	MOVE.l	%d1,FAC1_m.w(%a5)		| save mantissa
 	MOVEM.l	(%sp)+,%d1-%d5		| restore registers
 RTS_024:
 	RTS
@@ -7903,7 +7682,7 @@ RTS_024:
 # get binary number
 
 LAB_CBIN:
-	MOVE.b	#0x40,Dtypef.w(%a3)	| set integer numeric data type
+	MOVE.b	#0x40,Dtypef.w(%a5)	| set integer numeric data type
 	MOVEQ		#32,%d3			| set up max binary exponent
 LAB_CBXN:
 	BSR		LAB_IGBY			| increment & scan memory
@@ -8870,6 +8649,7 @@ LAB_BAER:
 	dc.w	LAB_WD-LAB_BAER			| $28 wrong dimensions
 	dc.w	LAB_AD-LAB_BAER			| $2A address
 	dc.w	LAB_FO-LAB_BAER			| $2C format
+	dc.w	LAB_NI-LAB_BAER			| $2E not implemented
 
 LAB_NF:	.asciz	"NEXT without FOR"
 LAB_SN:	.asciz	"Syntax"
@@ -8894,6 +8674,7 @@ LAB_UA:	.asciz	"Undimensioned array"
 LAB_WD:	.asciz	"Wrong dimensions"
 LAB_AD:	.asciz	"Address"
 LAB_FO:	.asciz	"Format"
+LAB_NI:	.asciz	"Not implemented"
 
 
 #####################################################################################
@@ -9327,9 +9108,5 @@ LAB_SMSG:
 # MID$	. MID$(<sexpr>,<nexpr>[,<nexpr>])				| done
 # USING$	. USING$(<sexpr>,<nexpr>[,<nexpr>]...])			| done
 
-
-#####################################################################################
-
-#	END	code_start
 
 #####################################################################################

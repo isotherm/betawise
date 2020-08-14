@@ -197,8 +197,7 @@ file_id:	ds.l	1			| load/save file ID
 
 prg_strt:
 
+ram_size	=	0x8000		| RAM size (32kB)
+		.org	ram_size		| pad .bss section to RAM size
+
 		.text
-
-ram_addr	=	0x80000		| RAM start address
-ram_size	=	0x80000		| RAM size
-
