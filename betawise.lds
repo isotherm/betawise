@@ -8,6 +8,7 @@ SECTIONS
     footer : { *(footer) }
     __rom_size = .;
     . = 0x0;
-    .bss : { *(.bss*) }
+    .bss : { *(COMMON) *(.bss*) }
+    __bss_size = .;
     /DISCARD/ : { *(*) }
 }

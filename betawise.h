@@ -194,13 +194,15 @@ struct Header_t {
 };
 
 extern char __rom_size;
+extern char __bss_size;
 
 #define APPLET_HEADER_BEGIN \
+    struct gd_t _placeholder_global_data; \
     uint32_t __footer __attribute__ ((section("footer"))) = { 0xCAFEFEED }; \
     struct Header_t __header __attribute__ ((section("header"))) = { \
         .signature = 0xC0FFEEAD, \
         .romUsage = (uint32_t)&__rom_size, \
-        .ramUsage = sizeof(struct gd_t), \
+        .ramUsage = (uint32_t)&__bss_size, \
         .settingsOffset = 0, \
         .flags = 0xFF000000, \
         .headerVersion = 1, \
@@ -226,7 +228,6 @@ extern char __rom_size;
 #define APPLET_HEADER_END };
 
 // Global data pointer (applets must store global static data in this struct)
-struct gd_t;
 register volatile struct gd_t* gd asm("a5");
 
 #endif
