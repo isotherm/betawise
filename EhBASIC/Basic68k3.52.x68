@@ -258,7 +258,7 @@ VEC_SV
 	PEA		SAVE_RTN(pc)		* set the return point
 	BEQ.s		get_name			* if no following go use the file requester
 
-	CMP.b		#',',d0			* compare the following byte with ","
+	CMPI.b	#',',d0			* compare the following byte with ","
 	BNE		get_file			* if not "," get the filename from the line
 
 	BEQ.s		get_name			* else go use the file requester
@@ -285,7 +285,7 @@ SAVE_RTN
 	BSR		LAB_GBYT			* get next BASIC byte
 	BEQ		SAVE_bas			* if no following go do SAVE
 
-	CMP.b		#',',d0			* else compare with ","
+	CMPI.b	#',',d0			* else compare with ","
 	BNE		LAB_SNER			* if not "," so go do syntax error/warm start
 
 	BSR		LAB_IGBY			* increment & scan memory
@@ -353,7 +353,7 @@ code_start
 * in d0
 
 LAB_COLD
-	CMP.l		#$4000,d0			* compare size with 16k
+	CMPI.l	#$4000,d0			* compare size with 16k
 	BGE.s		LAB_sizok			* branch if >= 16k
 
 	MOVEQ		#5,d0				* error 5 - not enough RAM
@@ -497,7 +497,7 @@ LAB_UVER
 	SWAP		d0				* ........ .......0 .......$ .......&
 	ROR.b		#1,d0				* ........ .......0 .......$ &.......
 	LSR.w		#1,d0				* ........ .......0 0....... $&.....­.
-	AND.b		#$C0,d0			* mask the type bits
+	ANDI.b	#$C0,d0			* mask the type bits
 	MOVE.b	d0,Dtypef(a3)		* save the data type
 
 	MOVEQ		#0,d0				* clear d0 and set the zero flag
@@ -866,10 +866,10 @@ LAB_1359
 
 	BEQ.s		LAB_1359			* loop if null byte
 
-	CMP.b		#$07,d0			* compare with [BELL]
+	CMPI.b	#$07,d0			* compare with [BELL]
 	BEQ.s		LAB_1378			* branch if [BELL]
 
-	CMP.b		#$0D,d0			* compare with [CR]
+	CMPI.b	#$0D,d0			* compare with [CR]
 	BEQ		LAB_1866			* do CR/LF exit if [CR]
 
 	TST.w		d1				* set flags on buffer index
@@ -878,18 +878,18 @@ LAB_1359
 * the next two lines ignore any non printing character and [SPACE] if the input buffer
 * is empty
 
-	CMP.b		#' ',d0			* compare with [SP]+1
+	CMPI.b	#' ',d0			* compare with [SP]+1
 	BLS.s		LAB_1359			* if < ignore character
 
-*##	CMP.b		#' '+1,d0			* compare with [SP]+1
+*##	CMPI.b	#' '+1,d0			* compare with [SP]+1
 *##	BCS.s		LAB_1359			* if < ignore character
 
 LAB_1374
-	CMP.b		#$08,d0			* compare with [BACKSPACE]
+	CMPI.b	#$08,d0			* compare with [BACKSPACE]
 	BEQ.s		LAB_134B			* go delete last character
 
 LAB_1378
-	CMP.w		#(Ibuffe-Ibuffs-1),d1	* compare character count with max-1
+	CMPI.W	#(Ibuffe-Ibuffs-1),d1	* compare character count with max-1
 	BCC.s		LAB_138E			* skip store & do [BELL] if buffer full
 
 	MOVE.b	d0,(a0,d1.w)		* else store in buffer
@@ -917,22 +917,22 @@ LAB_1392
 	MOVE.b	(a5,d1.w),d0		* get a byte from the input buffer
 	BEQ		LAB_13EC			* if [EOL] go save it without crunching
 
-	CMP.b		#' ',d0			* compare the character with " "
+	CMPI.b	#' ',d0			* compare the character with " "
 	BEQ.s		LAB_1392			* if [SPACE] just go save it and get another
 
-	CMP.b		#'0',d0			* compare the character with "0"
+	CMPI.b	#'0',d0			* compare the character with "0"
 	BCS.s		LAB_13C6			* if < "0" quit the hex save loop
 
-	CMP.b		#'9',d0			* compare with "9"
+	CMPI.b	#'9',d0			* compare with "9"
 	BLS.s		LAB_1392			* if it is "0" to "9" save it and get another
 
 	MOVEQ		#-33,d5			* mask xx0x xxxx, ASCII upper case
 	AND.b		d0,d5				* mask the character
 
-	CMP.b		#'A',d5			* compare with "A"
+	CMPI.b	#'A',d5			* compare with "A"
 	BCS.s		LAB_13CC			* if < "A" quit the hex save loop
 
-	CMP.b		#'F',d5			* compare with "F"
+	CMPI.b	#'F',d5			* compare with "F"
 	BLS.s		LAB_1392			* if it is "A" to "F" save it and get another
 
 	BRA.s		LAB_13CC			* else continue crunching
@@ -959,24 +959,24 @@ LAB_13AC
 	MOVE.b	(a5,d1.w),d0		* get byte from input buffer
 	BEQ.s		LAB_13EC			* if null save byte then continue crunching
 
-	CMP.b		#'_',d0			* compare with "_"
+	CMPI.b	#'_',d0			* compare with "_"
 	BCC.s		LAB_13EC			* if >= "_" save byte then continue crunching
 
-	CMP.b		#'<',d0			* compare with "<"
+	CMPI.b	#'<',d0			* compare with "<"
 	BCC.s		LAB_13CC			* if >= "<" go crunch
 
-	CMP.b		#'0',d0			* compare with "0"
+	CMPI.b	#'0',d0			* compare with "0"
 	BCC.s		LAB_13EC			* if >= "0" save byte then continue crunching
 
 	MOVE.b	d0,Asrch(a3)		* save buffer byte as search character
-	CMP.b		#$22,d0			* is it quote character?
+	CMPI.b	#$22,d0			* is it quote character?
 	BEQ.s		LAB_1410			* branch if so (copy quoted string)
 
-	CMP.b		#'$',d0			* is it the hex value character?
+	CMPI.b	#'$',d0			* is it the hex value character?
 	BEQ.s		LAB_1392			* if so go copy a hex value
 
 LAB_13C6
-	CMP.b		#'*',d0			* compare with "*"
+	CMPI.b	#'*',d0			* compare with "*"
 	BCS.s		LAB_13EC			* if <= "*" save byte then continue crunching
 
 							* crunch rest
@@ -1022,7 +1022,7 @@ LAB_13EC
 	BEQ.s		LAB_13FF			* branch if it was ":" (is now $00)
 
 							* d0 now holds token-$3A
-	CMP.b		#(TK_DATA-$3A),d0		* compare with DATA token - $3A
+	CMPI.b	#(TK_DATA-$3A),d0		* compare with DATA token - $3A
 	BNE.s		LAB_1401			* branch if not DATA
 
 							* token was : or DATA
@@ -1187,7 +1187,7 @@ LAB_LIST
 	TST.b		d0				* test next byte
 	BEQ.s		LAB_14C0			* branch if next character [NULL] (LIST)
 
-	CMP.b		#TK_MINUS,d0		* compare with token for -
+	CMPI.b	#TK_MINUS,d0		* compare with token for -
 	BNE.s		RTS_005			* exit if not - (LIST -m)
 
 							* LIST [[n]-[m]] this sets the n, if present,
@@ -1201,7 +1201,7 @@ LAB_14C0
 	BEQ.s		LAB_14D4			* branch if no more characters
 
 							* this bit checks the - is present
-	CMP.b		#TK_MINUS,d0		* compare with token for -
+	CMPI.b	#TK_MINUS,d0		* compare with token for -
 	BNE.s		RTS_005			* return if not "-" (will be Syntax error)
 
 	MOVEQ		#-1,d1			* set end to $FFFFFFFF
@@ -1233,11 +1233,11 @@ LAB_14E2
 	MOVEQ		#$20,d0			* space is the next character
 LAB_150C
 	BSR		LAB_PRNA			* go print the character
-	CMP.b		#$22,d0			* was it " character
+	CMPI.b	#$22,d0			* was it " character
 	BNE.s		LAB_1519			* branch if not
 
 							* we're either entering or leaving quotes
-	EOR.b		#$FF,Oquote(a3)		* toggle open quote flag
+	EORI.b	#$FF,Oquote(a3)		* toggle open quote flag
 LAB_1519
 	MOVE.b	(a0)+,d0			* get byte and increment pointer
 	BNE.s		LAB_152E			* branch if not [EOL] (go print)
@@ -1317,7 +1317,7 @@ LAB_FOR
 	MOVE.w	#$8100,FAC1_e(a3)		* set default STEP size exponent and sign
 
 	BSR		LAB_GBYT			* scan memory
-	CMP.b		#TK_STEP,d0			* compare with STEP token
+	CMPI.b	#TK_STEP,d0			* compare with STEP token
 	BNE.s		LAB_15B3			* jump if not "STEP"
 
 							* was STEP token so ....
@@ -1335,7 +1335,7 @@ LAB_15B3
 
 LAB_15DC						* have reached [EOL]+1
 	MOVE.w	a5,d0				* copy BASIC execute pointer
-	AND.w		#1,d0				* and make line start address even
+	ANDI.w	#1,d0				* and make line start address even
 	ADD.w		d0,a5				* add to BASIC execute pointer
 	MOVE.l	(a5)+,d0			* get next line pointer
 	BEQ		LAB_1274			* if null go to immediate mode, no "BREAK"
@@ -1358,7 +1358,7 @@ LAB_15D1
 	MOVE.b	(a5)+,d0			* get this byte & increment pointer
 	BEQ.s		LAB_15DC			* loop if [EOL]
 
-	CMP.b		#$3A,d0			* compare with ":"
+	CMPI.b	#$3A,d0			* compare with ":"
 	BEQ.s		LAB_15F6			* loop if was statement separator
 
 	BRA		LAB_SNER			* else syntax error, then warm start
@@ -1375,7 +1375,7 @@ LAB_1602
 	EORI.b	#$80,d0			* normalise token
 	BMI		LAB_LET			* if not token, go do implied LET
 
-	CMP.b		#(TK_TAB-$80),d0		* compare normalised token with TAB
+	CMPI.b	#(TK_TAB-$80),d0		* compare normalised token with TAB
 	BCC		LAB_SNER			* branch if d0>=TAB, syntax error/warm start
 							* only tokens before TAB can start a statement
 
@@ -1398,7 +1398,7 @@ LAB_1629
 * if there was a key press it gets back here .....
 
 LAB_1636
-	CMP.b		#$03,d0			* compare with CTRL-C
+	CMPI.b	#$03,d0			* compare with CTRL-C
 	BEQ.s		LAB_163B			* STOP if was CTRL-C
 
 LAB_1639
@@ -1459,7 +1459,7 @@ LAB_RESs
 	BNE.s		LAB_RESs			* loop if not EOL
 
 	MOVE.w	a0,d0				* copy pointer
-	AND.w		#1,d0				* mask odd bit
+	ANDI.w	#1,d0				* mask odd bit
 	ADD.w		d0,a0				* add pointer
 							* search for line in Itemp from (a0)
 LAB_GSCH
@@ -1570,7 +1570,7 @@ LAB_GOTs
 	BNE.s		LAB_GOTs			* loop if not EOL
 
 	MOVE.w	a0,d0				* past pad byte(s)
-	AND.w		#1,d0				* mask odd bit
+	ANDI.w	#1,d0				* mask odd bit
 	ADD.w		d0,a0				* add to pointer
 
 LAB_16D0
@@ -1589,13 +1589,13 @@ LAB_16D0
 * perform LOOP
 
 LAB_LOOP
-	CMP.w		#TK_DO,4(sp)		* compare token on stack with DO token
+	CMPI.W	#TK_DO,4(sp)		* compare token on stack with DO token
 	BNE		LAB_LDER			* branch if no matching DO
 
 	MOVE.b	d0,d7				* copy following token (byte)
 	BEQ.s		LoopAlways			* if no following token loop forever
 
-	CMP.b		#':',d7			* compare with ":"
+	CMPI.b	#':',d7			* compare with ":"
 	BEQ.s		LoopAlways			* if no following token loop forever
 
 	SUB.b		#TK_UNTIL,d7		* subtract token for UNTIL
@@ -1641,7 +1641,7 @@ LoopDone
 LAB_RETURN
 	BNE.s		RTS_007			* exit if following token to allow syntax error
 
-	CMP.w		#TK_GOSUB,4(sp)		* compare token from stack with GOSUB
+	CMPI.W	#TK_GOSUB,4(sp)		* compare token from stack with GOSUB
 	BNE		LAB_RGER			* do RETURN without GOSUB error if no matching
 							* GOSUB
 
@@ -1711,11 +1711,11 @@ LAB_1725
 LAB_IF
 	BSR		LAB_EVEX			* evaluate expression
 	BSR		LAB_GBYT			* scan memory
-	CMP.b		#TK_THEN,d0			* compare with THEN token
+	CMPI.b	#TK_THEN,d0			* compare with THEN token
 	BEQ.s		LAB_174B			* if it was THEN then continue
 
 							* wasn't IF .. THEN so must be IF .. GOTO
-	CMP.b		#TK_GOTO,d0			* compare with GOTO token
+	CMPI.b	#TK_GOTO,d0			* compare with GOTO token
 	BNE		LAB_SNER			* if not GOTO token do syntax error/warm start
 
 							* was GOTO so check for GOTO <n>
@@ -1734,7 +1734,7 @@ LAB_174B
 							* statement so there is no need to return
 							* to this code
 
-	CMP.b		#TK_RETURN,d0		* compare with RETURN token
+	CMPI.b	#TK_RETURN,d0		* compare with RETURN token
 	BEQ		LAB_1602			* if RETURN then interpret BASIC code from (a5)
 							* and don't return here
 
@@ -1744,7 +1744,7 @@ LAB_174B
 * here to check and ignore the ELSE if present
 
 	MOVE.b	(a5),d0			* get the next basic byte
-	CMP.b		#TK_ELSE,d0			* compare it with the token for ELSE
+	CMPI.b	#TK_ELSE,d0			* compare it with the token for ELSE
 	BEQ		LAB_DATA			* if ELSE ignore the following statement
 
 * there was no ELSE so continue execution of IF <expr> THEN <stat> [: <stat>]. any
@@ -1810,10 +1810,10 @@ LAB_ON
 	MOVE.b	d0,d2				* copy byte
 	BSR		LAB_GBYT			* restore BASIC byte
 	MOVE.w	d0,-(sp)			* push GOTO/GOSUB token
-	CMP.b		#TK_GOSUB,d0		* compare with GOSUB token
+	CMPI.b	#TK_GOSUB,d0		* compare with GOSUB token
 	BEQ.s		LAB_176C			* branch if GOSUB
 
-	CMP.b		#TK_GOTO,d0			* compare with GOTO token
+	CMPI.b	#TK_GOTO,d0			* compare with GOTO token
 	BNE		LAB_SNER			* if not GOTO do syntax error, then warm start
 
 * next character was GOTO or GOSUB
@@ -1829,7 +1829,7 @@ LAB_1773
 	BSR		LAB_IGBY			* increment & scan memory
 	BSR.s		LAB_GFPN			* get fixed-point number into temp integer & d1
 							* (skip this n)
-	CMP.b		#$2C,d0			* compare next character with ","
+	CMPI.b	#$2C,d0			* compare next character with ","
 	BEQ.s		LAB_176C			* loop if ","
 
 	MOVE.w	(sp)+,d0			* pull GOTO/GOSUB token (run out of options)
@@ -2049,16 +2049,16 @@ LAB_PRINT
 	BEQ.s		LAB_CRLF			* if nothing following just print CR/LF
 
 LAB_1831
-	CMP.b		#TK_TAB,d0			* compare with TAB( token
+	CMPI.b	#TK_TAB,d0			* compare with TAB( token
 	BEQ.s		LAB_18A2			* go do TAB/SPC
 
-	CMP.b		#TK_SPC,d0			* compare with SPC( token
+	CMPI.b	#TK_SPC,d0			* compare with SPC( token
 	BEQ.s		LAB_18A2			* go do TAB/SPC
 
-	CMP.b		#',',d0			* compare with ","
+	CMPI.b	#',',d0			* compare with ","
 	BEQ.s		LAB_188B			* go do move to next TAB mark
 
-	CMP.b		#';',d0			* compare with ";"
+	CMPI.b	#';',d0			* compare with ";"
 	BEQ		LAB_18BD			* if ";" continue with PRINT processing
 
 	BSR		LAB_EVEX			* evaluate expression
@@ -2127,11 +2127,11 @@ LAB_18A2
 	BSR		LAB_SGBY			* increment and get byte, result in d0 and Itemp
 	MOVE.w	d0,d2				* copy byte
 	BSR		LAB_GBYT			* get basic byte back
-	CMP.b		#$29,d0			* is next character ")"
+	CMPI.b	#$29,d0			* is next character ")"
 	BNE		LAB_SNER			* if not do syntax error, then warm start
 
 	MOVE.w	(sp)+,d0			* get token back
-	CMP.b		#TK_TAB,d0			* was it TAB ?
+	CMPI.b	#TK_TAB,d0			* was it TAB ?
 	BNE.s		LAB_18B7			* branch if not (was SPC)
 
 							* calculate TAB offset
@@ -2200,7 +2200,7 @@ LAB_18E3
 
 LAB_PRNA
 	MOVE.l	d1,-(sp)			* save d1
-	CMP.b		#$20,d0			* compare with " "
+	CMPI.b	#$20,d0			* compare with " "
 	BCS.s		LAB_18F9			* branch if less, non printing character
 
 							* don't check fit if terminal width byte is zero
@@ -2226,7 +2226,7 @@ LAB_18F7
 	ADDQ.b	#$01,TPos(a3)		* increment terminal position
 LAB_18F9
 	JSR		V_OUTP(a3)			* output byte via output vector
-	CMP.b		#$0D,d0			* compare with [CR]
+	CMPI.b	#$0D,d0			* compare with [CR]
 	BNE.s		LAB_188A			* branch if not [CR]
 
 							* else print nullct nulls after the [CR]
@@ -2273,7 +2273,7 @@ LAB_1913
 
 LAB_INPUT
 	BSR		LAB_CKRN			* check not direct (back here if ok)
-	CMP.b		#'"',d0			* compare the next byte with open quote
+	CMPI.b	#'"',d0			* compare the next byte with open quote
 	BNE.s		LAB_1934			* if no prompt string just go get the input
 
 	BSR		LAB_1BC1			* print "..." string
@@ -2375,7 +2375,7 @@ LAB_1986
 
 							* else get string
 	MOVE.b	d0,d2				* save search character
-	CMP.b		#$22,d0			* was it " ?
+	CMPI.b	#$22,d0			* was it " ?
 	BEQ.s		LAB_1999			* branch if so
 
 	MOVEQ		#':',d2			* set new search character
@@ -2402,7 +2402,7 @@ LAB_19B6
 	BSR		LAB_GBYT			* scan memory
 	BEQ.s		LAB_19C2			* branch if null (last entry)
 
-	CMP.b		#',',d0			* else compare with ","
+	CMPI.b	#',',d0			* else compare with ","
 	BNE		LAB_1904			* if not "," go handle bad input data
 
 	ADDQ.w	#1,a5				* else was "," so point to next chr
@@ -2424,13 +2424,13 @@ LAB_19DD
 							* returns a0 as pointer to [:] or [EOL]
 	MOVEA.l	a0,a5				* add index, now = pointer to [EOL]/[EOS]
 	ADDQ.w	#1,a5				* pointer to next character
-	CMP.b		#':',d0			* was it statement end?
+	CMPI.b	#':',d0			* was it statement end?
 	BEQ.s		LAB_19F6			* branch if [:]
 
 							* was [EOL] so find next line
 
 	MOVE.w	a5,d1				* past pad byte(s)
-	AND.w		#1,d1				* mask odd bit
+	ANDI.w	#1,d1				* mask odd bit
 	ADD.w		d1,a5				* add pointer
 	MOVE.l	(a5)+,d2			* get next line pointer
 	BEQ		LAB_ODER			* branch if end of program
@@ -2438,7 +2438,7 @@ LAB_19DD
 	MOVE.l	(a5)+,Dlinel(a3)		* save current DATA line
 LAB_19F6
 	BSR		LAB_GBYT			* scan memory
-	CMP.b		#TK_DATA,d0			* compare with "DATA" token
+	CMPI.b	#TK_DATA,d0			* compare with "DATA" token
 	BEQ		LAB_1985			* was "DATA" so go do next READ
 
 	BRA.s		LAB_19DD			* go find next statement if not "DATA"
@@ -2473,7 +2473,7 @@ LAB_NEXT
 	BNE.s		LAB_1A46			* branch if NEXT var
 
 	ADDQ.w	#4,sp				* back past return address
-	CMP.w		#TK_FOR,(sp)		* is FOR token on stack?
+	CMPI.W	#TK_FOR,(sp)		* is FOR token on stack?
 	BNE		LAB_NFER			* if not do NEXT without FOR err/warm start
 
 	MOVEA.l	2(sp),a0			* get stacked FOR variable pointer
@@ -2546,7 +2546,7 @@ LAB_1A90
 LAB_1A9B
 	ADDA.w	#28,sp			* add 28 to dump FOR structure
 	BSR		LAB_GBYT			* scan memory
-	CMP.b		#$2C,d0			* compare with ","
+	CMPI.b	#$2C,d0			* compare with ","
 	BNE		LAB_15C2			* if not "," go do interpreter inner loop
 
 							* was "," so another NEXT variable to do
@@ -2634,7 +2634,7 @@ LAB_1ADE
 	SUB.b		#TK_GT,d0			* subtract token for > (lowest compare function)
 	BCS.s		LAB_1AFA			* branch if < TK_GT
 
-	CMP.b		#$03,d0			* compare with ">" to "<" tokens
+	CMPI.b	#$03,d0			* compare with ">" to "<" tokens
 	BCS.s		LAB_1AE0			* branch if <= TK_SGN (is compare function)
 
 	TST.b		comp_f(a3)			* test compare function flag
@@ -2724,7 +2724,7 @@ LAB_1B7B
 	BEQ.s		LAB_1B9D			* exit if done
 
 LAB_1B7D
-	CMP.w		#$64,d0			* compare previous precedence with $64
+	CMPI.W	#$64,d0			* compare previous precedence with $64
 	BEQ.s		LAB_1B84			* branch if was $64 (< function can be string)
 
 	BSR		LAB_CTNM			* check if source is numeric, else type mismatch
@@ -2764,18 +2764,18 @@ LAB_GVAL
 
 							* else it is either a string, number, variable
 							* or (<expr>)
-	CMP.b		#'$',d0			* compare with "$"
+	CMPI.b	#'$',d0			* compare with "$"
 	BEQ		LAB_2887			* if "$" get hex number from string & return
 
-	CMP.b		#'%',d0			* else compare with "%"
+	CMPI.b	#'%',d0			* else compare with "%"
 	BEQ		LAB_2887			* if "%" get binary number from string & return
 
-	CMP.b		#$2E,d0			* compare with "."
+	CMPI.b	#$2E,d0			* compare with "."
 	BEQ		LAB_2887			* if so get FAC1 from string and return
 							* (e.g. .123)
 
 							* wasn't a number so ...
-	CMP.b		#$22,d0			* compare with "
+	CMPI.b	#$22,d0			* compare with "
 	BNE.s		LAB_1BF3			* if not open quote it must be a variable or
 							* open bracket
 
@@ -2794,7 +2794,7 @@ LAB_1BC1
 * get value from line .. continued
 							* wasn't any sort of number so ...
 LAB_1BF3
-	CMP.b		#'(',d0			* compare with "("
+	CMPI.b	#'(',d0			* compare with "("
 	BNE.s		LAB_1C18			* if not "(" get (var) and return value in FAC1
 							* and $ flag
 
@@ -2858,15 +2858,15 @@ LAB_IGBY
 LAB_GBYT
 	MOVE.b	(a5),d0			* get byte
 
-	CMP.b		#$20,d0			* compare with " "
+	CMPI.b	#$20,d0			* compare with " "
 	BEQ.s		LAB_IGBY			* if " " go do next
 
 * test current BASIC byte, exit with Cb = 1 if numeric character
 
-	CMP.b		#TK_ELSE,d0			* compare with the token for ELSE
+	CMPI.b	#TK_ELSE,d0			* compare with the token for ELSE
 	BCC.s		RTS_001			* exit if >= (not numeric, carry clear)
 
-	CMP.b		#$3A,d0			* compare with ":"
+	CMPI.b	#$3A,d0			* compare with ":"
 	BCC.s		RTS_001			* exit if >= (not numeric, carry clear)
 
 	MOVEQ		#$D0,d6			* set -"0"
@@ -2932,14 +2932,14 @@ LAB_1C1A
 * do tokens
 
 LAB_1BD0
-	CMP.b		#TK_MINUS,d0		* compare with token for -
+	CMPI.b	#TK_MINUS,d0		* compare with token for -
 	BEQ.s		LAB_1C11			* branch if - token (do set-up for - operator)
 
 							* wasn't -123 so ...
-	CMP.b		#TK_PLUS,d0			* compare with token for +
+	CMPI.b	#TK_PLUS,d0			* compare with token for +
 	BEQ		LAB_GVAL			* branch if + token (+n = n so ignore leading +)
 
-	CMP.b		#TK_NOT,d0			* compare with token for NOT
+	CMPI.b	#TK_NOT,d0			* compare with token for NOT
 	BNE.s		LAB_1BE7			* branch if not token for NOT
 
 							* was NOT token
@@ -2948,7 +2948,7 @@ LAB_1BD0
 
 							* wasn't +, - or NOT so ...
 LAB_1BE7
-	CMP.b		#TK_FN,d0			* compare with token for FN
+	CMPI.b	#TK_FN,d0			* compare with token for FN
 	BEQ		LAB_201E			* if FN go evaluate FNx
 
 							* wasn't +, -, NOT or FN so ...
@@ -2968,7 +2968,7 @@ LAB_1BE7
 * this also removes some less than elegant code that was used to bypass type checking
 * for functions that returned strings
 
-	AND.w		#$7F,d0			* mask byte
+	ANDI.w	#$7F,d0			* mask byte
 	ADD.w		d0,d0				* *2 (2 bytes per function offset)
 
 	LEA		LAB_FTBL(pc),a0		* pointer to functions vector table
@@ -3028,7 +3028,7 @@ LAB_LRMS
 	BPL		LAB_TMER			* if type is not string do type mismatch error
 
 	MOVE.b	(a5)+,d2			* get BASIC byte
-	CMP.b		#',',d2			* compare with comma
+	CMPI.b	#',',d2			* compare with comma
 	BNE		LAB_SNER			* if not "," go do syntax error/warm start
 
 	MOVE.l	FAC1_m(a3),-(sp)		* save descriptor pointer
@@ -3050,7 +3050,7 @@ LAB_BHSS
 							* result in d0 and Itemp
 	MOVEQ		#0,d1				* set default to no leading "0"s
 	MOVE.b	(a5)+,d2			* get BASIC byte
-	CMP.b		#',',d2			* compare with comma
+	CMPI.b	#',',d2			* compare with comma
 	BNE.s		LAB_BHCB			* if not "," go check close bracket
 
 	MOVE.l	d0,-(sp)			* copy number to stack
@@ -3059,7 +3059,7 @@ LAB_BHSS
 	MOVE.l	(sp)+,d0			* restore number from stack
 	MOVE.b	(a5)+,d2			* get BASIC byte
 LAB_BHCB
-	CMP.b		#')',d2			* compare with close bracket
+	CMPI.b	#')',d2			* compare with close bracket
 	BNE		LAB_SNER			* if not ")" do Syntax Error/warm start
 
 	RTS						* go do function
@@ -3231,7 +3231,7 @@ LAB_LSHIFT
 							* byte is in d2, integer is in d0 and Itemp
 	BEQ.s		NoShift			* branch if byte zero
 
-	CMP.b		#$20,d2			* compare bit count with 32d
+	CMPI.b	#$20,d2			* compare bit count with 32d
 	BCC.s		TooBig			* branch if >=
 
 	ASL.l		d2,d0				* shift longword
@@ -3248,7 +3248,7 @@ LAB_RSHIFT
 							* byte is in d2, integer is in d0 and Itemp
 	BEQ.s		NoShift			* branch if byte zero
 
-	CMP.b		#$20,d2			* compare bit count with 32d
+	CMPI.b	#$20,d2			* compare bit count with 32d
 	BCS.s		Not2Big			* branch if >= (return shift)
 
 	TST.l		d0				* test sign bit
@@ -3288,7 +3288,7 @@ GetPair
 * check alpha, return C=0 if<"A" or >"Z" or <"a" to "z">
 
 LAB_CASC
-	CMP.b		#$61,d0			* compare with "a"
+	CMPI.b	#$61,d0			* compare with "a"
 	BCC.s		LAB_1D83			* if >="a" go check =<"z"
 
 
@@ -3297,19 +3297,19 @@ LAB_CASC
 * check alpha upper case, return C=0 if<"A" or >"Z"
 
 LAB_CAUC
-	CMP.b		#$41,d0			* compare with "A"
+	CMPI.b	#$41,d0			* compare with "A"
 	BCC.s		LAB_1D8A			* if >="A" go check =<"Z"
 
 	OR		d0,d0				* make C=0
 	RTS
 
 LAB_1D8A
-	CMP.b		#$5B,d0			* compare with "Z"+1
+	CMPI.b	#$5B,d0			* compare with "Z"+1
 							* carry set if byte<="Z"
 	RTS
 
 LAB_1D83
-	CMP.b		#$7B,d0			* compare with "z"+1
+	CMPI.b	#$7B,d0			* compare with "z"+1
 							* carry set if byte<="z"
 	RTS
 
@@ -3358,7 +3358,7 @@ LAB_1D12
 							* $00=float
 
 LAB_1D2D
-	CMP.w		#$04,d1			* done all significant characters?
+	CMPI.W	#$04,d1			* done all significant characters?
 	BCC.s		LAB_1D2E			* if so go ignore any more
 
 	MOVE.b	d0,(a0,d1.w)		* save the character
@@ -3372,21 +3372,21 @@ LAB_1D2E
 	BCS.s		LAB_1D2D			* branch if = "A"-"Z" (ok)
 
 							* check if string variable
-	CMP.b		#'$',d0			* compare with "$"
+	CMPI.b	#'$',d0			* compare with "$"
 	BNE.s		LAB_1D44			* branch if not string
 
 							* type is string
-	OR.b		#$80,Varname+1(a3)	* set top bit of 2nd character, indicate string
+	ORI.b		#$80,Varname+1(a3)	* set top bit of 2nd character, indicate string
 	BSR		LAB_IGBY			* increment & scan memory
 	BRA.s		LAB_1D45			* skip integer check
 
 							* check if integer variable
 LAB_1D44
-	CMP.b		#'&',d0			* compare with "&"
+	CMPI.b	#'&',d0			* compare with "&"
 	BNE.s		LAB_1D45			* branch if not integer
 
 							* type is integer
-	OR.b		#$80,Varname+2(a3)	* set top bit of 3rd character, indicate integer
+	ORI.b		#$80,Varname+2(a3)	* set top bit of 3rd character, indicate integer
 	BSR		LAB_IGBY			* increment & scan memory
 
 * after we have determined the variable type we need to determine
@@ -3516,7 +3516,7 @@ LAB_1DD7
 	SWAP		d1				* ........ .......0 .......$ .......&
 	ROR.b		#1,d1				* ........ .......0 .......$ &.......
 	LSR.w		#1,d1				* ........ .......0 0....... $&.....­.
-	AND.b		#$C0,d1			* mask the type bits
+	ANDI.b	#$C0,d1			* mask the type bits
 	MOVE.b	d1,Dtypef(a3)		* save the data type
 
 	MOVE.b	#$00,Sufnxf(a3)		* clear FN flag byte
@@ -3613,7 +3613,7 @@ LAB_1E1F
 	MOVE.w	d0,-(sp)			* save DIM and data type flags
 	ADDQ.w	#1,d1				* increment dimensions count
 	BSR		LAB_GBYT			* scan memory
-	CMP.b		#$2C,d0			* compare with ","
+	CMPI.b	#$2C,d0			* compare with ","
 	BEQ.s		LAB_1E1F			* if found go do next dimension
 
 	MOVE.b	d1,Dimcnt(a3)		* store dimensions count
@@ -3870,7 +3870,7 @@ LAB_POS
 * convert d0 to unsigned byte in FAC1
 
 LAB_1FD0
-	AND.l		#$FF,d0			* clear high bits
+	ANDI.l	#$FF,d0			* clear high bits
 	BRA.s		LAB_AYFC			* convert d0 to signed longword in FAC1 & RET
 
 * check not direct (used by DEF and INPUT)
@@ -3897,7 +3897,7 @@ LAB_DEF
 	MOVE.l	a0,func_l(a3)		* save function pointer
 
 	BSR.s		LAB_CKRN			* check not direct (back here if ok)
-	CMP.b		#$28,(a5)+			* check next byte is "(" and increment
+	CMPI.b	#$28,(a5)+			* check next byte is "(" and increment
 	BNE		LAB_SNER			* else do syntax error/warm start
 
 	MOVE.b	#$7E,Sufnxf(a3)		* set FN variable flag bits
@@ -3926,7 +3926,7 @@ LAB_201E
 	BSR		LAB_1D12			* get FN name
 	MOVE.b	Dtypef(a3),-(sp)		* push data type flag (function type)
 	MOVE.l	a0,-(sp)			* push function pointer
-	CMP.b		#$28,(a5)			* check next byte is "(", no increment
+	CMPI.b	#$28,(a5)			* check next byte is "(", no increment
 	BNE		LAB_SNER			* else do syntax error/warm start
 
 	BSR		LAB_1BF7			* evaluate expression within parentheses
@@ -4036,7 +4036,7 @@ LAB_20BE
 	BNE.s		LAB_20BE			* loop if not terminator 2 (or null string)
 
 LAB_20CB
-	CMP.b		#$22,d0			* compare with "
+	CMPI.b	#$22,d0			* compare with "
 	BNE.s		LAB_20D0			* branch if not "
 
 	ADDQ.w	#1,a2				* else increment string start (skip " at end)
@@ -4217,7 +4217,7 @@ LAB_21C4
 	MOVEQ		#0,d1				* clear d1
 	MOVE.w	4(a1),d1			* d1 is string length
 	ADDQ.l	#1,d1				* +1
-	AND.b		#$FE,d1			* make even length
+	ANDI.b	#$FE,d1			* make even length
 	ADDA.l	d1,a0				* pointer is now to string end+1
 	MOVEA.l	Sstorl(a3),a2		* is destination end+1
 	CMPA.l	a2,a0				* does the string need moving
@@ -4254,7 +4254,7 @@ LAB_2206
 	MOVEQ		#-1,d0			* d0 = $FFFFFFFF
 	MOVE.w	4(a0),d0			* d0 is string length
 	NEG.w		d0				* make -ve
-	AND.b		#$FE,d0			* make -ve even length
+	ANDI.b	#$FE,d0			* make -ve even length
 	ADD.l		Sstorl(a3),d0		* add string store to -ve length
 	CMP.l		(a0),d0			* compare with string address
 	BEQ.s		LAB_2212			* if = go move string store pointer down
@@ -4483,7 +4483,7 @@ LAB_MIDS
 	SUBQ.w	#1,d7				* set default length = 65535
 	MOVE.l	d0,-(sp)			* save word 1
 	BSR		LAB_GBYT			* scan memory
-	CMP.b		#',',d0			* was it ","
+	CMPI.b	#',',d0			* was it ","
 	BNE.s		LAB_2358			* branch if not "," (skip second byte get)
 
 	MOVE.b	(a5)+,d0			* increment pointer past ","
@@ -4537,10 +4537,10 @@ LAB_LCASE
 LC_loop
 	MOVE.b	-(a1),d0			* get byte from string
 
-	CMP.b		#$5B,d0			* compare with "Z"+1
+	CMPI.b	#$5B,d0			* compare with "Z"+1
 	BCC.s		NoUcase			* if > "Z" skip change
 
-	CMP.b		#$41,d0			* compare with "A"
+	CMPI.b	#$41,d0			* compare with "A"
 	BCS.s		NoUcase			* if < "A" skip change
 
 	ORI.b		#$20,d0			* convert upper case to lower case
@@ -4572,10 +4572,10 @@ LAB_UCASE
 UC_loop
 	MOVE.b	-(a1),d0			* get a byte from the string
 
-	CMP.b		#$61,d0			* compare with "a"
+	CMPI.b	#$61,d0			* compare with "a"
 	BCS.s		NoLcase			* if < "a" skip change
 
-	CMP.b		#$7B,d0			* compare with "z"+1
+	CMPI.b	#$7B,d0			* compare with "z"+1
 	BCC.s		NoLcase			* if > "z" skip change
 
 	ANDI.b	#$DF,d0			* convert lower case to upper case
@@ -5049,7 +5049,7 @@ LAB_ADD
 LAB_249C
 	NEG.b		d0				* negate exponent difference (make diff +ve)
 	MOVE.l	d1,-(sp)			* save d1
-	CMP.b		#32,d0			* compare exponent diff with 32
+	CMPI.b	#32,d0			* compare exponent diff with 32
 	BLT.s		LAB_2467			* branch if range >= 32
 
 	MOVEQ		#0,d1				* clear d1
@@ -5184,7 +5184,7 @@ LAB_LOG
 	MOVE.b	FAC1_e(a3),d1		* get exponent
 	SUB.b		#$82,d1			* normalise and two integer bits
 	NEG.b		d1				* negate for shift
-**	CMP.b		#$1F,d1			* will mantissa vanish?
+**	CMPI.b	#$1F,d1			* will mantissa vanish?
 **	BGT.s		LAB_dunno			* if so do ???
 
 	MOVE.l	FAC1_m(a3),d0		* get mantissa
@@ -5577,7 +5577,7 @@ LAB_UFAC
 	MOVE.w	d0,FAC1_e(a3)		* save exponent and sign
 	BEQ.s		LAB_NB1T			* branch if exponent (and the rest) zero
 
-	OR.w		#$80,d0			* set MSb
+	ORI.w		#$80,d0			* set MSb
 	SWAP		d0				* word order back to normal
 	ASL.l		#8,d0				* shift exponent & clear guard byte
 LAB_NB1T
@@ -5616,7 +5616,7 @@ LAB_277C
 	MOVE.l	FAC1_m(a3),d0		* get FAC1 mantissa
 	ROR.l		#8,d0				* align 24/32 bit mantissa
 	SWAP		d0				* exponent/sign into 0-15
-	AND.w		#$7F,d0			* clear exponent and sign bit
+	ANDI.w	#$7F,d0			* clear exponent and sign bit
 	ANDI.b	#$80,FAC1_s(a3)		* clear non sign bits in sign
 	OR.w		FAC1_e(a3),d0		* OR in exponent and sign
 	SWAP		d0				* move exponent and sign back to 16-31
@@ -5652,7 +5652,7 @@ LAB_27BA
 	BCS		LAB_OFER			* if carry do overflow error & warm start
 
 LAB_27C3
-	AND.b		#$00,d0			* clear guard byte
+	ANDI.b	#$00,d0			* clear guard byte
 	MOVE.l	d0,FAC1_m(a3)		* save back to FAC1
 	RTS
 
@@ -5790,7 +5790,7 @@ LAB_2831
 	BRA		LAB_OFER			* do overflow if too big
 
 LAB_284G
-	CMP.b		#$20,d1			* compare with minimum result for integer
+	CMPI.b	#$20,d1			* compare with minimum result for integer
 	BCS.s		LAB_284L			* if < minimum just do shift
 
 	MOVEQ		#0,d0				* else return zero
@@ -5818,7 +5818,7 @@ LAB_INT
 	BLS.s		LAB_IRTS			* exit if exponent >= $A0
 							* (too big for fraction part!)
 
-	CMP.b		#$20,d0			* compare with minimum result for integer
+	CMPI.b	#$20,d0			* compare with minimum result for integer
 	BCC		LAB_POZE			* if >= minimum go return 0
 							* (too small for integer part!)
 
@@ -5918,7 +5918,7 @@ LAB_2978
 							* FAC1 is some non zero value
 LAB_2989
 	MOVE.b	#0,numexp(a3)		* clear number exponent count
-	CMP.b		#$81,d2			* compare FAC1 exponent with $81 (>1.00000)
+	CMPI.b	#$81,d2			* compare FAC1 exponent with $81 (>1.00000)
 
 	BCC.s		LAB_299C			* branch if FAC1=>1
 
@@ -5999,7 +5999,7 @@ LAB_29C3
 	ADD.b		#8,d0				* allow 7 digits before point
 	BMI.s		LAB_29D9			* if -ve then 1 digit before dp
 
-	CMP.b		#$09,d0			* d0>=9 if n>=1E7
+	CMPI.b	#$09,d0			* d0>=9 if n>=1E7
 	BCC.s		LAB_29D9			* branch if >= $09
 
 							* < $08
@@ -6054,7 +6054,7 @@ LAB_2A21
 	ADDQ.w	#4,d2				* increment index to next less power of ten
 	ADDQ.w	#1,d1				* increment output string index
 	MOVE.b	d0,d3				* copy character to d3
-	AND.b		#$7F,d3			* mask out top bit
+	ANDI.b	#$7F,d3			* mask out top bit
 	MOVE.b	d3,(a1,d1.w)		* save to output string
 	SUB.b		#1,numexp(a3)		* decrement # of characters before the dp
 	BNE.s		LAB_2A3B			* branch if still characters to do
@@ -6063,19 +6063,19 @@ LAB_2A21
 	ADDQ.l	#1,d1				* increment index
 	MOVE.b	#'.',(a1,d1.w)		* save to output string
 LAB_2A3B
-	AND.b		#$80,d0			* mask test sense bit
+	ANDI.b	#$80,d0			* mask test sense bit
 	EORI.b	#$80,d0			* invert it
-	CMP.b		#LAB_2A9B-LAB_2A9A,d2	* compare table index with max+4
+	CMPI.b	#LAB_2A9B-LAB_2A9A,d2	* compare table index with max+4
 	BNE.s		LAB_29FB			* loop if not max
 
 							* now remove trailing zeroes
 LAB_2A4B
 	MOVE.b	(a1,d1.w),d0		* get character from output string
 	SUBQ.l	#1,d1				* decrement output string index
-	CMP.b		#'0',d0			* compare with "0"
+	CMPI.b	#'0',d0			* compare with "0"
 	BEQ.s		LAB_2A4B			* loop until non "0" character found
 
-	CMP.b		#'.',d0			* compare with "."
+	CMPI.b	#'.',d0			* compare with "."
 	BEQ.s		LAB_2A58			* branch if was dp
 
 							* else restore last character
@@ -6270,19 +6270,19 @@ LAB_EXP
 	MOVE.b	FAC1_e(a3),d0		* get exponent
 	BEQ.s		LAB_EX1			* return 1 for zero in
 
-	CMP.b		#$64,d0			* compare exponent with min
+	CMPI.b	#$64,d0			* compare exponent with min
 	BCS.s		LAB_EX1			* if smaller just return 1
 
 **	MOVEM.l	d1-d6/a0,-(sp)		* save the registers
 	MOVE.b	#0,cosout(a3)		* flag +ve number
 	MOVE.l	FAC1_m(a3),d1		* get mantissa
-	CMP.b		#$87,d0			* compare exponent with max
+	CMPI.b	#$87,d0			* compare exponent with max
 	BHI.s		LAB_EXOU			* go do over/under flow if greater
 
 	BNE.s		LAB_EXCM			* branch if less
 
 							* else is 2^7
-	CMP.l		#$B00F33C7,d1		* compare mantissa with n*2^7 max
+	CMPI.l	#$B00F33C7,d1		* compare mantissa with n*2^7 max
 	BCC.s		LAB_EXOU			* if => go over/underflow
 
 LAB_EXCM
@@ -6503,7 +6503,7 @@ LAB_SIN
 	BMI.s		LAB_SCL0			* branch if < 1
 
 							* X is > 1
-	CMP.b		#$20,d0			* is it >= 2^32
+	CMPI.b	#$20,d0			* is it >= 2^32
 	BCC.s		LAB_SCZE			* may as well do zero
 
 	LSL.l		d0,d6				* shift out integer part bits
@@ -6520,7 +6520,7 @@ LAB_SCZE
 							* x is < 1
 LAB_SCL0
 	NEG.b		d0				* make +ve
-	CMP.b		#$1E,d0			* is it <= 2^-30
+	CMPI.b	#$1E,d0			* is it <= 2^-30
 	BCC.s		LAB_SCZE			* may as well do zero
 
 	LSR.l		d0,d6				* shift out <= 2^-32 bits
@@ -6571,7 +6571,7 @@ mainloop
 	SUB.l		d2,d1				* y = y + x1
 nexta
 	ADDQ.l	#1,d5				* i = i + 1
-	CMP.l		#$1E,d5			* check end condition
+	CMPI.l	#$1E,d5			* check end condition
 	BNE.s		mainloop			* loop if not all done
 
 							* now untangle output value
@@ -6599,7 +6599,7 @@ LAB_ATN
 	BEQ		RTS_021			* ATN(0) = 0 so skip calculation
 
 	MOVE.b	#0,cosout(a3)		* set result needed
-	CMP.b		#$81,d0			* compare exponent with 1
+	CMPI.b	#$81,d0			* compare exponent with 1
 	BCS.s		LAB_ATLE			* branch if n<1
 
 	BNE.s		LAB_ATGO			* branch if n>1
@@ -6669,7 +6669,7 @@ RTS_021
 LAB_BITSET
 	BSR		LAB_GADB			* get two parameters for POKE or WAIT
 							* first parameter in a0, second in d0
-	CMP.b		#$08,d0			* only 0 to 7 are allowed
+	CMPI.b	#$08,d0			* only 0 to 7 are allowed
 	BCC		LAB_FCER			* branch if > 7
 
 	BSET		d0,(a0)			* set bit
@@ -6683,7 +6683,7 @@ LAB_BITSET
 LAB_BITCLR
 	BSR		LAB_GADB			* get two parameters for POKE or WAIT
 							* first parameter in a0, second in d0
-	CMP.b		#$08,d0			* only 0 to 7 are allowed
+	CMPI.b	#$08,d0			* only 0 to 7 are allowed
 	BCC		LAB_FCER			* branch if > 7
 
 	BCLR		d0,(a0)			* clear bit
@@ -6698,12 +6698,12 @@ LAB_BTST
 	MOVE.b	(a5)+,d0			* increment BASIC pointer
 	BSR		LAB_GADB			* get two parameters for POKE or WAIT
 							* first parameter in a0, second in d0
-	CMP.b		#$08,d0			* only 0 to 7 are allowed
+	CMPI.b	#$08,d0			* only 0 to 7 are allowed
 	BCC		LAB_FCER			* branch if > 7
 
 	MOVE.l	d0,d1				* copy bit # to test
 	BSR		LAB_GBYT			* get next BASIC byte
-	CMP.b		#')',d0			* is next character ")"
+	CMPI.b	#')',d0			* is next character ")"
 	BNE		LAB_SNER			* if not ")" go do syntax error, then warm start
 
 	BSR		LAB_IGBY			* update execute pointer (to character past ")")
@@ -6756,7 +6756,7 @@ LAB_USINGS
 
 	MOVE.b	(a5)+,d0			* get the next BASIC byte
 LAB_U002
-	CMP.b		#',',d0			* compare with comma
+	CMPI.b	#',',d0			* compare with comma
 	BNE		LAB_SNER			* if not "," go do syntax error
 
 	BSR		LAB_ProcFo			* process the format string
@@ -6771,7 +6771,7 @@ LAB_U002
 	BEQ.s		LAB_U004			* if FAC1 = 0 skip the rounding
 
 	MOVE.w	fsdc(sp),d1			* get the format string decimal character count
-	CMP.w		#8,d1				* compare the fraction digit count with 8
+	CMPI.W	#8,d1				* compare the fraction digit count with 8
 	BCC.s		LAB_U004			* if >= 8 skip the rounding
 
 	MOVE.w	d1,d0				* else copy the fraction digit count
@@ -6803,7 +6803,7 @@ LAB_U006
 	MOVE.b	(a2,d6.w),d0		* get a number string character
 	BEQ.s		LAB_U010			* if null then number complete
 
-	CMP.b		#'E',d0			* compare the character with an "E"
+	CMPI.b	#'E',d0			* compare the character with an "E"
 	BEQ.s		LAB_U008			* was sx[.x]Esxx so go handle sci notation
 
 	CMP.b		d4,d0				* compare the character with "."
@@ -6819,7 +6819,7 @@ LAB_U008
 
 	ADDQ.w	#1,d6				* increment the index to the exponent sign
 	MOVE.b	(a2,d6.w),d0		* get the exponent sign character
-	CMP.b		#'-',d0			* compare the exponent sign with "-"
+	CMPI.b	#'-',d0			* compare the exponent sign with "-"
 	BNE		LAB_FCER			* if it wasn't sx[.x]E-xx go do function
 							* call error
 
@@ -6827,7 +6827,7 @@ LAB_U008
 
 	ADDQ.w	#1,d6				* increment the index to the exponent 10s
 	MOVE.b	(a2,d6.w),d0		* get the exponent 10s character
-	CMP.b		#'0',d0			* compare the exponent 10s with "0"
+	CMPI.b	#'0',d0			* compare the exponent 10s with "0"
 	BEQ.s		LAB_U009			* if it was sx[.x]E-0x go get the exponent
 							* 1s character
 
@@ -6903,10 +6903,10 @@ LAB_U018
 	BLS.s		LAB_U022			* if done the fraction digits go do integer
 
 	MOVE.b	(a0,d4.w),d0		* get a new format string character
-	CMP.b		#'%',d0			* compare it with "%"
+	CMPI.b	#'%',d0			* compare it with "%"
 	BEQ.s		LAB_U01C			* if "%" go copy a number character
 
-	CMP.b		#'#',d0			* compare it with "#"
+	CMPI.b	#'#',d0			* compare it with "#"
 	BNE.s		LAB_U018			* if not "#" go do the next new format character
 
 LAB_U01C
@@ -6944,11 +6944,11 @@ LAB_U02A
 	MOVE.b	(a0,d4.w),d0		* else get a new format string character
 
 	MOVEQ		#'0',d7			* default to "0" character
-	CMP.b		#'%',d0			* compare it with "%"
+	CMPI.b	#'%',d0			* compare it with "%"
 	BEQ.s		LAB_U02B			* if "%" go copy a number character
 
 	MOVEQ		#' ',d7			* default to " " character
-	CMP.b		#'#',d0			* compare it with "#"
+	CMPI.b	#'#',d0			* compare it with "#"
 	BNE.s		LAB_U02C			* if not "#" go try ","
 
 LAB_U02B
@@ -6958,13 +6958,13 @@ LAB_U02B
 	BRA.s		LAB_U03C			* else go save the default character
 
 LAB_U02C
-	CMP.b		#',',d0			* compare it with ","
+	CMPI.b	#',',d0			* compare it with ","
 	BNE.s		LAB_U030			* if not "," go try the sign characters
 
 	TST.w		d2				* test the number string index
 	BNE.s		LAB_U02E			* if not at the sign keep the ","
 
-	CMP.b		#'%',-1(a0,d4.w)		* else compare the next format string character
+	CMPI.b	#'%',-1(a0,d4.w)		* else compare the next format string character
 							* with "%"
 	BNE.s		LAB_U03C			* if not "%" keep the default character
 
@@ -6973,13 +6973,13 @@ LAB_U02E
 	BRA.s		LAB_U03C			* go save the character to the string
 
 LAB_U030
-	CMP.b		#'-',d0			* compare it with "-"
+	CMPI.b	#'-',d0			* compare it with "-"
 	BEQ.s		LAB_U034			* if "-" go do the sign character
 
-	CMP.b		#'+',d0			* compare it with "+"
+	CMPI.b	#'+',d0			* compare it with "+"
 	BNE.s		LAB_U02A			* if not "+" go do the next new format character
 
-	CMP.b		#'-',(a2)			* compare the sign character with "-"
+	CMPI.b	#'-',(a2)			* compare the sign character with "-"
 	BEQ.s		LAB_U034			* if "-" don't change the sign character
 
 	MOVE.b	#'+',(a2)			* else make the sign character "+"
@@ -7030,7 +7030,7 @@ LAB_U03E
 
 * the sign wasn't mandatory but the number may have been negative
 
-	CMP.b		#'-',(a2)			* compare the sign character with "-"
+	CMPI.b	#'-',(a2)			* compare the sign character with "-"
 	BNE.s		LAB_U04A			* if it wasn't "-" go add the string
 
 * else the sign was "-" and a sign hasn't been output so ..
@@ -7106,7 +7106,7 @@ LAB_U04A
 
 LAB_U04C
 	MOVE.b	(a5)+,d0			* get the next BASIC byte
-	CMP.b		#')',d0			* compare with close bracket
+	CMPI.b	#')',d0			* compare with close bracket
 	BNE		LAB_U002			* if not ")" go do next value
 
 * pop the result string off the descriptor stack
@@ -7198,13 +7198,13 @@ LAB_ProcFo
 LAB_P004
 	MOVE.b	(a1,d6.w),d0		* get a format string byte
 
-	CMP.b		#',',d0			* compare it with ","
+	CMPI.b	#',',d0			* compare it with ","
 	BEQ.s		LAB_P01A			* if "," go do the next format string byte
 
-	CMP.b		#'#',d0			* compare it with "#"
+	CMPI.b	#'#',d0			* compare it with "#"
 	BEQ.s		LAB_P008			* if "#" go flag special characters
 
-	CMP.b		#'%',d0			* compare it with "%"
+	CMPI.b	#'%',d0			* compare it with "%"
 	BNE.s		LAB_P00C			* if not "%" go try "+"
 
 LAB_P008
@@ -7215,10 +7215,10 @@ LAB_P008
 	BRA.s		LAB_P01A			* go do the next character
 
 LAB_P00C
-	CMP.b		#'+',d0			* compare it with "+"
+	CMPI.b	#'+',d0			* compare it with "+"
 	BEQ.s		LAB_P00E			* if "+" go flag special characters
 
-	CMP.b		#'-',d0			* compare it with "-"
+	CMPI.b	#'-',d0			* compare it with "-"
 	BNE.s		LAB_P010			* if not "-" go check decimal point
 
 LAB_P00E
@@ -7226,7 +7226,7 @@ LAB_P00E
 	BRA.s		LAB_P01A			* go do the next character
 
 LAB_P010
-	CMP.b		#'.',d0			* compare it with "."
+	CMPI.b	#'.',d0			* compare it with "."
 	BNE.s		LAB_P018			* if not "." go check next
 
 * "." a decimal point
@@ -7267,7 +7267,7 @@ LAB_P01E
 * # of leading 0s is in d1, the number is in d0
 
 LAB_BINS
-	CMP.b		#$21,d1			* max + 1
+	CMPI.b	#$21,d1			* max + 1
 	BCC		LAB_FCER			* exit if too big ( > or = )
 
 	MOVEQ		#$1F,d2			* bit count-1
@@ -7299,7 +7299,7 @@ NextB2
 	BEQ.s		BinPr				* if null then end of string so add 1 and go
 							* print it
 
-	CMP.b		#'0',d0			* compare with "0"
+	CMPI.b	#'0',d0			* compare with "0"
 	BNE.s		GoPr				* if not "0" then go print string from here
 
 	ADDQ.w	#1,a0				* else increment pointer
@@ -7323,7 +7323,7 @@ GoPr
 * # of leading 0s is in d1, the number is in d0
 
 LAB_HEXS
-	CMP.b		#$09,d1			* max + 1
+	CMPI.b	#$09,d1			* max + 1
 	BCC		LAB_FCER			* exit if too big ( > or = )
 
 	MOVEQ		#$07,d2			* nibble count-1
@@ -7332,7 +7332,7 @@ LAB_HEXS
 NextH1
 	MOVE.b	d0,d3				* copy lowest byte
 	ROR.l		#4,d0				* shift nibble into 0-3
-	AND.b		#$0F,d3			* just this nibble
+	ANDI.b	#$0F,d3			* just this nibble
 	MOVE.b	d3,d5				* copy it
 	ADD.b		#$F6,d5			* set extend bit
 	ABCD		d4,d3				* decimal add extend and character to zero
@@ -7424,7 +7424,7 @@ LAB_MINN
 * check for correct exit, else so syntax error
 
 LAB_MMEC
-	CMP.b		#')',d0			* is it end of function?
+	CMPI.b	#')',d0			* is it end of function?
 	BNE		LAB_SNER			* if not do MAX MIN syntax error
 
 	LEA		4(sp),sp			* dump return address (faster)
@@ -7436,7 +7436,7 @@ LAB_MMEC
 
 LAB_PHFA
 	BSR		LAB_GBYT			* get next BASIC byte
-	CMP.b		#',',d0			* is there more ?
+	CMPI.b	#',',d0			* is there more ?
 	BNE.s		LAB_MMEC			* if not go do end check
 
 	MOVE.w	FAC1_e(a3),-(sp)		* push exponent and sign
@@ -7465,14 +7465,14 @@ LAB_PHFA
 * perform WIDTH
 
 LAB_WDTH
-	CMP.b		#',',d0			* is next byte ","
+	CMPI.b	#',',d0			* is next byte ","
 	BEQ.s		LAB_TBSZ			* if so do tab size
 
 	BSR		LAB_GTBY			* get byte parameter, result in d0 and Itemp
 	TST.b		d0				* test result
 	BEQ.s		LAB_NSTT			* branch if set for infinite line
 
-	CMP.b		#$10,d0			* else make min width = 16d
+	CMPI.b	#$10,d0			* else make min width = 16d
 	BCS		LAB_FCER			* if less do function call error & exit
 
 * this next compare ensures that we can't exit WIDTH via an error leaving the
@@ -7487,7 +7487,7 @@ LAB_NSTT
 	BSR		LAB_GBYT			* get BASIC byte back
 	BEQ.s		WExit				* exit if no following
 
-	CMP.b		#',',d0			* else is it ","
+	CMPI.b	#',',d0			* else is it ","
 	BNE		LAB_SNER			* if not do syntax error
 
 LAB_TBSZ
@@ -7495,7 +7495,7 @@ LAB_TBSZ
 	TST.b		d0				* test TAB size
 	BMI		LAB_FCER			* if >127 do function call error & exit
 
-	CMP.b		#1,d0				* compare with min-1
+	CMPI.b	#1,d0				* compare with min-1
 	BCS		LAB_FCER			* if <=1 do function call error & exit
 
 	MOVE.b	TWidth(a3),d1		* set flags for width
@@ -7665,7 +7665,7 @@ LAB_2887
 	BSR		LAB_GBYT			* get first byte back
 	BCS.s		LAB_28FE			* go get floating if 1st character numeric
 
-	CMP.b		#'-',d0			* or is it -ve number
+	CMPI.b	#'-',d0			* or is it -ve number
 	BNE.s		LAB_289A			* branch if not
 
 	MOVE.b	#$FF,FAC1_s(a3)		* set sign byte
@@ -7673,7 +7673,7 @@ LAB_2887
 
 LAB_289A
 							* first character wasn't numeric or -
-	CMP.b		#'+',d0			* compare with '+'
+	CMPI.b	#'+',d0			* compare with '+'
 	BNE.s		LAB_289D			* branch if not '+' (go check for '.'/hex/binary
 							* /integer)
 	
@@ -7683,14 +7683,14 @@ LAB_289C
 	BCS.s		LAB_28FE			* branch if numeric character
 
 LAB_289D
-	CMP.b		#'.',d0			* else compare with '.'
+	CMPI.b	#'.',d0			* else compare with '.'
 	BEQ		LAB_2904			* branch if '.'
 
 							* code here for hex/binary/integer numbers
-	CMP.b		#'$',d0			* compare with '$'
+	CMPI.b	#'$',d0			* compare with '$'
 	BEQ		LAB_CHEX			* branch if '$'
 
-	CMP.b		#'%',d0			* else compare with '%'
+	CMPI.b	#'%',d0			* else compare with '%'
 	BEQ		LAB_CBIN			* branch if '%'
 
 	BRA		LAB_2Y01			* not #.$%& so return 0
@@ -7710,7 +7710,7 @@ LAB_28FF
 	BCS.s		LAB_28FF			* loop while numeric character
 
 							* done overflow, now flush fraction or do E
-	CMP.b		#'.',d0			* else compare with '.'
+	CMPI.b	#'.',d0			* else compare with '.'
 	BNE.s		LAB_2901			* branch if not '.'
 
 LAB_2900
@@ -7720,17 +7720,17 @@ LAB_2900
 
 LAB_2901
 							* done number, only (possible) exponent remains
-	CMP.b		#'E',d0			* else compare with 'E'
+	CMPI.b	#'E',d0			* else compare with 'E'
 	BNE.s		LAB_2Y01			* if not 'E' all done, go evaluate
 
 							* process exponent
 	BSR		LAB_IGBY			* get next character
 	BCS.s		LAB_2X04			* branch if digit
 
-	CMP.b		#'-',d0			* or is it -ve number
+	CMPI.b	#'-',d0			* or is it -ve number
 	BEQ.s		LAB_2X01			* branch if so
 
-	CMP.b		#TK_MINUS,d0		* or is it -ve number
+	CMPI.b	#TK_MINUS,d0		* or is it -ve number
 	BNE.s		LAB_2X02			* branch if not
 
 LAB_2X01
@@ -7738,10 +7738,10 @@ LAB_2X01
 	BRA.s		LAB_2X03			* now go scan & check exponent
 
 LAB_2X02
-	CMP.b		#'+',d0			* or is it +ve number
+	CMPI.b	#'+',d0			* or is it +ve number
 	BEQ.s		LAB_2X03			* branch if so
 
-	CMP.b		#TK_PLUS,d0			* or is it +ve number
+	CMPI.b	#TK_PLUS,d0			* or is it +ve number
 	BNE		LAB_SNER			* wasn't - + TK_MINUS TK_PLUS or # so do error
 
 LAB_2X03
@@ -7749,10 +7749,10 @@ LAB_2X03
 	BCC.s		LAB_2Y01			* if not digit all done, go evaluate
 LAB_2X04
 	MULU		#10,d4			* multiply decimal exponent by 10
-	AND.l		#$FF,d0			* mask character
+	ANDI.l	#$FF,d0			* mask character
 	SUB.b		#'0',d0			* convert to value
 	ADD.l		d0,d4				* add to decimal exponent
-	CMP.b		#48,d4			* compare with decimal exponent limit+10
+	CMPI.b	#48,d4			* compare with decimal exponent limit+10
 	BLE.s		LAB_2X03			* loop if no overflow/underflow
 
 LAB_2X05
@@ -7763,7 +7763,7 @@ LAB_2X05
 	BRA.s		LAB_2Y01			* all done, go evaluate
 
 LAB_2902
-	CMP.b		#'.',d0			* else compare with '.'
+	CMPI.b	#'.',d0			* else compare with '.'
 	BEQ.s		LAB_2904			* branch if was '.'
 
 	BRA.s		LAB_2901			* branch if not '.' (go check/do 'E')
@@ -7801,10 +7801,10 @@ LAB_2Y03
 
 							* ensure not too big or small
 LAB_2Y04
-	CMP.l		#38,d4			* compare decimal exponent with max exponent
+	CMPI.l	#38,d4			* compare decimal exponent with max exponent
 	BGT		LAB_OFER			* if greater do overflow error and warm start
 
-	CMP.l		#-38,d4			* compare decimal exponent with min exponent
+	CMPI.l	#-38,d4			* compare decimal exponent with min exponent
 	BLT.s		LAB_ret0			* if less just return zero
 
 	NEG.l		d4				* negate decimal exponent to go right way
@@ -7847,11 +7847,11 @@ LAB_CHXX
 	BSR		LAB_IGBY			* increment & scan memory
 	BCS.s		LAB_ISHN			* branch if numeric character
 
-	OR.b		#$20,d0			* case convert, allow "A" to "F" and "a" to "f"
+	ORI.b		#$20,d0			* case convert, allow "A" to "F" and "a" to "f"
 	SUB.b		#'a',d0			* subtract "a"
 	BCS.s		LAB_CHX3			* exit if <"a"
 
-	CMP.b		#$06,d0			* compare normalised with $06 (max+1)
+	CMPI.b	#$06,d0			* compare normalised with $06 (max+1)
 	BCC.s		LAB_CHX3			* exit if >"f"
 
 	ADD.b		#$3A,d0			* convert to nibble+"0"
@@ -7867,11 +7867,11 @@ LAB_CHX1
 	BSR		LAB_IGBY			* get next character
 	BCS.s		LAB_CHX1			* loop while numeric character
 
-	OR.b		#$20,d0			* case convert, allow "A" to "F" and "a" to "f"
+	ORI.b		#$20,d0			* case convert, allow "A" to "F" and "a" to "f"
 	SUB.b		#'a',d0			* subtract "a"
 	BCS.s		LAB_CHX3			* exit if <"a"
 
-	CMP.b		#$06,d0			* compare normalised with $06 (max+1)
+	CMPI.b	#$06,d0			* compare normalised with $06 (max+1)
 	BCS.s		LAB_CHX1			* loop if <="f"
 
 							* now return value
@@ -7909,7 +7909,7 @@ LAB_CBXN
 	BSR		LAB_IGBY			* increment & scan memory
 	BCC.s		LAB_CHX3			* if not numeric character go return value
 
-	CMP.b		#'2',d0			* compare with "2" (max+1)
+	CMPI.b	#'2',d0			* compare with "2" (max+1)
 	BCC.s		LAB_CHX3			* if >="2" go return value
 
 	MOVE.l	d1,d2				* copy value
@@ -7924,7 +7924,7 @@ LAB_CBX1
 	BSR		LAB_IGBY			* get next character
 	BCC.s		LAB_CHX3			* if not numeric character go return value
 
-	CMP.b		#'2',d0			* compare with "2" (max+1)
+	CMPI.b	#'2',d0			* compare with "2" (max+1)
 	BCS.s		LAB_CBX1			* loop if <"2"
 
 	BRA.s		LAB_CHX3			* if not numeric character go return value
@@ -7948,7 +7948,7 @@ d1x02
 
 * now add in new digit
 
-	AND.l		#$FF,d0			* mask character
+	ANDI.l	#$FF,d0			* mask character
 	SUB.b		#'0',d0			* convert to value
 	ADD.l		d0,d2				* add to result
 	BCS.s		RTS_024			* return if overflow, it should never ever do
@@ -9333,3 +9333,8 @@ LAB_SMSG
 	END	code_start
 
 *************************************************************************************
+
+*~Font name~Courier New~
+*~Font size~10~
+*~Tab type~1~
+*~Tab size~4~
