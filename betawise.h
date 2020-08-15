@@ -17,7 +17,7 @@
 #define stdout (FILE*)1
 #define stderr (FILE*)2
 
-// Cursor mode definitoins.
+// Cursor mode definitions.
 #define CURSOR_HIDE 0x0C
 #define CURSOR_SHOW 0x0F
 
