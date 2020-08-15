@@ -450,7 +450,7 @@ LAB_NFER:
 
 LAB_XERR:
 	BSR		LAB_1491			| flush stack & clear continue flag
-	BSR		LAB_CRLF			| print CR/LF
+	BSR		LAB_CRLF_IF_NEEDED	| print CR/LF
 	LEA		LAB_BAER(%pc),%a1		| start of error message pointer table
 	MOVE.w	(%a1,%d7.w),%d7		| get error message offset
 	LEA		(%a1,%d7.w),%a0		| get error message address
@@ -465,14 +465,16 @@ LAB_1269:
 	BSR		LAB_2953			| print " in line [LINE #]"
 
 # BASIC warm start entry point, wait for Basic command
-
 LAB_1274:
-	LEA		LAB_RMSG(%pc),%a0		| point to "Ready" message
-	BSR		LAB_18C3			| go do print string
+#	LEA		LAB_RMSG(%pc),%a0		| point to "Ready" message
+#	BSR		LAB_18C3			| go do print string
+	BSR		LAB_CRLF_IF_NEEDED	| print CR/LF if needed
 
 # wait for Basic command - no "Ready"
 
 LAB_127D:
+	LEA		LAB_RMSG(%pc),%a0		| point to basic prompt
+	BSR		LAB_18C3			| go do print string
 	MOVEQ		#-1,%d1			| set to -1
 	MOVE.l	%d1,Clinel.w(%a5)		| set current line #
 	MOVE.b	%d1,Breakf.w(%a5)		| set break flag
@@ -1877,6 +1879,10 @@ LAB_1866:
 
 # print CR/LF
 
+LAB_CRLF_IF_NEEDED:
+	TST.b		TPos.w(%a5)			| check if at first column
+	BNE.s		LAB_CRLF			| if not, continue printing CR/LF
+	RTS						| return if already at first column
 LAB_CRLF:
 	MOVEQ		#0x0D,%d0			| load [CR]
 	BSR.s		LAB_PRNA			| go print the character
@@ -8949,7 +8955,7 @@ KEY_POWER:
 # just messages
 
 LAB_BMSG:
-	.asciz	"\r\nBreak"
+	.asciz	"Break"
 LAB_EMSG:
 	.asciz	" Error"
 LAB_LMSG:
@@ -8959,9 +8965,9 @@ LAB_IMSG:
 LAB_REDO:
 	.asciz	"Redo from start\r\n"
 LAB_RMSG:
-	.asciz	"\r\nReady\r\n"
+	.asciz	"$ "
 LAB_SMSG:
-	.ascii	" Bytes free\r\n\n"
+	.ascii	" Bytes free\r\n"
 	.asciz	"Enhanced 68k BASIC Version 3.52\r\n"
 
 
