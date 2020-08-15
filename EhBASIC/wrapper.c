@@ -15,9 +15,6 @@ struct gd_t {
     uint8_t col;
 };
 
-#define LCD_CMD_LEFT (*(volatile uint8_t*)0x1008000)
-#define LCD_CMD_RIGHT (*(volatile uint8_t*)0x1000000)
-
 void PutCharWrapper(char c) {
     switch(c) {
         case '\a':
@@ -34,7 +31,7 @@ void PutCharWrapper(char c) {
             gd->row = (gd->row & 3) + 1;
             ClearRows(gd->row, gd->row);
             // Set vertical viewport offset.
-            LCD_CMD_LEFT = LCD_CMD_RIGHT = 0x40 | ((gd->row & 3) << 4);
+            LCD_CMD_REG_LEFT = LCD_CMD_REG_RIGHT = 0x40 | ((gd->row & 3) << 4);
             break;
         case '\r':
             gd->col = 1;
@@ -74,7 +71,7 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
 
         case MSG_KILLFOCUS:
             // Restore vertical viewport offset to 0.
-            LCD_CMD_LEFT = LCD_CMD_RIGHT = 0x40;
+            LCD_CMD_REG_LEFT = LCD_CMD_REG_RIGHT = 0x40;
             break;
     }
 }

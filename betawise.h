@@ -227,6 +227,22 @@ extern char __bss_size;
 #define APPLET_LANGUAGE_SV .languageId = 9,
 #define APPLET_HEADER_END };
 
+// There are two ST7565R LCD controllers, for left and right half of screen.
+// All interaction is via command registers, unless reading/writing buffer.
+#define LCD_CMD_REG_LEFT (*(volatile uint8_t*)0x1008000)
+#define LCD_CMD_REG_RIGHT (*(volatile uint8_t*)0x1000000)
+#define LCD_CMD_ON(yes) (0xAE | ((yes) & 1))
+#define LCD_CMD_REVERSE(yes) (0xA6 | ((yes) & 1))
+#define LCD_CMD_ALL_PIX_ON(yes) (0xA4 | ((yes) & 1))
+#define LCD_CMD_START_LINE(line) (0x40 | ((line) & 0x3F))
+#define LCD_CMD_PAGE_ADDR(pageaddr) (0xB0 | ((pageaddr) & 0x0F))
+#define LCD_CMD_COL_ADDR_HI(coladdr) (0x10 | (((coladdr) >> 4) & 0x0F)
+#define LCD_CMD_COL_ADDR_LO(coladdr) (0x10 | ((coladdr) & 0x0F)
+#define LCD_CMD_COL_ADDR_INC 0xE0
+#define LCD_CMD_COL_ADDR_END 0xEE
+#define LCD_DATA_REG_LEFT (*(volatile uint8_t*)0x1008001)
+#define LCD_DATA_REG_RIGHT (*(volatile uint8_t*)0x1000001)
+
 // Global data pointer (applets must store global static data in this struct)
 register volatile struct gd_t* gd asm("a5");
 
