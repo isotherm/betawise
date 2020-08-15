@@ -75,7 +75,7 @@ nobrk		=	0				| null response to INPUT causes a break
 VEC_OUT:
 	MOVEM.l	%d0-%d1/%a0-%a1,-(%sp)	| save variables for C calling convention
 	MOVEM.l	%d0,-(%sp)			| pass param1, character
-	BSR		PutCharWrapper		| print the character      
+	BSR		PutCharWrapper		| print the character
 	ADDQ		#4,%sp			| skip params
 VEC_OUT_DONE:
 	MOVEM.l	(%sp)+,%d0-%d1/%a0-%a1	| restore variables for calling convention
@@ -1977,6 +1977,10 @@ LAB_18E3:
 
 LAB_PRNA:
 	MOVE.l	%d1,-(%sp)			| save d1
+	CMP.b		#0x08,%d0			| compare with [BACKSPACE]
+	BNE.s		LAB_PRNA_NOT_BACK		| branch if not zero (not backspace)
+	SUBQ.b	#0x01,TPos.w(%a5)		| decrement terminal position
+LAB_PRNA_NOT_BACK:
 	CMP.b		#0x20,%d0			| compare with " "
 	BCS.s		LAB_18F9			| branch if less, non printing character
 
@@ -7127,7 +7131,7 @@ VEC_CC:
 	TST.b		ccflag.w(%a5)		| check [CTRL-C] check flag
 	BNE.s		RTS_022			| exit if [CTRL-C] check inhibited
 
-      MOVEQ       #0,%d0                  | do not wait
+	MOVEQ		#0,%d0			| do not wait
 	JSR		V_INPT.w(%a5)		| scan input device
 	BCC.s		LAB_FBA0			| exit if buffer empty
 
@@ -7150,7 +7154,7 @@ RTS_022:
 # returns with carry set if byte in A
 
 INGET:
-      MOVEQ       #0,%d0                  | do not wait
+	MOVEQ		#0,%d0			| do not wait
 	JSR		V_INPT.w(%a5)		| call scan input device
 	BCS.s		LAB_FB95			| if byte go reset timer
 
