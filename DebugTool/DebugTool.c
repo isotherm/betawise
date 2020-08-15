@@ -365,11 +365,11 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
                             WaitForKey();
                             break;
                         } else {
-                            choice = DialogGetChoice() - 1;
+                            choice = DialogGetChoice();
                         }
                         GetCursorPos(&row, &col);
                         SetCursor(row, col + 6, CURSOR_HIDE);
-                        NumberPrompt("", (char*)gd->buffer[choice] + 1, BUFFER_INPUT, choice ? "0x" : "!");
+                        NumberPrompt("", (char*)gd->buffer[choice-1] + 1, BUFFER_INPUT, choice > 1 ? "0x" : "!");
                     }
                     DumpRedrawScreen();
                     break;
