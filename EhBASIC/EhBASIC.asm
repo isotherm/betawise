@@ -135,18 +135,20 @@ VEC_SV:
 #
 # BASIC cold start entry point. assume entry with RAM address in a5
 
-.global LAB_COLD
+.global EhBASIC_Init
+EhBASIC_Init:
 LAB_COLD:
-	MOVEA.l	%a5,%a0			| copy RAM base to a0
+	MOVEM.l	%d2-%d7/%a2-%a6,-(%sp)	| save variables for C calling convention
+	MOVE.l	%sp,base_sp.w(%a5)	| save base stack pointer
+	LEA		prg_strt.w(%a5),%a0	| copy program base to a0
 	ADDA.l	#ram_size,%a0		| a0 is top of RAM
 	MOVE.l	%a0,Ememl.w(%a5)		| set end of mem
-	LEA		ram_base.w(%a5),%sp	| set stack to RAM start + 1k
 
 	MOVE.w	#0x4EF9,%d0			| JMP opcode
-	MOVEA.l	%sp,%a0			| point to start of vector table
+	LEA		ram_base.w(%a5),%a0	| point to start of vector table
 
 	MOVE.w	%d0,(%a0)+			| LAB_WARM
-	LEA		LAB_COLD.w(%pc),%a1		| initial warm start vector
+	LEA		LAB_COLD.w(%pc),%a1	| initial warm start vector
 	MOVE.l	%a1,(%a0)+			| set vector
 
 	MOVE.w	%d0,(%a0)+			| Usrjmp
@@ -195,13 +197,6 @@ LAB_COLD:
 	MOVE.l	%a0,Smeml.w(%a5)		| save start of mem
 
 	BSR		LAB_1463			| do "NEW" and "CLEAR"
-	BSR		LAB_CRLF			| print CR/LF
-	MOVE.l	Ememl.w(%a5),%d0		| get end of mem
-	SUB.l		Smeml.w(%a5),%d0		| subtract start of mem
-
-	BSR		LAB_295E			| print d0 as unsigned integer (bytes free)
-	LEA		LAB_SMSG(%pc),%a0		| point to start message
-	BSR		LAB_18C3			| print null terminated string from memory
 
 	LEA		LAB_RSED(%pc),%a0		| get pointer to value
 	BSR		LAB_UFAC			| unpack memory (%a0) into FAC1
@@ -209,7 +204,10 @@ LAB_COLD:
 	LEA		LAB_1274(%pc),%a0		| get warm start vector
 	MOVE.l	%a0,Wrmjpv.w(%a5)		| set warm start vector
 	BSR		LAB_RND			| initialise
-	JMP		LAB_WARM.w(%a5)		| go do warm start
+
+	MOVEA.l	base_sp.w(%a5),%sp	| restore base stack pointer
+	MOVEM.l	(%sp)+,%d2-%d7/%a2-%a6	| restore variables for calling convention
+	RTS						| initialization finished
 
 
 #####################################################################################
@@ -463,6 +461,18 @@ LAB_1269:
 
 							| else print line number
 	BSR		LAB_2953			| print " in line [LINE #]"
+
+.global EhBASIC_Resume
+EhBASIC_Resume:
+	MOVE.l	%sp,base_sp.w(%a5)	| save base stack pointer
+	LEA		des_sk.w(%a5),%a4		| set descriptor stack start
+
+	MOVE.l	Sstorl.w(%a5),%d0		| get end of mem
+	SUB.l		Earryl.w(%a5),%d0		| subtract start of mem
+	BSR		LAB_295E			| print d0 as unsigned integer (bytes free)
+	LEA		LAB_SMSG(%pc),%a0		| point to start message
+	BSR		LAB_18C3			| print null terminated string from memory
+	BSR		LAB_CRLF			| print CR/LF
 
 # BASIC warm start entry point, wait for Basic command
 LAB_1274:
@@ -932,7 +942,7 @@ LAB_1491:
 	LEA		des_sk.w(%a5),%a4		| reset descriptor stack pointer
 
 	MOVE.l	(%sp)+,%d0			| pull return address
-	LEA		ram_base.w(%a5),%sp	| set stack to RAM start + 1k, flush stack
+	MOVEA.l	base_sp.w(%a5),%sp	| restore base stack pointer
 	MOVE.l	%d0,-(%sp)			| restore return address
 
 	MOVEQ		#0,%d0			| clear longword
@@ -994,7 +1004,7 @@ LAB_14C0:
 	BSR		LAB_GFPN			| get fixed-point number into temp integer & d1
 LAB_14D4:
 	MOVE.b	#0x00,Oquote.w(%a5)	| clear open quote flag
-	BSR		LAB_CRLF			| print CR/LF
+	BSR		LAB_CRLF_IF_NEEDED	| print CR/LF
 	MOVE.l	(%a0)+,%d0			| get next line pointer
 	BEQ.s		RTS_005			| if null all done so exit
 

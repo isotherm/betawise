@@ -179,6 +179,9 @@ int DialogGetItemId(uint8_t index);
 
 char TranslateKeyToChar(uint16_t key);
 
+// mask=0x8 to process special key. mask=4,2,1 unknown.
+void SYS_A25C(uint8_t mask, uint16_t key);
+
 // Standard library functions.
 int tolower(int c);
 int toupper(int c);

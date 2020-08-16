@@ -3,9 +3,6 @@
 
 		.section .bss		| start of RAM
 
-ram_strt:	ds.l	0x100			| allow 1K for the stack, this should be plenty
-						| for any BASIC program that doesn't do something
-						| silly, it could even be much less.
 ram_base:
 LAB_WARM:	ds.w	1			| BASIC warm start entry point
 Wrmjpv:	ds.l	1			| BASIC warm start jump vector
@@ -192,6 +189,8 @@ ccnull:	ds.b	1			| CTRL-C last received byte 'life' timer
 
 file_byte:	ds.b	1			| load/save data byte
 file_id:	ds.l	1			| load/save file ID
+
+base_sp:	ds.l	1			| base stack pointer
 
 		dc.w	0			| dummy even value and zero pad byte
 

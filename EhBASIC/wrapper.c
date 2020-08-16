@@ -1,6 +1,7 @@
 #include "betawise.h"
 
-extern void LAB_COLD();
+extern void EhBASIC_Init();
+extern void EhBASIC_Resume();
 
 APPLET_HEADER_BEGIN
     APPLET_ID(0xA1BA)
@@ -44,14 +45,29 @@ void PutCharWrapper(char c) {
     SetCursor(gd->row, gd->col, CURSOR_HIDE);
 }
 
-char GetCharWrapper(char wait) {
+char GetCharWrapper(bool wait) {
+    uint16_t key;
     char c = 0;
+
     if(wait) {
         SetCursorMode(CURSOR_SHOW);
     }
-    if(wait || IsKeyReady()) {
-        c = getchar();
-    }
+    do {
+        if(!IsKeyReady()) {
+            ScanKeyboard();
+        }
+        key = GetKey(false);
+        if(key == KEY_APPLETS) {
+            // Invokes the applets menu and does not return.
+            SYS_A25C(0x8, key);
+        } else if(key == (MOD_CTRL | KEY_C)) {
+            c = '\x03';
+        } else if((key & 0xF0FF) == KEY_BACKSPACE) {
+            c = '\b';
+        } else {
+            c = TranslateKeyToChar(key);
+        }
+    } while(!c && wait);
     SetCursorMode(CURSOR_HIDE);
     return c;
 }
@@ -60,13 +76,14 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
     *status = 0;
     switch(message) {
         case MSG_INIT:
+            EhBASIC_Init();
             break;
 
         case MSG_SETFOCUS:
             ClearScreen();
             gd->row = 4;
             PutCharWrapper('\r');
-            LAB_COLD();
+            EhBASIC_Resume();
             break;
 
         case MSG_KILLFOCUS:
