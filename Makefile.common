@@ -1,0 +1,34 @@
+TOP = $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+CROSS_COMPILE = m68k-elf-
+CC = $(CROSS_COMPILE)gcc
+AS = $(CROSS_COMPILE)as
+LD = $(CROSS_COMPILE)ld
+AR = $(CROSS_COMPILE)ar
+CFLAGS = -m68000 -mpcrel -Os -fomit-frame-pointer -ffixed-a5 -U_FORTIFY_SOURCE -I"$(TOP)"
+ASFLAGS = --pcrel
+LDFLAGS = -static -T "$(TOP)/betawise.lds" -L"$(TOP)" -lbetawise
+ARFLAGS = rcs
+
+%.o : %.c *.h
+	$(CC) $(CFLAGS) -c $<
+
+%.o : %.asm *.inc
+	$(AS) $(ASFLAGS) $< -o $@
+
+%.a : $(OBJ)
+	$(AR) $(ARFLAGS) $@ $^
+
+%.OS3KApp : $(OBJ)
+	$(LD) $^ $(LDFLAGS) -o $@
+
+.PHONY: all clean $(SUBDIRS)
+
+$(TARGET):
+
+$(SUBDIRS):
+	+$(MAKE) -C $@ $(MAKECMDGOALS)
+
+all: $(TARGET) $(SUBDIRS)
+
+clean: $(SUBDIRS)
+	rm -f $(OBJ) $(TARGET)

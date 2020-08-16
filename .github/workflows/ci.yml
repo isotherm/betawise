@@ -15,7 +15,7 @@ jobs:
     - name: Install cross compiler.
       run: sudo apt-get install gcc-m68k-linux-gnu
     - name: Build library and applets.
-      run: make CROSS_COMPILE=m68k-linux-gnu-
+      run: make CROSS_COMPILE=m68k-linux-gnu- all
     - name: Upload artifacts.
       uses: actions/upload-artifact@v2
       with:
