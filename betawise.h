@@ -2,6 +2,7 @@
 #define _BETAWISE_H_
 
 // TODO: Provide our own
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -138,7 +139,7 @@ void ClearScreen();
 void SetCursor(uint8_t row, uint8_t col, uint8_t cursor_mode);
 void GetCursorPos(uint8_t* row, uint8_t* col);
 void PutStringCentered(const char *str);
-void PutChar(const char c);
+void PutChar(char c);
 void PutStringRaw(const char* str);
 void SetCursorMode(uint8_t cursor_mode);
 void GetCursorMode(uint8_t* cursor_mode);
@@ -152,29 +153,29 @@ void RasterOp(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t* bitmap, u
 
 void ProgressBar(uint8_t row, uint16_t value, uint16_t total);
 // exit_keys is a list of key codes that exit text input. Terminated by -1 (\xFF).
-char TextBox(char* buffer, uint8_t* len, uint16_t max_len, const char* exit_keys, uint16_t password);
+char TextBox(char* buffer, uint8_t* len, uint16_t max_len, const char* exit_keys, bool password);
 uint16_t WaitForKey();
 // If num is 0, strings are compared until a null terminator is reached.
 char StringCompare(const char* str1, const char* str2, int case_sensitive, size_t num);
 void DisplayMessage(const char* str);
-uint16_t GetKey(int process_special_keys);
+uint16_t GetKey(bool process_special_keys);
 void DrainKeyBuffer();
-int IsKeyReady();
+bool IsKeyReady();
 uint16_t GetKeyModifiers();
 void ScanKeyboard();
 void QueueKey(uint16_t key);
 void SetKeyModifiers(uint16_t mask);
 
-void DialogInit(char single, char row_first, char row_last, char col);
+void DialogInit(bool single, uint8_t row_first, uint8_t row_last, uint8_t col);
 // marker is usually ' '; id is for the user; shortcut_key and file_size are usually -1.
-int DialogAddItem(char* text, char text_len, char marker, int id, char shortcut_key, int file_size);
-int DialogAddExitKey(short key);
-void DialogSetChoice(char index);
+int DialogAddItem(char* text, uint8_t text_len, char marker, int id, uint8_t shortcut_key, size_t file_size);
+int DialogAddExitKey(uint8_t key);
+void DialogSetChoice(uint8_t index);
 void DialogDraw();
 short DialogRun();
 char DialogGetChoice();
 int DialogGetChoiceId();
-int DialogGetItemId(char index);
+int DialogGetItemId(uint8_t index);
 
 char TranslateKeyToChar(uint16_t key);
 
