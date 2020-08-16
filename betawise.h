@@ -101,6 +101,7 @@
 #define KEY_LEFT        0x49
 #define KEY_DOWN        0x0D
 #define KEY_RIGHT       0x4A
+#define KEY_NONE        0xFF
 
 // Modifier key codes.
 #define MOD_CTRL        0x8000
@@ -109,6 +110,7 @@
 #define MOD_RIGHTSHIFT  0x0800
 #define MOD_LEFTSHIFT   0x0400
 #define MOD_CAPS_LOCK   0x0200
+#define MOD_KEY_UP      0x0080
 #define MOD_SHIFT       (MOD_LSHIFT | MOD_RSHIFT)
 
 // Applet messages.
@@ -151,8 +153,17 @@ void RasterOp(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t* bitmap, u
 void ProgressBar(uint8_t row, uint16_t value, uint16_t total);
 // exit_keys is a list of key codes that exit text input. Terminated by -1 (\xFF).
 char TextBox(char* buffer, uint8_t* len, uint16_t max_len, const char* exit_keys, uint16_t password);
-char WaitForKey(void);
-int IsKeyReady(void);
+uint16_t WaitForKey();
+// If num is 0, strings are compared until a null terminator is reached.
+char StringCompare(const char* str1, const char* str2, int case_sensitive, size_t num);
+void DisplayMessage(const char* str);
+uint16_t GetKey(int process_special_keys);
+void DrainKeyBuffer();
+int IsKeyReady();
+uint16_t GetKeyModifiers();
+void ScanKeyboard();
+void QueueKey(uint16_t key);
+void SetKeyModifiers(uint16_t mask);
 
 void DialogInit(char single, char row_first, char row_last, char col);
 // marker is usually ' '; id is for the user; shortcut_key and file_size are usually -1.
@@ -164,6 +175,8 @@ short DialogRun();
 char DialogGetChoice();
 int DialogGetChoiceId();
 int DialogGetItemId(char index);
+
+char TranslateKeyToChar(uint16_t key);
 
 // Standard library functions.
 int tolower(int c);
