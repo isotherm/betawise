@@ -22,6 +22,8 @@ also result from indiscriminate use. Proceed at your own risk!
     calls `ClearScreen`, `!1` calls `SetCursor`, etc.
   * A parameter beginning with a `$` prefix creates a temporary string (null
     terminated) containing all characters following the `$`.
+  * When ready, select "Call" and press `Enter` to invoke. Use `Shift`+`Enter`
+    to wait for a key before printing the return value after the call.
 * `Ctrl`+`Shift`+`G`: Go to address specified by memory at cursor.
 * `Backspace`: Restore cursor to address prior to last jump.
 * `Ctrl`+`R`: Refresh the screen (i.e. if displayed memory is volatile).

@@ -343,7 +343,8 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
                         DialogAddItem("all f(1,2,...)", 14, '\x10', 0, KEY_C, -1);
                         DialogSetChoice(choice);
                         DialogDraw();
-                        if(DialogRun() == KEY_ESC) {
+                        uint16_t key = DialogRun();
+                        if(key == KEY_ESC) {
                             break;
                         }
                         if(DialogGetChoice() > BUFFER_COUNT) {
@@ -360,6 +361,9 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
                                 stack[0], stack[2], stack[4], stack[6], stack[1], stack[3], stack[5]);
                             uint32_t result = ((uint32_t(*)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t))stack[0])(
                                 stack[2], stack[4], stack[6], stack[1], stack[3], stack[5]);
+                            if(key & MOD_SHIFT) {
+                                WaitForKey();
+                            }
                             printf("Return value = 0x%08X (%d)", result, result);
                             SetCursorMode(CURSOR_HIDE);
                             WaitForKey();

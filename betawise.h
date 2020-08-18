@@ -112,7 +112,7 @@
 #define MOD_LEFTSHIFT   0x0400
 #define MOD_CAPS_LOCK   0x0200
 #define MOD_KEY_UP      0x0080
-#define MOD_SHIFT       (MOD_LSHIFT | MOD_RSHIFT)
+#define MOD_SHIFT       (MOD_LEFTSHIFT | MOD_RIGHTSHIFT)
 
 // Applet messages.
 void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status);
