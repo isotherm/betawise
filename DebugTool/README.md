@@ -1,5 +1,11 @@
 Debugging Tool
 ==============
+
+**IMPORTANT**: Back up all documents first! Use of the debug tools applet
+allows modifying memory, performing I/O, and calling arbitrary routines. A
+system reset may be required after certain operations. A bricked unit could
+also result from indiscriminate use. Proceed at your own risk!
+
 * `Tab`: Move cursor between nibble mode (left side) and byte mode (right side).
 * `Left`, `Right`: Move the cursor left or right by one nibble or byte.
 * `Up`, `Down`: Move the cursor up or down by one line (8 bytes).
@@ -9,7 +15,7 @@ Debugging Tool
 * `Ctrl`+`G`: Go to address.
   * The address may be entered as decimal or hex (prefixed by `0x`).
   * The address may have a suffix of `,a5` to access the debugger global data.
-    The debugger reserves the first 256 bytes of this data as a scratch area.
+    The debugger reserves the first 256 bytes of this data as a user scratch area.
 * `Ctrl`+`I`: Invoke function with up to 6 arguments.
   * The function address and parameters may be entered as above.
   * A function address with a `!` prefix indicates a system call, e.g. `!0`

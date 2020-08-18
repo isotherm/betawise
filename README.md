@@ -1,11 +1,6 @@
 BetaWise
 ========
-Tools to create applets for the AlphaSmart NEO / NEO2.
-
-**IMPORTANT**: Back up all documents first! Use of the debug tools applet
-allows modifying memory, performing I/O, and calling arbitrary routines. A
-system reset may be required after certain operations. A bricked unit could
-also result from indiscriminate use. Proceed at your own risk!
+Several custom applets for the AlphaSmart NEO / NEO2, and tools to create them.
 
 Compiling
 ---------
