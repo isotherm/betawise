@@ -28,7 +28,7 @@ $(TARGET):
 $(SUBDIRS):
 	+$(MAKE) -C $@ $(MAKECMDGOALS)
 
-all: $(TARGET) $(SUBDIRS)
+all:: $(TARGET) $(SUBDIRS)
 
 clean: $(SUBDIRS)
-	rm -f $(OBJ) $(TARGET)
+	rm -f $(INT) $(OBJ) $(TARGET)

@@ -229,8 +229,10 @@ extern char __bss_size;
         .fileUsage = 0, \
         .entryPoint = &ProcessMessage, \
         .magic = {0, 1, 2},
+#define APPLET_FLAGS(param) .flags = 0xFF000000 | (param),
 #define APPLET_ID(param) .id = param,
 #define APPLET_NAME(param) .name = param,
+#define APPLET_FONT_NAME(param) .name = "Neo Font - " param,
 #define APPLET_INFO(param) .info = param,
 #define APPLET_VERSION(major, minor, ...) .version = {major, minor, #__VA_ARGS__},
 #define APPLET_LANGUAGE_EN_US .languageId = 1,
@@ -243,6 +245,13 @@ extern char __bss_size;
 #define APPLET_LANGUAGE_NL .languageId = 8,
 #define APPLET_LANGUAGE_SV .languageId = 9,
 #define APPLET_HEADER_END };
+
+#define APPLET_FLAG_HIDDEN 0x001
+#define APPLET_FLAG_FONT (0x010 | 0x020)
+#define APPLET_FLAG_ALLOW_FONT_DIALOG 0x080
+#define APPLET_FLAG_FORBID_APPLETS_KEY 0x100
+
+#define APPLET_FONT_NAME_PTR (&__header.name[11])
 
 // There are two ST7565R LCD controllers, for left and right half of screen.
 // All interaction is via command registers, unless reading/writing buffer.
@@ -261,6 +270,6 @@ extern char __bss_size;
 #define LCD_DATA_REG_RIGHT (*(volatile uint8_t*)0x1000001)
 
 // Global data pointer (applets must store global static data in this struct)
-register volatile struct gd_t* gd asm("a5");
+register struct gd_t* gd asm("a5");
 
 #endif
