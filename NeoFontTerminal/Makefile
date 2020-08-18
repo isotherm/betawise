@@ -6,5 +6,5 @@ include ../Makefile.common
 
 NeoFontTerminal.o: glyphs.h
 
-glyphs.h: glyphs.png
+glyphs.h: fontgen.py glyphs.png
 	./fontgen.py "glyphs.png" "glyphs.h"

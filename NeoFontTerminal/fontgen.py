@@ -18,7 +18,7 @@ for i in range(glyph_count):
         x = i*glyph_width + j
         val = 0
         for y in range(glyph_height):
-            if im.getpixel((x, y)):
+            if im.getpixel((x, y)) < 128:
                 val |= 1 << y
         bitmap.append('0x%02X' % (val))
     glyphs.append(bitmap)
@@ -30,9 +30,9 @@ f.write('#define %s\n' % guard)
 f.write('\n')
 f.write('#define GLYPH_HEIGHT %d\n' % glyph_height)
 f.write('#define GLYPH_WIDTH %d\n' % glyph_width)
-f.write('#define GLYPH_BYTES %d\n' % glyph_height)
+f.write('#define GLYPH_BYTES %d\n' % glyph_bytes)
 f.write('\n')
-f.write('uint8_t GLYPHS[%d][%d] = {\n' % (glyph_count, glyph_bytes));
+f.write('const uint8_t GLYPHS[%d][%d] = {\n' % (glyph_count, glyph_bytes));
 for c, bitmap in enumerate(glyphs):
     sep = ',' if c < glyph_count - 1 else ' '
     f.write('    {%s}%c // %02X\n' % (', '.join(bitmap), sep, c))

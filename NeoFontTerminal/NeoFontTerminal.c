@@ -11,13 +11,7 @@ APPLET_HEADER_BEGIN
 APPLET_HEADER_END
 
 struct gd_t {
-    uint8_t height;
-    uint8_t maxWidth;
-    uint8_t maxBytes;
-    uint8_t padding;
-    const uint8_t* pWidthTable;
-    const uint16_t* pOffsetTable;
-    const uint8_t* pBitmapData;
+    struct FontHeader_t font;
 };
 
 void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
@@ -26,23 +20,27 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
         case 0x1000001:
             *(char**)param = APPLET_FONT_NAME_PTR;
             break;
+
         case 0x1000002:
-            *(void**)param = gd;
+            *(struct FontHeader_t**)param = &gd->font;
             break;
+
         case 0x1000003:
         case 0x1000004:
         case 0x1000005:
-            *(void**)param = 0;
+            *(struct FontHeader_t**)param = 0;
             break;
+
         case 0x1000006:
-            *(void**)param = gd;
+            *(struct FontHeader_t**)param = &gd->font;
         case MSG_INIT:
-            gd->height = GLYPH_HEIGHT;
-            gd->maxWidth = GLYPH_WIDTH;
-            gd->maxBytes = GLYPH_BYTES;
-            gd->pWidthTable = 0;
-            gd->pOffsetTable = 0;
-            gd->pBitmapData = GLYPHS[0];
+            gd->font.height = GLYPH_HEIGHT;
+            gd->font.max_width = GLYPH_WIDTH;
+            gd->font.max_bytes = GLYPH_BYTES;
+            // Monospaced, so no lookup tables required.
+            gd->font.width_table = 0;
+            gd->font.offset_table = 0;
+            gd->font.bitmap_data = GLYPHS[0];
             break;
     }
 }

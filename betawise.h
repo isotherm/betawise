@@ -251,7 +251,17 @@ extern char __bss_size;
 #define APPLET_FLAG_ALLOW_FONT_DIALOG 0x080
 #define APPLET_FLAG_FORBID_APPLETS_KEY 0x100
 
+// Font definitions.
 #define APPLET_FONT_NAME_PTR (&__header.name[11])
+struct FontHeader_t {
+    uint8_t height;
+    uint8_t max_width;
+    uint8_t max_bytes;
+    uint8_t padding;
+    const uint8_t* width_table;
+    const uint16_t* offset_table;
+    const uint8_t* bitmap_data;
+};
 
 // There are two ST7565R LCD controllers, for left and right half of screen.
 // All interaction is via command registers, unless reading/writing buffer.
