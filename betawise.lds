@@ -3,12 +3,10 @@ OUTPUT_FORMAT(binary)
 SECTIONS
 {
     . = 0x0;
-    header : { *(header) }    
-    .text : { *(.text*) *(.rodata*) }
-    footer : { *(footer) }
-    __rom_size = .;
+    .text : { *(bw_header) *(.text*) *(.rodata*) *(bw_footer) }
+    __bw_rom_size = .;
     . = 0x0;
     .bss : { *(COMMON) *(.bss*) }
-    __bss_size = .;
+    __bw_bss_size = .;
     /DISCARD/ : { *(*) }
 }

@@ -1,8 +1,5 @@
 #include "betawise.h"
 
-extern void EhBASIC_Init();
-extern void EhBASIC_Resume();
-
 APPLET_HEADER_BEGIN
     APPLET_ID(0xA1BA)
     APPLET_NAME("EhBASIC")
@@ -11,10 +8,13 @@ APPLET_HEADER_BEGIN
     APPLET_LANGUAGE_EN_US
 APPLET_HEADER_END
 
-struct gd_t {
+GLOBAL_DATA_BEGIN
     uint8_t row;
     uint8_t col;
-};
+GLOBAL_DATA_END
+
+extern void EhBASIC_Init();
+extern void EhBASIC_Resume();
 
 void PutCharWrapper(char c) {
     switch(c) {

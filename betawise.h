@@ -187,7 +187,7 @@ int tolower(int c);
 int toupper(int c);
 
 // Header definitions.
-struct Header_t {
+typedef struct _AppletHeader_t {
     uint32_t signature;
     uint32_t romUsage;
     uint32_t ramUsage;
@@ -197,7 +197,7 @@ struct Header_t {
     uint8_t headerVersion;
     uint8_t fileCount;
     char name[36];
-    struct Version_t {
+    struct _Version_t {
         uint8_t versionMajor;
         uint8_t versionMinor;
         char versionRevision[1];
@@ -208,18 +208,23 @@ struct Header_t {
     uint32_t fileUsage;
     void* entryPoint;
     uint32_t magic[3];
-};
+} AppletHeader_t;
 
-extern char __rom_size;
-extern char __bss_size;
+// Global data definitions.
+#define GLOBAL_DATA_BEGIN \
+    struct _GlobalData_t {
+#define GLOBAL_DATA_END \
+    }; \
+    GlobalData_t __bw_global_data;
+
+extern char __bw_rom_size;
+extern char __bw_bss_size;
 
 #define APPLET_HEADER_BEGIN \
-    struct gd_t _placeholder_global_data; \
-    uint32_t __footer __attribute__ ((section("footer"))) = { 0xCAFEFEED }; \
-    struct Header_t __header __attribute__ ((section("header"))) = { \
+    AppletHeader_t __header __attribute__ ((section("bw_header"))) = { \
         .signature = 0xC0FFEEAD, \
-        .romUsage = (uint32_t)&__rom_size, \
-        .ramUsage = (uint32_t)&__bss_size, \
+        .romUsage = (uint32_t)&__bw_rom_size, \
+        .ramUsage = (uint32_t)&__bw_bss_size, \
         .settingsOffset = 0, \
         .flags = 0xFF000000, \
         .headerVersion = 1, \
@@ -244,7 +249,9 @@ extern char __bss_size;
 #define APPLET_LANGUAGE_ES .languageId = 7,
 #define APPLET_LANGUAGE_NL .languageId = 8,
 #define APPLET_LANGUAGE_SV .languageId = 9,
-#define APPLET_HEADER_END };
+#define APPLET_HEADER_END \
+    }; \
+    uint32_t __footer __attribute__ ((section("bw_footer"))) = { 0xCAFEFEED }; \
 
 #define APPLET_FLAG_HIDDEN 0x001
 #define APPLET_FLAG_FONT (0x010 | 0x020)
@@ -253,7 +260,7 @@ extern char __bss_size;
 
 // Font definitions.
 #define APPLET_FONT_NAME_PTR (&__header.name[11])
-struct FontHeader_t {
+typedef struct _FontHeader_t {
     uint8_t height;
     uint8_t max_width;
     uint8_t max_bytes;
@@ -261,7 +268,7 @@ struct FontHeader_t {
     const uint8_t* width_table;
     const uint16_t* offset_table;
     const uint8_t* bitmap_data;
-};
+} FontHeader_t;
 
 // There are two ST7565R LCD controllers, for left and right half of screen.
 // All interaction is via command registers, unless reading/writing buffer.
@@ -280,6 +287,7 @@ struct FontHeader_t {
 #define LCD_DATA_REG_RIGHT (*(volatile uint8_t*)0x1000001)
 
 // Global data pointer (applets must store global static data in this struct)
-register struct gd_t* gd asm("a5");
+typedef struct _GlobalData_t GlobalData_t;
+register GlobalData_t* gd asm("a5");
 
 #endif

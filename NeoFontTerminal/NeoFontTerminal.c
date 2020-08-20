@@ -10,9 +10,9 @@ APPLET_HEADER_BEGIN
     APPLET_LANGUAGE_EN_US
 APPLET_HEADER_END
 
-struct gd_t {
-    struct FontHeader_t font;
-};
+GLOBAL_DATA_BEGIN
+    FontHeader_t font;
+GLOBAL_DATA_END
 
 void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
     *status = 0;
@@ -22,17 +22,17 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
             break;
 
         case 0x1000002:
-            *(struct FontHeader_t**)param = &gd->font;
+            *(FontHeader_t**)param = &gd->font;
             break;
 
         case 0x1000003:
         case 0x1000004:
         case 0x1000005:
-            *(struct FontHeader_t**)param = 0;
+            *(FontHeader_t**)param = 0;
             break;
 
         case 0x1000006:
-            *(struct FontHeader_t**)param = &gd->font;
+            *(FontHeader_t**)param = &gd->font;
         case MSG_INIT:
             gd->font.height = GLYPH_HEIGHT;
             gd->font.max_width = GLYPH_WIDTH;

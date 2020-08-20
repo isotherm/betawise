@@ -1,27 +1,9 @@
 #include "betawise.h"
 
-APPLET_HEADER_BEGIN
-    APPLET_ID(0xA1DE)
-    APPLET_NAME("Debugging Tool")
-    APPLET_INFO("Copyright (c) 2020 Alpaxo Software")
-    APPLET_VERSION(0, 0, 6)
-    APPLET_LANGUAGE_EN_US
-APPLET_HEADER_END
-
 #define SCRATCH_SIZE 256
 #define BUFFER_COUNT 7
 #define BUFFER_INPUT 13
 #define BUFFER_SIZE (1 + BUFFER_INPUT + 2)
-struct gd_t {
-    uint8_t scratch[SCRATCH_SIZE];
-    char buffer[BUFFER_COUNT][BUFFER_SIZE];
-    volatile uint8_t* pAddress;
-    volatile uint8_t* pPrevAddress;
-    void (*prevBusErrorHandler)();
-    volatile uint8_t busError;
-    uint8_t mode;
-    short cursor;
-};
 
 #define BYTES_PER_ROW 8
 #define BYTES_PER_ROW_MASK (BYTES_PER_ROW - 1)
@@ -35,6 +17,25 @@ struct gd_t {
 #define MODE_ASCII 2
 
 #define BUS_ERROR_HANDLER_PTR *((void(**)())8)
+
+APPLET_HEADER_BEGIN
+    APPLET_ID(0xA1DE)
+    APPLET_NAME("Debugging Tool")
+    APPLET_INFO("Copyright (c) 2020 Alpaxo Software")
+    APPLET_VERSION(0, 0, 6)
+    APPLET_LANGUAGE_EN_US
+APPLET_HEADER_END
+
+GLOBAL_DATA_BEGIN
+    uint8_t scratch[SCRATCH_SIZE];
+    char buffer[BUFFER_COUNT][BUFFER_SIZE];
+    volatile uint8_t* pAddress;
+    volatile uint8_t* pPrevAddress;
+    void (*prevBusErrorHandler)();
+    volatile uint8_t busError;
+    uint8_t mode;
+    short cursor;
+GLOBAL_DATA_END
 
 void BusErrorHandler() {
     gd->busError = 1;
