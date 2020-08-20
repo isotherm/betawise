@@ -249,7 +249,7 @@ extern char __bss_size;
 #define APPLET_FLAG_HIDDEN 0x001
 #define APPLET_FLAG_FONT (0x010 | 0x020)
 #define APPLET_FLAG_ALLOW_FONT_DIALOG 0x080
-#define APPLET_FLAG_FORBID_APPLETS_KEY 0x100
+#define APPLET_FLAG_WIRELESS_REQUIRED 0x100
 
 // Font definitions.
 #define APPLET_FONT_NAME_PTR (&__header.name[11])
