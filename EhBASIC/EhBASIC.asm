@@ -75,7 +75,7 @@ nobrk		=	0				| null response to INPUT causes a break
 VEC_OUT:
 	MOVEM.l	%d0-%d1/%a0-%a1,-(%sp)	| save variables for C calling convention
 	MOVEM.l	%d0,-(%sp)			| pass param1, character
-	BSR		PutCharWrapper		| print the character
+	BSR		BwPutChar			| print the character
 	ADDQ		#4,%sp			| skip params
 VEC_OUT_DONE:
 	MOVEM.l	(%sp)+,%d0-%d1/%a0-%a1	| restore variables for calling convention
@@ -84,13 +84,11 @@ VEC_OUT_DONE:
 
 #####################################################################################
 #
-# read/wait for a character from the console into register d0 and set flags
+# read a character from the console into register d0 and set flags
 
 VEC_IN:
 	MOVEM.l	%d1/%a0-%a1,-(%sp)	| save variables for C calling convention
-	MOVEM.l	%d0,-(%sp)			| pass param1, whether to wait
-	BSR		GetCharWrapper		| read/wait for a character
-	ADDQ		#4,%sp			| skip params
+	BSR		BwGetChar			| read/wait for a character
 	TST.b		%d0				| clear the z flag
 	BEQ.s		VEC_IN_EMPTY		| carry is currently cleared
 	ORI.b		#1,%CCR			| set the carry, flag we got a byte
@@ -186,10 +184,10 @@ LAB_COLD:
 	MOVE.w	%d0,prg_strt-2.w(%a5)	| clear start word
 	MOVE.w	%d0,BHsend.w(%a5)		| clear value to string end word
 
-	MOVE.b	#40,TWidth.w(%a5)		| default terminal width byte
-	MOVE.b	#10,TabSiz.w(%a5)		| save default tab size
+	MOVE.b	#44,TWidth.w(%a5)		| default terminal width byte
+	MOVE.b	#11,TabSiz.w(%a5)		| save default tab size
 
-	MOVE.b	#20,Iclim.w(%a5)		| default limit for TAB
+	MOVE.b	#22,Iclim.w(%a5)		| default limit for TAB
 
 	LEA		des_sk.w(%a5),%a4		| set descriptor stack start
 
@@ -649,7 +647,6 @@ LAB_1357:
 	MOVEQ		#0x00,%d1			| clear buffer index
 	LEA		Ibuffs.w(%a5),%a0		| set buffer base pointer
 LAB_1359:
-	MOVEQ		#1,%d0			| wait for a key
 	JSR		V_INPT.w(%a5)		| call scan input device
 	BCC.s		LAB_1359			| loop if no byte
 
@@ -4248,9 +4245,9 @@ LAB_2317:
 	MOVE.w	4(%a0),%d1			| else make parameter = length
 
 # get here with ...
-#   a0 - points to descriptor
-#   d0 - is offset from string start
-#   d1 - is required string length
+#	a0 - points to descriptor
+#	d0 - is offset from string start
+#	d1 - is required string length
 
 LAB_231C:
 	MOVEA.l	%a0,%a1			| save string descriptor pointer
@@ -5293,7 +5290,7 @@ LAB_LT_1:
 # now multiply out 32 bit denominator by 16 bit result
 # QRS = AB*D
 
-	MULU.w	%d3,%d6			| FFFF * DDDD =	    rrrr  SSSS
+	MULU.w	%d3,%d6			| FFFF * DDDD =		rrrr  SSSS
 	MULU.w	%d5,%d4			| EEEE * DDDD = QQQQ  rrrr
 
 # we now have ..
@@ -6516,7 +6513,7 @@ LAB_BTST:
 #
 # perform USING$()
 
-fsd	=	0					|   (%sp) format string descriptor pointer
+fsd	=	0					|	(%sp) format string descriptor pointer
 fsti	=	4					|  4(%sp) format string this index
 fsli	=	6					|  6(%sp) format string last index
 fsdpi	=	8					|  8(%sp) format string decimal point index
@@ -7147,7 +7144,6 @@ VEC_CC:
 	TST.b		ccflag.w(%a5)		| check [CTRL-C] check flag
 	BNE.s		RTS_022			| exit if [CTRL-C] check inhibited
 
-	MOVEQ		#0,%d0			| do not wait
 	JSR		V_INPT.w(%a5)		| scan input device
 	BCC.s		LAB_FBA0			| exit if buffer empty
 
@@ -7170,7 +7166,6 @@ RTS_022:
 # returns with carry set if byte in A
 
 INGET:
-	MOVEQ		#0,%d0			| do not wait
 	JSR		V_INPT.w(%a5)		| call scan input device
 	BCS.s		LAB_FB95			| if byte go reset timer
 

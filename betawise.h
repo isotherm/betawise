@@ -190,7 +190,7 @@ void ClearRows(uint8_t row_first, uint8_t row_last);
 
 void PutString(const char* str);
 
-void DrawBitmap(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t* bitmap);
+void DrawBitmap(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint8_t* bitmap);
 void RasterOp(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t* bitmap, RopCode_e rop);
 
 void ProgressBar(uint8_t row, uint16_t value, uint16_t total);
@@ -336,6 +336,8 @@ typedef struct _FontHeader_t {
 #define LCD_CMD_COL_ADDR_END 0xEE
 #define LCD_DATA_REG_LEFT (*(volatile uint8_t*)0x1008001)
 #define LCD_DATA_REG_RIGHT (*(volatile uint8_t*)0x1000001)
+#define LCD_WIDTH 264
+#define LCD_HEIGHT 64
 
 // Global data pointer (applets must store global static data in this struct)
 typedef struct _GlobalData_t GlobalData_t;
