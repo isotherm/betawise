@@ -205,6 +205,12 @@ int DialogGetItemId(uint8_t index);
 
 char TranslateKeyToChar(uint16_t key);
 
+// These functions return an index of 0 (system applet) if not found.
+uint8_t AppletFindByName(char* name, uint8_t start_index);
+uint8_t AppletFindById(uint16_t id);
+int AppletGetName(uint8_t index, char* name);
+int AppletSendMessage(uint8_t index, uint32_t message, uint32_t param, uint32_t* status);
+
 // mask=0x8 to process special key. mask=4,2,1 unknown.
 void SYS_A25C(uint8_t mask, uint16_t key);
 
