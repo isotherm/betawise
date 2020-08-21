@@ -1,6 +1,8 @@
 #ifndef _BETAWISE_H_
 #define _BETAWISE_H_
 
+#include "version.h"
+
 // TODO: Provide our own
 #include <stdbool.h>
 #include <stdint.h>
@@ -288,7 +290,7 @@ extern char __bw_bss_size;
 #define APPLET_NAME(param) .name = param,
 #define APPLET_FONT_NAME(param) .name = "Neo Font - " param,
 #define APPLET_INFO(param) .info = param,
-#define APPLET_VERSION(major, minor, ...) .version = {major, minor, #__VA_ARGS__},
+#define APPLET_VERSION(major, minor, revision) .version = {major, minor, revision},
 #define APPLET_LANGUAGE_EN_US .languageId = 1,
 #define APPLET_LANGUAGE_EN_UK .languageId = 2,
 #define APPLET_LANGUAGE_FR .languageId = 3,
