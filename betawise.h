@@ -237,6 +237,13 @@ uint32_t GetSystemInfo(uint8_t unused_zero, SysInfo_e info, void* output);
 int tolower(int c);
 int toupper(int c);
 
+// Betawise library functions.
+void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status);
+void BwClearScreen();
+void BwGetScreenSize(uint8_t* rows, uint8_t* cols);
+void BwPutChar(char c);
+char BwGetChar();
+
 // Header definitions.
 typedef struct _AppletHeader_t {
     uint32_t signature;
@@ -261,12 +268,35 @@ typedef struct _AppletHeader_t {
     uint32_t magic[3];
 } AppletHeader_t;
 
+// Font definitions.
+#define APPLET_FONT_NAME_PTR (&__header.name[11])
+typedef struct _FontHeader_t {
+    uint8_t height;
+    uint8_t max_width;
+    uint8_t max_bytes;
+    uint8_t padding;
+    const uint8_t* width_table;
+    const uint16_t* offset_table;
+    const uint8_t* bitmap_data;
+} FontHeader_t;
+
 // Global data definitions.
+typedef struct _BwGlobalData_t {
+    uint16_t x;
+    uint16_t y;
+    uint16_t roll;
+    uint8_t row;
+    uint8_t col;
+    uint8_t row_count;
+    uint8_t col_count;
+    FontHeader_t* font;
+} BwGlobalData_t;
+
 #define GLOBAL_DATA_BEGIN \
-    struct _GlobalData_t {
+    struct _GlobalData_t { \
+        BwGlobalData_t __bw_private;
 #define GLOBAL_DATA_END \
-    }; \
-    GlobalData_t __bw_global_data;
+    } __bw_global_data;
 
 extern char __bw_rom_size;
 extern char __bw_bss_size;
@@ -283,7 +313,7 @@ extern char __bw_bss_size;
         .name = "Test", \
         .minAsmVersion = 0, \
         .fileUsage = 0, \
-        .entryPoint = &ProcessMessage, \
+        .entryPoint = &BwProcessMessage, \
         .magic = {0, 1, 2},
 #define APPLET_FLAGS(param) .flags = 0xFF000000 | (param),
 #define APPLET_ID(param) .id = param,
@@ -309,18 +339,6 @@ extern char __bw_bss_size;
 #define APPLET_FLAG_ALLOW_FONT_DIALOG 0x080
 #define APPLET_FLAG_WIRELESS_REQUIRED 0x100
 
-// Font definitions.
-#define APPLET_FONT_NAME_PTR (&__header.name[11])
-typedef struct _FontHeader_t {
-    uint8_t height;
-    uint8_t max_width;
-    uint8_t max_bytes;
-    uint8_t padding;
-    const uint8_t* width_table;
-    const uint16_t* offset_table;
-    const uint8_t* bitmap_data;
-} FontHeader_t;
-
 // There are two ST7565R LCD controllers, for left and right half of screen.
 // All interaction is via command registers, unless reading/writing buffer.
 #define LCD_CMD_REG_LEFT (*(volatile uint8_t*)0x1008000)
@@ -340,7 +358,11 @@ typedef struct _FontHeader_t {
 #define LCD_HEIGHT 64
 
 // Global data pointer (applets must store global static data in this struct)
+#ifdef BETAWISE_LIB
+typedef struct _BwGlobalData_t GlobalData_t;
+#else
 typedef struct _GlobalData_t GlobalData_t;
+#endif
 register GlobalData_t* gd asm("a5");
 
 #endif
