@@ -134,6 +134,32 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status);
 #define ROP_BLACKNESS 6
 #define ROP_SRCPAINT 7
 
+// System information.
+//#define SYS_INFO_0000 0x0000
+//#define SYS_INFO_0100 0x0100
+//#define SYS_INFO_0200 0x0200
+#define SYS_INFO_ALPHAWORD_FONT_HEIGHT 0x0300
+//#define SYS_INFO_0400 0x0400
+//#define SYS_INFO_0500 0x0500
+//#define SYS_INFO_0600 0x0600
+#define SYS_INFO_SYSTEM_FONT_PTR 0x0700
+#define SYS_INFO_ROM_SIZE 0x0800
+#define SYS_INFO_IS_NEO_2 0x0900
+//#define SYS_INFO_0A00 0x0A00
+//#define SYS_INFO_0B00 0x0B00
+//#define SYS_INFO_0C00 0x0C00
+//#define SYS_INFO_0D00 0x0D00
+//#define SYS_INFO_0E00 0x0E00
+//#define SYS_INFO_0F00 0x0F00
+#define SYS_INFO_SW_VERSION 0x1000
+//#define SYS_INFO_2000 0x2000
+//#define SYS_INFO_3000 0x3000
+#define SYS_INFO_SMALL_FONT_PTR 0x4000
+//#define SYS_INFO_5000 0x5000
+//#define SYS_INFO_8000 0x8000
+//#define SYS_INFO_9000 0x9000
+//#define SYS_INFO_A000 0xA000
+
 // System functions.
 void ClearScreen();
 void SetCursor(uint8_t row, uint8_t col, uint8_t cursor_mode);
@@ -181,6 +207,8 @@ char TranslateKeyToChar(uint16_t key);
 
 // mask=0x8 to process special key. mask=4,2,1 unknown.
 void SYS_A25C(uint8_t mask, uint16_t key);
+
+uint32_t GetSystemInfo(uint8_t unused_zero, uint16_t info, void* output);
 
 // Standard library functions.
 int tolower(int c);
