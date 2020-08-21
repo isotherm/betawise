@@ -314,7 +314,7 @@ typedef struct _FontHeader_t {
 #define LCD_CMD_START_LINE(line) (0x40 | ((line) & 0x3F))
 #define LCD_CMD_PAGE_ADDR(pageaddr) (0xB0 | ((pageaddr) & 0x0F))
 #define LCD_CMD_COL_ADDR_HI(coladdr) (0x10 | (((coladdr) >> 4) & 0x0F)
-#define LCD_CMD_COL_ADDR_LO(coladdr) (0x10 | ((coladdr) & 0x0F)
+#define LCD_CMD_COL_ADDR_LO(coladdr) (0x00 | ((coladdr) & 0x0F)
 #define LCD_CMD_COL_ADDR_INC 0xE0
 #define LCD_CMD_COL_ADDR_END 0xEE
 #define LCD_DATA_REG_LEFT (*(volatile uint8_t*)0x1008001)
