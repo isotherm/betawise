@@ -14,188 +14,203 @@
 #undef stderr
 #undef getchar
 #undef putchar
-#define stdin (FILE*)0
-#define stdout (FILE*)1
-#define stderr (FILE*)2
+#define stdin   ((FILE*)0)
+#define stdout  ((FILE*)1)
+#define stderr  ((FILE*)2)
 
 // Cursor mode definitions.
-#define CURSOR_HIDE 0x0C
-#define CURSOR_SHOW 0x0F
+typedef enum _CursorMode_e {
+    CURSOR_MODE_HIDE = 0x0C,
+    CURSOR_MODE_SHOW = 0x0F
+} CursorMode_e;
 
 // Key codes definitions.
-#define KEY_FILE_1      0x2D
-#define KEY_FILE_2      0x2C
-#define KEY_FILE_3      0x04
-#define KEY_FILE_4      0x0F
-#define KEY_FILE_5      0x0E
-#define KEY_FILE_6      0x0A
-#define KEY_FILE_7      0x01
-#define KEY_FILE_8      0x27
-#define KEY_PRINT       0x2B
-#define KEY_SPELL_CHECK 0x35
-#define KEY_FIND        0x3F
-#define KEY_CLEAR_FILE  0x34
-#define KEY_HOME        0x1F
-#define KEY_END         0x3E
-#define KEY_APPLETS     0x29
-#define KEY_SEND        0x2A
-#define KEY_GRAVE       0x2E
-#define KEY_1           0x38
-#define KEY_2           0x37
-#define KEY_3           0x36
-#define KEY_4           0x39
-#define KEY_5           0x2F
-#define KEY_6           0x30
-#define KEY_7           0x3A
-#define KEY_8           0x31
-#define KEY_9           0x32
-#define KEY_0           0x33
-#define KEY_MINUS       0x28
-#define KEY_EQUAL       0x25
-#define KEY_BACKSPACE   0x03
-#define KEY_TAB         0x06
-#define KEY_Q           0x22
-#define KEY_W           0x21
-#define KEY_E           0x20
-#define KEY_R           0x23
-#define KEY_T           0x07
-#define KEY_Y           0x09
-#define KEY_U           0x24
-#define KEY_I           0x1C
-#define KEY_O           0x1D
-#define KEY_P           0x1E
-#define KEY_LEFTBRACE   0x02
-#define KEY_RIGHTBRACE  0x00
-#define KEY_BACKSLASH   0x15
-#define KEY_CAPSLOCK    0x05
-#define KEY_A           0x18
-#define KEY_S           0x17
-#define KEY_D           0x16
-#define KEY_F           0x19
-#define KEY_G           0x10
-#define KEY_H           0x11
-#define KEY_J           0x1B
-#define KEY_K           0x12
-#define KEY_L           0x13
-#define KEY_SEMICOLON   0x14
-#define KEY_APOSTROPHE  0x0B
-#define KEY_ENTER       0x40
-#define KEY_LEFTSHIFT   0x08
-#define KEY_Z           0x43
-#define KEY_X           0x42
-#define KEY_C           0x41
-#define KEY_V           0x44
-#define KEY_B           0x4E
-#define KEY_N           0x4F
-#define KEY_M           0x46
-#define KEY_COMMA       0x3B
-#define KEY_DOT         0x3D
-#define KEY_SLASH       0x47
-#define KEY_RIGHTSHIFT  0x45
-#define KEY_CTRL        0x4D
-#define KEY_ALT         0x26
-#define KEY_CMD         0x0C
-#define KEY_SPACE       0x4C
-#define KEY_ESC         0x48
-#define KEY_DELETE      0x50
-#define KEY_UP          0x4B
-#define KEY_LEFT        0x49
-#define KEY_DOWN        0x0D
-#define KEY_RIGHT       0x4A
-#define KEY_NONE        0xFF
+typedef enum _Key_e {
+    KEY_FILE_1      = 0x2D,
+    KEY_FILE_2      = 0x2C,
+    KEY_FILE_3      = 0x04,
+    KEY_FILE_4      = 0x0F,
+    KEY_FILE_5      = 0x0E,
+    KEY_FILE_6      = 0x0A,
+    KEY_FILE_7      = 0x01,
+    KEY_FILE_8      = 0x27,
+    KEY_PRINT       = 0x2B,
+    KEY_SPELL_CHECK = 0x35,
+    KEY_FIND        = 0x3F,
+    KEY_CLEAR_FILE  = 0x34,
+    KEY_HOME        = 0x1F,
+    KEY_END         = 0x3E,
+    KEY_APPLETS     = 0x29,
+    KEY_SEND        = 0x2A,
+    KEY_GRAVE       = 0x2E,
+    KEY_1           = 0x38,
+    KEY_2           = 0x37,
+    KEY_3           = 0x36,
+    KEY_4           = 0x39,
+    KEY_5           = 0x2F,
+    KEY_6           = 0x30,
+    KEY_7           = 0x3A,
+    KEY_8           = 0x31,
+    KEY_9           = 0x32,
+    KEY_0           = 0x33,
+    KEY_MINUS       = 0x28,
+    KEY_EQUAL       = 0x25,
+    KEY_BACKSPACE   = 0x03,
+    KEY_TAB         = 0x06,
+    KEY_Q           = 0x22,
+    KEY_W           = 0x21,
+    KEY_E           = 0x20,
+    KEY_R           = 0x23,
+    KEY_T           = 0x07,
+    KEY_Y           = 0x09,
+    KEY_U           = 0x24,
+    KEY_I           = 0x1C,
+    KEY_O           = 0x1D,
+    KEY_P           = 0x1E,
+    KEY_LEFTBRACE   = 0x02,
+    KEY_RIGHTBRACE  = 0x00,
+    KEY_BACKSLASH   = 0x15,
+    KEY_CAPSLOCK    = 0x05,
+    KEY_A           = 0x18,
+    KEY_S           = 0x17,
+    KEY_D           = 0x16,
+    KEY_F           = 0x19,
+    KEY_G           = 0x10,
+    KEY_H           = 0x11,
+    KEY_J           = 0x1B,
+    KEY_K           = 0x12,
+    KEY_L           = 0x13,
+    KEY_SEMICOLON   = 0x14,
+    KEY_APOSTROPHE  = 0x0B,
+    KEY_ENTER       = 0x40,
+    KEY_LEFTSHIFT   = 0x08,
+    KEY_Z           = 0x43,
+    KEY_X           = 0x42,
+    KEY_C           = 0x41,
+    KEY_V           = 0x44,
+    KEY_B           = 0x4E,
+    KEY_N           = 0x4F,
+    KEY_M           = 0x46,
+    KEY_COMMA       = 0x3B,
+    KEY_DOT         = 0x3D,
+    KEY_SLASH       = 0x47,
+    KEY_RIGHTSHIFT  = 0x45,
+    KEY_CTRL        = 0x4D,
+    KEY_ALT         = 0x26,
+    KEY_CMD         = 0x0C,
+    KEY_SPACE       = 0x4C,
+    KEY_ESC         = 0x48,
+    KEY_DELETE      = 0x50,
+    KEY_UP          = 0x4B,
+    KEY_LEFT        = 0x49,
+    KEY_DOWN        = 0x0D,
+    KEY_RIGHT       = 0x4A,
+    KEY_NONE        = 0xFF,
+} Key_e;
 
-// Modifier key codes.
-#define MOD_CTRL        0x8000
-#define MOD_CMD         0x4000
-#define MOD_ALT         0x1000
-#define MOD_RIGHTSHIFT  0x0800
-#define MOD_LEFTSHIFT   0x0400
-#define MOD_CAPS_LOCK   0x0200
-#define MOD_KEY_UP      0x0080
-#define MOD_SHIFT       (MOD_LEFTSHIFT | MOD_RIGHTSHIFT)
+typedef enum _KeyMod_e {
+    KEY_MOD_CTRL        = 0x8000,
+    KEY_MOD_CMD         = 0x4000,
+    KEY_MOD_ALT         = 0x1000,
+    KEY_MOD_RIGHTSHIFT  = 0x0800,
+    KEY_MOD_LEFTSHIFT   = 0x0400,
+    KEY_MOD_CAPS_LOCK   = 0x0200,
+    KEY_MOD_KEY_UP      = 0x0080,
+    KEY_MOD_NONE        = 0x0000,
+    KEY_MOD_SHIFT       = (KEY_MOD_LEFTSHIFT | KEY_MOD_RIGHTSHIFT)
+} KeyMod_e;
 
 // Applet messages.
-void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status);
-#define MSG_IDLE 0x00
-#define MSG_INIT 0x18
-#define MSG_SETFOCUS 0x19
-#define MSG_KILLFOCUS 0x1A
-#define MSG_CHAR 0x20
-#define MSG_KEY 0x21
-#define MSG_USB_PLUG 0x30001
-#define MSG_USB_UNPLUG 0x3000C
+typedef enum _Message_e {
+    MSG_IDLE            = 0x00,
+    MSG_INIT            = 0x18,
+    MSG_SETFOCUS        = 0x19,
+    MSG_KILLFOCUS       = 0x1A,
+    MSG_CHAR            = 0x20,
+    MSG_KEY             = 0x21,
+    MSG_USB_PLUG        = 0x30001,
+    MSG_USB_UNPLUG      = 0x3000C,
+    MSG_MOD_SYNTHETIC   = 0x1000000
+} Message_e;
+
+void ProcessMessage(Message_e message, uint32_t param, uint32_t* status);
 
 // Raster op codes.
-#define ROP_CAPTURE 1
-#define ROP_DSTINVERT 2
-#define ROP_SRCINVERT 3
-#define ROP_NOTSRCCOPY 4
-#define ROP_WHITENESS 5
-#define ROP_BLACKNESS 6
-#define ROP_SRCPAINT 7
+typedef enum _RopCode_e {
+    ROP_CAPTURE = 1,
+    ROP_DSTINVERT = 2,
+    ROP_SRCINVERT = 3,
+    ROP_NOTSRCCOPY = 4,
+    ROP_WHITENESS = 5,
+    ROP_BLACKNESS = 6,
+    ROP_SRCPAINT = 7
+} RopCode_e;
 
 // System information.
-//#define SYS_INFO_0000 0x0000
-//#define SYS_INFO_0100 0x0100
-//#define SYS_INFO_0200 0x0200
-#define SYS_INFO_ALPHAWORD_FONT_HEIGHT 0x0300
-//#define SYS_INFO_0400 0x0400
-//#define SYS_INFO_0500 0x0500
-//#define SYS_INFO_0600 0x0600
-#define SYS_INFO_SYSTEM_FONT_PTR 0x0700
-#define SYS_INFO_ROM_SIZE 0x0800
-#define SYS_INFO_IS_NEO_2 0x0900
-//#define SYS_INFO_0A00 0x0A00
-//#define SYS_INFO_0B00 0x0B00
-//#define SYS_INFO_0C00 0x0C00
-//#define SYS_INFO_0D00 0x0D00
-//#define SYS_INFO_0E00 0x0E00
-//#define SYS_INFO_0F00 0x0F00
-#define SYS_INFO_SW_VERSION 0x1000
-//#define SYS_INFO_2000 0x2000
-//#define SYS_INFO_3000 0x3000
-#define SYS_INFO_SMALL_FONT_PTR 0x4000
-//#define SYS_INFO_5000 0x5000
-//#define SYS_INFO_8000 0x8000
-//#define SYS_INFO_9000 0x9000
-//#define SYS_INFO_A000 0xA000
+typedef enum _SysInfo_e {
+    //SYS_INFO_0000                 = 0x0000,
+    //SYS_INFO_0100                 = 0x0100,
+    //SYS_INFO_0200                 = 0x0200,
+    SYS_INFO_ALPHAWORD_FONT_HEIGHT  = 0x0300,
+    //SYS_INFO_0400                 = 0x0400,
+    //SYS_INFO_0500                 = 0x0500,
+    //SYS_INFO_0600                 = 0x0600,
+    SYS_INFO_SYSTEM_FONT_PTR        = 0x0700,
+    SYS_INFO_ROM_SIZE               = 0x0800,
+    SYS_INFO_IS_NEO_2               = 0x0900,
+    //SYS_INFO_0A00                 = 0x0A00,
+    //SYS_INFO_0B00                 = 0x0B00,
+    //SYS_INFO_0C00                 = 0x0C00,
+    //SYS_INFO_0D00                 = 0x0D00,
+    //SYS_INFO_0E00                 = 0x0E00,
+    //SYS_INFO_0F00                 = 0x0F00,
+    SYS_INFO_SW_VERSION             = 0x1000,
+    //SYS_INFO_2000                 = 0x2000,
+    //SYS_INFO_3000                 = 0x3000,
+    SYS_INFO_SMALL_FONT_PTR         = 0x4000
+    //SYS_INFO_5000                 = 0x5000,
+    //SYS_INFO_8000                 = 0x8000,
+    //SYS_INFO_9000                 = 0x9000,
+    //SYS_INFO_A000                 = 0xA000
+} SysInfo_e;
 
 // System functions.
 void ClearScreen();
-void SetCursor(uint8_t row, uint8_t col, uint8_t cursor_mode);
+void SetCursor(uint8_t row, uint8_t col, CursorMode_e cursor_mode);
 void GetCursorPos(uint8_t* row, uint8_t* col);
 void PutStringCentered(const char *str);
 void PutChar(char c);
 void PutStringRaw(const char* str);
-void SetCursorMode(uint8_t cursor_mode);
-void GetCursorMode(uint8_t* cursor_mode);
+void SetCursorMode(CursorMode_e cursor_mode);
+void GetCursorMode(CursorMode_e* cursor_mode);
 void ClearRowCols(uint8_t row, uint8_t col_first, uint8_t col_last);
 void ClearRows(uint8_t row_first, uint8_t row_last);
 
 void PutString(const char* str);
 
 void DrawBitmap(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t* bitmap);
-void RasterOp(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t* bitmap, uint8_t rop);
+void RasterOp(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t* bitmap, RopCode_e rop);
 
 void ProgressBar(uint8_t row, uint16_t value, uint16_t total);
 // exit_keys is a list of key codes that exit text input. Terminated by -1 (\xFF).
-char TextBox(char* buffer, uint8_t* len, uint16_t max_len, const char* exit_keys, bool password);
-uint16_t WaitForKey();
+char TextBox(char* buffer, uint8_t* len, uint16_t max_len, const Key_e* exit_keys, bool password);
+KeyMod_e WaitForKey();
 // If num is 0, strings are compared until a null terminator is reached.
 char StringCompare(const char* str1, const char* str2, int case_sensitive, size_t num);
 void DisplayMessage(const char* str);
-uint16_t GetKey(bool process_special_keys);
+KeyMod_e GetKey(bool process_special_keys);
 void DrainKeyBuffer();
 bool IsKeyReady();
-uint16_t GetKeyModifiers();
+// Returns KeyMod_e values shifted right by 8.
+uint8_t GetKeyModifiers();
 void ScanKeyboard();
-void QueueKey(uint16_t key);
+void QueueKey(KeyMod_e key);
 void SetKeyModifiers(uint16_t mask);
 
 void DialogInit(bool single, uint8_t row_first, uint8_t row_last, uint8_t col);
 // marker is usually ' '; id is for the user; shortcut_key and file_size are usually -1.
-int DialogAddItem(char* text, uint8_t text_len, char marker, int id, uint8_t shortcut_key, size_t file_size);
-int DialogAddExitKey(uint8_t key);
+int DialogAddItem(char* text, uint8_t text_len, char marker, int id, Key_e shortcut_key, size_t file_size);
+int DialogAddExitKey(Key_e key);
 void DialogSetChoice(uint8_t index);
 void DialogDraw();
 short DialogRun();
@@ -203,18 +218,18 @@ char DialogGetChoice();
 int DialogGetChoiceId();
 int DialogGetItemId(uint8_t index);
 
-char TranslateKeyToChar(uint16_t key);
+char TranslateKeyToChar(KeyMod_e key);
 
 // These functions return an index of 0 (system applet) if not found.
 uint8_t AppletFindByName(char* name, uint8_t start_index);
 uint8_t AppletFindById(uint16_t id);
 int AppletGetName(uint8_t index, char* name);
-int AppletSendMessage(uint8_t index, uint32_t message, uint32_t param, uint32_t* status);
+int AppletSendMessage(uint8_t index, Message_e message, uint32_t param, uint32_t* status);
 
 // mask=0x8 to process special key. mask=4,2,1 unknown.
-void SYS_A25C(uint8_t mask, uint16_t key);
+void SYS_A25C(uint8_t mask, KeyMod_e key);
 
-uint32_t GetSystemInfo(uint8_t unused_zero, uint16_t info, void* output);
+uint32_t GetSystemInfo(uint8_t unused_zero, SysInfo_e info, void* output);
 
 // Standard library functions.
 int tolower(int c);

@@ -42,15 +42,15 @@ void PutCharWrapper(char c) {
             gd->col++;
             break;
     }
-    SetCursor(gd->row, gd->col, CURSOR_HIDE);
+    SetCursor(gd->row, gd->col, CURSOR_MODE_HIDE);
 }
 
 char GetCharWrapper(bool wait) {
-    uint16_t key;
+    KeyMod_e key;
     char c = 0;
 
     if(wait) {
-        SetCursorMode(CURSOR_SHOW);
+        SetCursorMode(CURSOR_MODE_SHOW);
     }
     do {
         if(!IsKeyReady()) {
@@ -60,7 +60,7 @@ char GetCharWrapper(bool wait) {
         if(key == KEY_APPLETS) {
             // Invokes the applets menu and does not return.
             SYS_A25C(0x8, key);
-        } else if(key == (MOD_CTRL | KEY_C)) {
+        } else if(key == (KEY_MOD_CTRL | KEY_C)) {
             c = '\x03';
         } else if((key & 0xF0FF) == KEY_BACKSPACE) {
             c = '\b';
@@ -68,11 +68,11 @@ char GetCharWrapper(bool wait) {
             c = TranslateKeyToChar(key);
         }
     } while(!c && wait);
-    SetCursorMode(CURSOR_HIDE);
+    SetCursorMode(CURSOR_MODE_HIDE);
     return c;
 }
 
-void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
+void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
     *status = 0;
     switch(message) {
         case MSG_INIT:

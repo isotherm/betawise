@@ -1,20 +1,18 @@
 #include "betawise.h"
 
-#define SCRATCH_SIZE 256
-#define BUFFER_COUNT 7
-#define BUFFER_INPUT 13
-#define BUFFER_SIZE (1 + BUFFER_INPUT + 2)
+enum { SCRATCH_SIZE = 256 };
+enum { BUFFER_COUNT = 7 };
+enum { BUFFER_INPUT = 13 };
+enum { BUFFER_SIZE = 1 + BUFFER_INPUT + 2 };
 
-#define BYTES_PER_ROW 8
-#define BYTES_PER_ROW_MASK (BYTES_PER_ROW - 1)
-#define ROWS_PER_SCREEN 4
-#define BYTES_PER_SCREEN (BYTES_PER_ROW * ROWS_PER_SCREEN)
-#define BYTES_PER_SCREEN_MASK (BYTES_PER_SCREEN - 1)
-#define FIRST_BYTE_COL 10
+const uint8_t BYTES_PER_ROW = 8;
+const uint8_t FIRST_BYTE_COL = 10;
 
-#define MODE_NIBBLE_HI 0
-#define MODE_NIBBLE_LO 1
-#define MODE_ASCII 2
+typedef enum _Mode_e {
+    MODE_NIBBLE_HI = 0,
+    MODE_NIBBLE_LO = 1,
+    MODE_ASCII = 2
+} Mode_e;
 
 #define BUS_ERROR_HANDLER_PTR *((void(**)())8)
 
@@ -35,6 +33,8 @@ GLOBAL_DATA_BEGIN
     volatile uint8_t busError;
     uint8_t mode;
     short cursor;
+    uint8_t rowsPerScreen;
+    uint8_t bytesPerScreen;
 GLOBAL_DATA_END
 
 void BusErrorHandler() {
@@ -63,7 +63,7 @@ void DumpSetCursor(char offset, char mode, char show) {
     } else if(mode == MODE_ASCII) {
         col = FIRST_BYTE_COL + (BYTES_PER_ROW * 3) + col;
     }
-    SetCursor(row, col, show ? CURSOR_SHOW : CURSOR_HIDE);
+    SetCursor(row, col, show ? CURSOR_MODE_SHOW : CURSOR_MODE_HIDE);
 }
 
 void DumpSetCursorCur() {
@@ -102,8 +102,8 @@ void DumpRedrawScreen() {
     volatile uint8_t* pAddr = gd->pAddress;
     ClearScreen();
     InstallBusErrorHandler();
-    for(char row = 1; row <= ROWS_PER_SCREEN; row++) {
-        SetCursor(row, 1, CURSOR_HIDE);
+    for(char row = 1; row <= gd->rowsPerScreen; row++) {
+        SetCursor(row, 1, CURSOR_MODE_HIDE);
         printf("%08X ", pAddr);
         for(char byte = 0; byte < BYTES_PER_ROW; byte++) {
             gd->busError = 0;
@@ -127,7 +127,7 @@ void DumpMoveCursor(char cursor) {
         gd->pAddress -= BYTES_PER_ROW;
         gd->cursor += BYTES_PER_ROW;
         DumpRedrawScreen();
-    } else if(gd->cursor >= BYTES_PER_SCREEN) {
+    } else if(gd->cursor >= gd->bytesPerScreen) {
         gd->pAddress += BYTES_PER_ROW;
         gd->cursor -= BYTES_PER_ROW;
         DumpRedrawScreen();
@@ -138,8 +138,8 @@ void DumpMoveCursor(char cursor) {
 
 void DumpSetAddress(uint32_t addr) {
     gd->pPrevAddress = gd->pAddress + gd->cursor;
-    gd->pAddress = (volatile uint8_t*)(addr & ~BYTES_PER_ROW_MASK);
-    gd->cursor = addr & BYTES_PER_ROW_MASK;
+    gd->pAddress = (volatile uint8_t*)(addr & ~(BYTES_PER_ROW - 1));
+    gd->cursor = addr & (BYTES_PER_ROW - 1);
     if(gd->mode == MODE_NIBBLE_LO) {
         gd->mode = MODE_NIBBLE_HI;
     }
@@ -208,7 +208,7 @@ char NumberFromString(char* pBuffer, uint32_t* pNumber) {
 
 int NumberPrompt(char* pPrompt, char* pBuffer, short maxLen, char* pDefault) {
     char len, exitKey;
-    char exitKeys[] = { KEY_ESC, KEY_ENTER, -1 };
+    Key_e exitKeys[] = { KEY_ESC, KEY_ENTER, KEY_NONE };
     uint32_t n;
 
     if(!pBuffer[0]) {
@@ -224,7 +224,7 @@ int NumberPrompt(char* pPrompt, char* pBuffer, short maxLen, char* pDefault) {
     return NumberFromString(pBuffer, &n);
 }
 
-void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
+void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
     uint32_t addr;
     char buffer[16];
 
@@ -238,6 +238,8 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
             break;
 
         case MSG_SETFOCUS:
+            gd->rowsPerScreen = 4;
+            gd->bytesPerScreen = BYTES_PER_ROW * gd->rowsPerScreen;
             DumpRedrawScreen();
             break;
 
@@ -297,8 +299,8 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
                     DumpMoveCursor(gd->cursor - BYTES_PER_ROW);
                     break;
 
-                case MOD_CTRL | KEY_UP:
-                    gd->pAddress -= BYTES_PER_SCREEN;
+                case KEY_MOD_CTRL | KEY_UP:
+                    gd->pAddress -= gd->bytesPerScreen;
                     DumpRedrawScreen();
                     break;
 
@@ -306,28 +308,28 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
                     DumpMoveCursor(gd->cursor + BYTES_PER_ROW);
                     break;
 
-                case MOD_CTRL | KEY_DOWN:
-                    gd->pAddress += BYTES_PER_SCREEN;
+                case KEY_MOD_CTRL | KEY_DOWN:
+                    gd->pAddress += gd->bytesPerScreen;
                     DumpRedrawScreen();
                     break;
 
                 case KEY_HOME:
-                    DumpMoveCursor(gd->cursor & ~BYTES_PER_ROW_MASK);
+                    DumpMoveCursor(gd->cursor & ~(BYTES_PER_ROW - 1));
                     break;
 
-                case MOD_CTRL | KEY_HOME:
-                    DumpMoveCursor(gd->cursor & ~BYTES_PER_SCREEN_MASK);
+                case KEY_MOD_CTRL | KEY_HOME:
+                    DumpMoveCursor(gd->cursor & ~(gd->bytesPerScreen - 1));
                     break;
 
                 case KEY_END:
-                    DumpMoveCursor(gd->cursor | BYTES_PER_ROW_MASK);
+                    DumpMoveCursor(gd->cursor | (BYTES_PER_ROW - 1));
                     break;
 
-                case MOD_CTRL | KEY_END:
-                    DumpMoveCursor(gd->cursor | BYTES_PER_SCREEN_MASK);
+                case KEY_MOD_CTRL | KEY_END:
+                    DumpMoveCursor(gd->cursor | (gd->bytesPerScreen - 1));
                     break;
 
-                case MOD_CTRL | KEY_I:
+                case KEY_MOD_CTRL | KEY_I:
                     ClearScreen();
                     for(char choice = 1;;) {
                         uint32_t stack[BUFFER_COUNT];
@@ -344,7 +346,7 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
                         DialogAddItem("all f(1,2,...)", 14, '\x10', 0, KEY_C, -1);
                         DialogSetChoice(choice);
                         DialogDraw();
-                        uint16_t key = DialogRun();
+                        KeyMod_e key = DialogRun();
                         if(key == KEY_ESC) {
                             break;
                         }
@@ -362,28 +364,28 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
                                 stack[0], stack[2], stack[4], stack[6], stack[1], stack[3], stack[5]);
                             uint32_t result = ((uint32_t(*)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t))stack[0])(
                                 stack[2], stack[4], stack[6], stack[1], stack[3], stack[5]);
-                            if(key & MOD_SHIFT) {
+                            if(key & KEY_MOD_SHIFT) {
                                 WaitForKey();
                             }
                             printf("Return value = 0x%08X (%d)", result, result);
-                            SetCursorMode(CURSOR_HIDE);
+                            SetCursorMode(CURSOR_MODE_HIDE);
                             WaitForKey();
                             break;
                         } else {
                             choice = DialogGetChoice();
                         }
                         GetCursorPos(&row, &col);
-                        SetCursor(row, col + 6, CURSOR_HIDE);
+                        SetCursor(row, col + 6, CURSOR_MODE_HIDE);
                         NumberPrompt("", (char*)gd->buffer[choice-1] + 1, BUFFER_INPUT, choice > 1 ? "0x" : "!");
                     }
                     DumpRedrawScreen();
                     break;
 
-                case MOD_CTRL | KEY_G:
+                case KEY_MOD_CTRL | KEY_G:
                     buffer[0] = 0;
                     for(;;) {
                         ClearRowCols(4, 1, 41);
-                        SetCursor(4, 1, CURSOR_HIDE);
+                        SetCursor(4, 1, CURSOR_MODE_HIDE);
                         if(NumberPrompt("Go to address: ", buffer, sizeof(buffer), "0x") == -2) {
                             break;
                         }
@@ -395,8 +397,8 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
                     DumpRedrawScreen();
                     break;
 
-                case MOD_CTRL | MOD_LEFTSHIFT | KEY_G:
-                case MOD_CTRL | MOD_RIGHTSHIFT | KEY_G:
+                case KEY_MOD_CTRL | KEY_MOD_LEFTSHIFT | KEY_G:
+                case KEY_MOD_CTRL | KEY_MOD_RIGHTSHIFT | KEY_G:
                     if(gd->cursor & 1) {
                         break;
                     }
@@ -415,7 +417,7 @@ void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
                     DumpRedrawScreen();
                     break;
 
-                case MOD_CTRL | KEY_R:
+                case KEY_MOD_CTRL | KEY_R:
                     DumpRedrawScreen();
                     break;
 

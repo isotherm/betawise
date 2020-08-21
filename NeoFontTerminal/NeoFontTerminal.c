@@ -14,7 +14,7 @@ GLOBAL_DATA_BEGIN
     FontHeader_t font;
 GLOBAL_DATA_END
 
-void ProcessMessage(uint32_t message, uint32_t param, uint32_t* status) {
+void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
     *status = 0;
     switch(message) {
         case 0x1000001:
