@@ -308,16 +308,6 @@ int puts(const char* str) {
     return fputs(str, stdout);
 }
 
-void BwDrawCursor() {
-    uint16_t x = gd->x;
-    uint16_t w = gd->font->max_width + 1;
-    if(x > 0) {
-        x--;
-        w++;
-    }
-    RasterOp(x, gd->y % LCD_HEIGHT, w, gd->font->height + 1, NULL, ROP_DSTINVERT);
-}
-
 void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
     uint8_t appletIndex;
     uint32_t statusTemp;
@@ -348,9 +338,30 @@ void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
 
 void BwClearScreen() {
     ClearScreen();
-    gd->x = gd->y = gd->roll = 0;
-    gd->row = gd->col = 1;
-    BwDrawCursor();
+    gd->row = 0;
+    BwSetCursorPos(1, 1);
+}
+
+void BwInvertCursor() {
+    if(gd->row == 0) {
+        return;
+    }
+    uint16_t x = gd->x;
+    uint16_t w = gd->font->max_width;
+    if(x > 0) {
+        x--;
+        w++;
+    }
+    RasterOp(x, gd->y % LCD_HEIGHT, w, gd->font->height + 1, NULL, ROP_DSTINVERT);
+}
+
+void BwSetCursorPos(uint8_t row, uint8_t col) {
+    BwInvertCursor();
+    gd->row = row;
+    gd->col = col;
+    gd->x = (col - 1) * gd->font->max_width;
+    gd->y = (row - 1) * gd->font->height;
+    BwInvertCursor();
 }
 
 void BwGetScreenSize(uint8_t* rows, uint8_t* cols) {
@@ -362,8 +373,14 @@ void BwGetScreenSize(uint8_t* rows, uint8_t* cols) {
     }
 }
 
+void BwPutCharRaw(char c) {
+    DrawBitmap(gd->x, gd->y % LCD_HEIGHT, gd->font->max_width, gd->font->height, gd->font->bitmap_data + (gd->font->max_bytes * c));
+    gd->x += gd->font->max_width;
+    gd->col++;
+}
+
 void BwPutChar(char c) {
-    BwDrawCursor();
+    BwInvertCursor();
     switch(c) {
         case '\a':
             // TODO: Handle bell.
@@ -392,12 +409,17 @@ void BwPutChar(char c) {
             gd->col = 1;
             break;
         default:
-            DrawBitmap(gd->x, gd->y % LCD_HEIGHT, gd->font->max_width, gd->font->height, gd->font->bitmap_data + (gd->font->max_bytes * c));
-            gd->x += gd->font->max_width;
-            gd->col++;
+            BwPutCharRaw(c);
             break;
     }
-    BwDrawCursor();
+    BwInvertCursor();
+}
+
+void BwPutString(const char* str) {
+    char c;
+    while(c = *str++) {
+        BwPutChar(c);
+    }
 }
 
 char BwGetChar() {

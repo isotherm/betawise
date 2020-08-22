@@ -6,7 +6,8 @@ enum { BUFFER_INPUT = 13 };
 enum { BUFFER_SIZE = 1 + BUFFER_INPUT + 2 };
 
 const uint8_t BYTES_PER_ROW = 8;
-const uint8_t FIRST_BYTE_COL = 10;
+const uint8_t ADDRESS_COL = 3;
+const uint8_t FIRST_BYTE_COL = 12;
 
 typedef enum _Mode_e {
     MODE_NIBBLE_HI = 0,
@@ -31,7 +32,7 @@ GLOBAL_DATA_BEGIN
     volatile uint8_t* pPrevAddress;
     void (*prevBusErrorHandler)();
     volatile uint8_t busError;
-    uint8_t mode;
+    Mode_e mode;
     short cursor;
     uint8_t rowsPerScreen;
     uint8_t bytesPerScreen;
@@ -53,7 +54,7 @@ void UninstallBusErrorHandler() {
     BUS_ERROR_HANDLER_PTR = gd->prevBusErrorHandler;
 }
 
-void DumpSetCursor(char offset, char mode, char show) {
+void DumpSetCursor(char offset, Mode_e mode) {
     char row = 1 + (offset / BYTES_PER_ROW);
     char col = offset % BYTES_PER_ROW;
     if(mode == MODE_NIBBLE_HI) {
@@ -63,20 +64,21 @@ void DumpSetCursor(char offset, char mode, char show) {
     } else if(mode == MODE_ASCII) {
         col = FIRST_BYTE_COL + (BYTES_PER_ROW * 3) + col;
     }
-    SetCursor(row, col, show ? CURSOR_MODE_SHOW : CURSOR_MODE_HIDE);
+    BwSetCursorPos(row, col);
 }
 
 void DumpSetCursorCur() {
-    DumpSetCursor(gd->cursor, gd->mode, 1);
+    DumpSetCursor(gd->cursor, gd->mode);
 }
 
 void DumpRedrawByteHex(uint8_t c, char error) {
-    printf(error ? "\xd7\xd7 " : "%02X ", c);
+    char buffer[4];    
+    sprintf(buffer, error ? "\xd7\xd7 " : "%02X ", c);
+    BwPutString(buffer);
 }
 
 void DumpRedrawByteAscii(uint8_t c, char error) {
-    static const char msg[] = "BUSERROR";
-    PutChar(error ? '\xd7' : c);
+    BwPutCharRaw(error ? '\xd7' : c);
 }
 
 void DumpWriteAndRedrawCur(uint8_t value, uint8_t mask) {
@@ -90,21 +92,22 @@ void DumpWriteAndRedrawCur(uint8_t value, uint8_t mask) {
     gd->busError = 0;
     uint8_t c = *p;
     UninstallBusErrorHandler();
-    DumpSetCursor(gd->cursor, 0, 0);
+    DumpSetCursor(gd->cursor, MODE_NIBBLE_HI);
     DumpRedrawByteHex(c, gd->busError);
-    DumpSetCursor(gd->cursor, 2, 0);
+    DumpSetCursor(gd->cursor, MODE_ASCII);
     DumpRedrawByteAscii(c, gd->busError);
 }
 
 void DumpRedrawScreen() {
-    uint8_t buffer[BYTES_PER_ROW];
+    uint8_t buffer[BYTES_PER_ROW > 10 ? BYTES_PER_ROW : 10];
     char busError[BYTES_PER_ROW];
     volatile uint8_t* pAddr = gd->pAddress;
     ClearScreen();
     InstallBusErrorHandler();
     for(char row = 1; row <= gd->rowsPerScreen; row++) {
-        SetCursor(row, 1, CURSOR_MODE_HIDE);
-        printf("%08X ", pAddr);
+        BwSetCursorPos(row, ADDRESS_COL);
+        sprintf(buffer, "%08X ", pAddr);
+        BwPutString(buffer);
         for(char byte = 0; byte < BYTES_PER_ROW; byte++) {
             gd->busError = 0;
             buffer[byte] = *pAddr++;
@@ -238,7 +241,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
             break;
 
         case MSG_SETFOCUS:
-            gd->rowsPerScreen = 4;
+            BwGetScreenSize(&gd->rowsPerScreen, NULL);
             gd->bytesPerScreen = BYTES_PER_ROW * gd->rowsPerScreen;
             DumpRedrawScreen();
             break;
@@ -384,7 +387,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                 case KEY_MOD_CTRL | KEY_G:
                     buffer[0] = 0;
                     for(;;) {
-                        ClearRowCols(4, 1, 41);
+                        ClearRows(4, 4);
                         SetCursor(4, 1, CURSOR_MODE_HIDE);
                         if(NumberPrompt("Go to address: ", buffer, sizeof(buffer), "0x") == -2) {
                             break;

@@ -239,9 +239,13 @@ int toupper(int c);
 
 // Betawise library functions.
 void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status);
+void BwInvertCursor();
 void BwClearScreen();
+void BwSetCursorPos(uint8_t row, uint8_t col);
 void BwGetScreenSize(uint8_t* rows, uint8_t* cols);
+void BwPutCharRaw(char c);
 void BwPutChar(char c);
+void BwPutString(const char* str);
 char BwGetChar();
 
 // Header definitions.
