@@ -209,8 +209,8 @@ char NumberFromString(char* pBuffer, uint32_t* pNumber) {
 }
 
 int NumberPrompt(char* pPrompt, char* pBuffer, short maxLen, char* pDefault) {
-    char len, exitKey;
-    Key_e exitKeys[] = { KEY_ESC, KEY_ENTER, KEY_NONE };
+    char len;
+    Key_e exitKey, exitKeys[] = { KEY_ESC, KEY_ENTER, KEY_NONE };
     uint32_t n;
 
     if(!pBuffer[0]) {
@@ -218,7 +218,7 @@ int NumberPrompt(char* pPrompt, char* pBuffer, short maxLen, char* pDefault) {
     }
     len = strlen(pBuffer);
     PutStringRaw(pPrompt);
-    exitKey = TextBox(pBuffer, &len, maxLen - 1, exitKeys, 0);
+    exitKey = TextBox(pBuffer, &len, maxLen - 1, exitKeys, 0) & ~KEY_MOD_CAPS_LOCK;
     if(exitKey == KEY_ESC) {
         return -2;
     }
@@ -273,7 +273,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
             break;
 
         case MSG_KEY:
-            switch(param) {
+            switch(param & ~KEY_MOD_CAPS_LOCK) {
                 case KEY_LEFT:
                     if(gd->mode == MODE_NIBBLE_LO) {
                         gd->mode = MODE_NIBBLE_HI;
@@ -350,7 +350,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                         DialogAddItem("all f(1,2,...)", 14, '\x10', 0, KEY_C, -1);
                         DialogSetChoice(choice);
                         DialogDraw();
-                        KeyMod_e key = DialogRun();
+                        KeyMod_e key = DialogRun() & ~KEY_MOD_CAPS_LOCK;
                         if(key == KEY_ESC) {
                             break;
                         }

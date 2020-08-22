@@ -439,15 +439,17 @@ char BwGetChar() {
         ScanKeyboard();
     }
     key = GetKey(false);
-    if(key == KEY_APPLETS) {
-        // Invokes the applets menu and does not return.
-        SYS_A25C(0x8, key);
-    } else if(key == (KEY_MOD_CTRL | KEY_C)) {
-        c = '\x03';
-    } else if((key & 0xF0FF) == KEY_BACKSPACE) {
-        c = '\b';
-    } else {
-        c = TranslateKeyToChar(key);
+    c = TranslateKeyToChar(key);
+    if(!c) {
+        key &= ~KEY_MOD_CAPS_LOCK;
+        if(key == KEY_APPLETS) {
+            // Invokes the applets menu and does not return.
+            SYS_A25C(0x8, key);
+        } else if(key == (KEY_MOD_CTRL | KEY_C)) {
+            c = '\x03';
+        } else if(key == KEY_BACKSPACE) {
+            c = '\b';
+        }
     }
     return c;
 }
