@@ -374,7 +374,8 @@ void BwGetScreenSize(uint8_t* rows, uint8_t* cols) {
 }
 
 void BwPutCharRaw(char c) {
-    DrawBitmap(gd->x, gd->y % LCD_HEIGHT, gd->font->max_width, gd->font->height, gd->font->bitmap_data + (gd->font->max_bytes * c));
+    uint8_t* bitmap = gd->font->bitmap_data + (gd->font->max_bytes * (uint8_t)c);
+    DrawBitmap(gd->x, gd->y % LCD_HEIGHT, gd->font->max_width, gd->font->height, bitmap);
     gd->x += gd->font->max_width;
     gd->col++;
 }
