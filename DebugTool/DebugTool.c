@@ -78,9 +78,7 @@ void DumpRedrawByteHex(uint8_t c, char error) {
 }
 
 void DumpRedrawByteAscii(uint8_t c, char error) {
-    BwInvertCursor();
     BwPutCharRaw(error ? '\xd7' : c);
-    BwInvertCursor();
 }
 
 void DumpWriteAndRedrawCur(uint8_t value, uint8_t mask) {
@@ -104,7 +102,6 @@ void DumpRedrawScreen() {
     uint8_t buffer[BYTES_PER_ROW > 10 ? BYTES_PER_ROW : 10];
     char busError[BYTES_PER_ROW];
     volatile uint8_t* pAddr = gd->pAddress;
-    BwClearScreen();
     InstallBusErrorHandler();
     for(char row = 1; row <= gd->rowsPerScreen; row++) {
         BwSetCursorPos(row, ADDRESS_COL);
@@ -245,6 +242,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
         case MSG_SETFOCUS:
             BwGetScreenSize(&gd->rowsPerScreen, NULL);
             gd->bytesPerScreen = BYTES_PER_ROW * gd->rowsPerScreen;
+            BwClearScreen();
             DumpRedrawScreen();
             break;
 
@@ -384,6 +382,8 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                         SetCursor(row, col + 6, CURSOR_MODE_HIDE);
                         NumberPrompt("", (char*)gd->buffer[choice-1] + 1, BUFFER_INPUT, choice > 1 ? "0x" : "!");
                     }
+                    SetCursorMode(CURSOR_MODE_HIDE);
+                    BwInvertCursor();
                     DumpRedrawScreen();
                     break;
 
@@ -401,6 +401,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                             break;
                         }
                     }
+                    SetCursorMode(CURSOR_MODE_HIDE);
                     BwInvertCursor();
                     DumpRedrawScreen();
                     break;

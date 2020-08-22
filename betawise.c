@@ -338,6 +338,7 @@ void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
 
 void BwClearScreen() {
     ClearScreen();
+    gd->roll = 0;
     gd->row = 0;
     BwSetCursorPos(1, 1);
 }
@@ -356,11 +357,27 @@ void BwInvertCursor() {
 }
 
 void BwSetCursorPos(uint8_t row, uint8_t col) {
+    bool clear_row = false;
+    
     BwInvertCursor();
+    if(row < 1 || row > gd->row_count) {
+        if(row < 1) {
+            row = 1;
+            gd->roll -= gd->font->height;
+        } else {
+            row = gd->row_count;
+            gd->roll += gd->font->height;
+        }
+        LCD_CMD_REG_LEFT = LCD_CMD_REG_RIGHT = 0x40 | (gd->roll & 0x3F);
+        clear_row = true;
+    }    
     gd->row = row;
     gd->col = col;
     gd->x = (col - 1) * gd->font->max_width;
-    gd->y = (row - 1) * gd->font->height;
+    gd->y = ((row - 1) * gd->font->height) + gd->roll;
+    if(clear_row) {
+        RasterOp(gd->x, gd->y % LCD_HEIGHT, LCD_WIDTH, gd->font->height, NULL, ROP_WHITENESS);
+    }
     BwInvertCursor();
 }
 
@@ -374,46 +391,37 @@ void BwGetScreenSize(uint8_t* rows, uint8_t* cols) {
 }
 
 void BwPutCharRaw(char c) {
-    uint8_t* bitmap = gd->font->bitmap_data + (gd->font->max_bytes * (uint8_t)c);
+    const uint8_t* bitmap = gd->font->bitmap_data + (gd->font->max_bytes * (uint8_t)c);
+    BwInvertCursor();
     DrawBitmap(gd->x, gd->y % LCD_HEIGHT, gd->font->max_width, gd->font->height, bitmap);
     gd->x += gd->font->max_width;
     gd->col++;
+    BwInvertCursor();
 }
 
 void BwPutChar(char c) {
-    BwInvertCursor();
     switch(c) {
         case '\a':
             // TODO: Handle bell.
             break;
         case '\b':
             if(gd->col > 1) {
-                gd->x -= gd->font->max_width;
-                gd->col--;
+                BwSetCursorPos(gd->row, gd->col - 1);
             } else {
                 // TODO: Handle move to previous row?
             }
             break;
         case '\n':
-            gd->y += gd->font->height;
-            gd->row++;
-            if(gd->row > gd->row_count) {
-                // Adjust vertical viewport offset.
-                gd->row = gd->row_count;
-                gd->roll += gd->font->height;
-                LCD_CMD_REG_LEFT = LCD_CMD_REG_RIGHT = 0x40 | (gd->roll & 0x3F);
-            }
-            RasterOp(gd->x, gd->y % LCD_HEIGHT, LCD_WIDTH, gd->font->height, NULL, ROP_WHITENESS);
+            // Assume carriage return with line feeds.
+            BwSetCursorPos(gd->row + 1, 1);
             break;
         case '\r':
-            gd->x = 0;
-            gd->col = 1;
+            BwSetCursorPos(gd->row, 1);
             break;
         default:
             BwPutCharRaw(c);
             break;
     }
-    BwInvertCursor();
 }
 
 void BwPutString(const char* str) {
