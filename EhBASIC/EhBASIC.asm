@@ -459,6 +459,7 @@ LAB_1269:
 
 							| else print line number
 	BSR		LAB_2953			| print " in line [LINE #]"
+    BRA.s		LAB_1274			| skip warm start message
 
 .global EhBASIC_Resume
 EhBASIC_Resume:
