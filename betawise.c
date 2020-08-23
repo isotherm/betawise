@@ -392,6 +392,9 @@ void BwSetCursor(uint8_t row, uint8_t col, CursorMode_e cursor_mode) {
     gd->col = col;
     gd->cursor->font = gd->font;
     gd->cursor->x = (col - 1) * gd->font->max_width;
+    if(gd->cursor->x == LCD_WIDTH) {
+        gd->cursor->x--;
+    }
     gd->cursor->y = ((row - 1) * gd->font->height) + gd->roll;
     gd->cursor->y %= LCD_HEIGHT;
     if(clear_row) {
@@ -414,6 +417,9 @@ void BwPutCharRaw(char c, CursorMode_e cursor_mode) {
     SetCursorMode(CURSOR_MODE_HIDE);
     DrawBitmap(gd->cursor->x, gd->cursor->y, gd->font->max_width, gd->font->height, bitmap);
     gd->cursor->x += gd->font->max_width;
+    if(gd->cursor->x == LCD_WIDTH) {
+        gd->cursor->x--;
+    }
     gd->col++;
     SetCursorMode(cursor_mode);
 }
