@@ -415,13 +415,13 @@ void BwGetScreenSize(uint8_t* rows, uint8_t* cols) {
 void BwPutCharRaw(char c, CursorMode_e cursor_mode) {
     const uint8_t* bitmap = gd->font->bitmap_data + (gd->font->max_bytes * (uint8_t)c);
     SetCursorMode(CURSOR_MODE_HIDE);
+    if(gd->cursor->x == (LCD_WIDTH - 1)) {
+        BwSetCursor(gd->row + 1, 1, CURSOR_MODE_HIDE);
+    }
     DrawBitmap(gd->cursor->x, gd->cursor->y, gd->font->max_width, gd->font->height, bitmap);
     gd->cursor->x += gd->font->max_width;
     if(gd->cursor->x == LCD_WIDTH) {
         gd->cursor->x--;
-    } else if(gd->cursor->x > LCD_WIDTH) {
-        BwSetCursor(gd->row + 1, 1, cursor_mode);
-        return;
     }
     gd->col++;
     SetCursorMode(cursor_mode);
