@@ -241,9 +241,9 @@ int toupper(int c);
 void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status);
 void BwInvertCursor();
 void BwClearScreen();
-void BwSetCursorPos(uint8_t row, uint8_t col);
+void BwSetCursor(uint8_t row, uint8_t col, CursorMode_e cursor_mode);
 void BwGetScreenSize(uint8_t* rows, uint8_t* cols);
-void BwPutCharRaw(char c);
+void BwPutCharRaw(char c, CursorMode_e cursor_mode);
 void BwPutChar(char c);
 void BwPutString(const char* str);
 char BwGetChar();
@@ -286,14 +286,13 @@ typedef struct _FontHeader_t {
 
 // Global data definitions.
 typedef struct _BwGlobalData_t {
-    uint16_t x;
-    uint16_t y;
+    struct Cursor_t* cursor;
+    FontHeader_t* font;
     uint16_t roll;
     uint8_t row;
     uint8_t col;
     uint8_t row_count;
     uint8_t col_count;
-    FontHeader_t* font;
 } BwGlobalData_t;
 
 #define GLOBAL_DATA_BEGIN \

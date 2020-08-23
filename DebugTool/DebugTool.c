@@ -54,7 +54,7 @@ void UninstallBusErrorHandler() {
     BUS_ERROR_HANDLER_PTR = gd->prevBusErrorHandler;
 }
 
-void DumpSetCursor(char offset, Mode_e mode) {
+void DumpSetCursor(char offset, Mode_e mode, CursorMode_e cursor_mode) {
     char row = 1 + (offset / BYTES_PER_ROW);
     char col = offset % BYTES_PER_ROW;
     if(mode == MODE_NIBBLE_HI) {
@@ -64,21 +64,21 @@ void DumpSetCursor(char offset, Mode_e mode) {
     } else if(mode == MODE_ASCII) {
         col = FIRST_BYTE_COL + (BYTES_PER_ROW * 3) + col;
     }
-    BwSetCursorPos(row, col);
+    BwSetCursor(row, col, cursor_mode);
 }
 
 void DumpSetCursorCur() {
-    DumpSetCursor(gd->cursor, gd->mode);
+    DumpSetCursor(gd->cursor, gd->mode, CURSOR_MODE_SHOW);
 }
 
 void DumpRedrawByteHex(uint8_t c, char error) {
-    char buffer[4];    
+    char buffer[4];
     sprintf(buffer, error ? "\xd7\xd7 " : "%02X ", c);
     BwPutString(buffer);
 }
 
 void DumpRedrawByteAscii(uint8_t c, char error) {
-    BwPutCharRaw(error ? '\xd7' : c);
+    BwPutCharRaw(error ? '\xd7' : c, CURSOR_MODE_HIDE);
 }
 
 void DumpWriteAndRedrawCur(uint8_t value, uint8_t mask) {
@@ -92,9 +92,9 @@ void DumpWriteAndRedrawCur(uint8_t value, uint8_t mask) {
     gd->busError = 0;
     uint8_t c = *p;
     UninstallBusErrorHandler();
-    DumpSetCursor(gd->cursor, MODE_NIBBLE_HI);
+    DumpSetCursor(gd->cursor, MODE_NIBBLE_HI, CURSOR_MODE_HIDE);
     DumpRedrawByteHex(c, gd->busError);
-    DumpSetCursor(gd->cursor, MODE_ASCII);
+    DumpSetCursor(gd->cursor, MODE_ASCII, CURSOR_MODE_HIDE);
     DumpRedrawByteAscii(c, gd->busError);
 }
 
@@ -104,7 +104,7 @@ void DumpRedrawScreen() {
     volatile uint8_t* pAddr = gd->pAddress;
     InstallBusErrorHandler();
     for(char row = 1; row <= gd->rowsPerScreen; row++) {
-        BwSetCursorPos(row, ADDRESS_COL);
+        BwSetCursor(row, ADDRESS_COL, CURSOR_MODE_HIDE);
         sprintf(buffer, "%08X ", pAddr);
         BwPutString(buffer);
         for(char byte = 0; byte < BYTES_PER_ROW; byte++) {
@@ -336,7 +336,6 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                     break;
 
                 case KEY_MOD_CTRL | KEY_I:
-                    BwInvertCursor();
                     ClearScreen();
                     for(char choice = 1;;) {
                         uint32_t stack[BUFFER_COUNT];
@@ -375,7 +374,6 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                                 WaitForKey();
                             }
                             printf("Return value = 0x%08X (%d)", result, result);
-                            SetCursorMode(CURSOR_MODE_HIDE);
                             WaitForKey();
                             break;
                         } else {
@@ -385,14 +383,11 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                         SetCursor(row, col + 6, CURSOR_MODE_HIDE);
                         NumberPrompt("", (char*)gd->buffer[choice-1] + 1, BUFFER_INPUT, choice > 1 ? "0x" : "!");
                     }
-                    SetCursorMode(CURSOR_MODE_HIDE);
-                    BwInvertCursor();
                     DumpRedrawScreen();
                     break;
 
                 case KEY_MOD_CTRL | KEY_G:
                     buffer[0] = 0;
-                    BwInvertCursor();
                     for(;;) {
                         ClearRowCols(4, 1, 41);
                         SetCursor(4, 1, CURSOR_MODE_HIDE);
@@ -404,8 +399,6 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                             break;
                         }
                     }
-                    SetCursorMode(CURSOR_MODE_HIDE);
-                    BwInvertCursor();
                     DumpRedrawScreen();
                     break;
 

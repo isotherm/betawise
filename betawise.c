@@ -308,19 +308,50 @@ int puts(const char* str) {
     return fputs(str, stdout);
 }
 
+struct Cursor_t {
+    FontHeader_t* font;
+    uint8_t col_count;
+    uint8_t row_count;
+    uint16_t y_top;
+    uint16_t x_left;
+    uint16_t x;
+    uint16_t y;
+    bool visible;
+    bool pause;
+};
+
 void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
+    struct Cursor_t* cursor;
     uint8_t appletIndex;
-    uint32_t statusTemp;
 
     switch(message) {
+        case MSG_INIT:
+            // Find cursor struct in RAM.
+            gd->cursor = NULL;
+            GetSystemInfo(0, SYS_INFO_SYSTEM_FONT_PTR, &gd->font);
+            for(cursor = (void*)0x400; (uint32_t)cursor < (uint32_t)gd; cursor = (void*)cursor + 2) {
+                if((cursor->font == gd->font) && (cursor->row_count == 4) && (cursor->col_count == 40) &&
+                   (cursor->y_top == 0) && (cursor->x_left == 12)) {
+                    gd->cursor = cursor;
+                    break;
+                }
+            }
+            break;
+
         case MSG_SETFOCUS:
+            if(gd->cursor == NULL) {
+                DisplayMessage("Error: Incompatible system software.");
+                // Signal application error.
+                *status = 7;
+                return;
+            }
             // Initialize screen and font.
             appletIndex = AppletFindById(0xA1F0);
             if(appletIndex > 0) {
-                AppletSendMessage(appletIndex, 0x1000002, (uint32_t)&gd->font, &statusTemp);
+                AppletSendMessage(appletIndex, 0x1000002, (uint32_t)&gd->font, status);
                 gd->row_count = LCD_HEIGHT / 8;
             } else {
-                GetSystemInfo(0, SYS_INFO_SYSTEM_FONT_PTR, &gd->font);
+                // Retain system font pointer from initialization.
                 gd->row_count = LCD_HEIGHT / 16;
             }
             gd->col_count = LCD_WIDTH / 6;
@@ -339,27 +370,13 @@ void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
 void BwClearScreen() {
     ClearScreen();
     gd->roll = 0;
-    gd->row = 0;
-    BwSetCursorPos(1, 1);
+    BwSetCursor(1, 1, CURSOR_MODE_HIDE);
 }
 
-void BwInvertCursor() {
-    if(gd->row == 0) {
-        return;
-    }
-    uint16_t x = gd->x;
-    uint16_t w = gd->font->max_width;
-    if(x > 0) {
-        x--;
-        w++;
-    }
-    RasterOp(x, gd->y % LCD_HEIGHT, w, gd->font->height + 1, NULL, ROP_DSTINVERT);
-}
-
-void BwSetCursorPos(uint8_t row, uint8_t col) {
+void BwSetCursor(uint8_t row, uint8_t col, CursorMode_e cursor_mode) {
     bool clear_row = false;
-    
-    BwInvertCursor();
+
+    SetCursorMode(CURSOR_MODE_HIDE);
     if(row < 1 || row > gd->row_count) {
         if(row < 1) {
             row = 1;
@@ -370,15 +387,17 @@ void BwSetCursorPos(uint8_t row, uint8_t col) {
         }
         LCD_CMD_REG_LEFT = LCD_CMD_REG_RIGHT = 0x40 | (gd->roll & 0x3F);
         clear_row = true;
-    }    
+    }
     gd->row = row;
     gd->col = col;
-    gd->x = (col - 1) * gd->font->max_width;
-    gd->y = ((row - 1) * gd->font->height) + gd->roll;
+    gd->cursor->font = gd->font;
+    gd->cursor->x = (col - 1) * gd->font->max_width;
+    gd->cursor->y = ((row - 1) * gd->font->height) + gd->roll;
+    gd->cursor->y %= LCD_HEIGHT;
     if(clear_row) {
-        RasterOp(gd->x, gd->y % LCD_HEIGHT, LCD_WIDTH, gd->font->height, NULL, ROP_WHITENESS);
+        RasterOp(gd->cursor->x, gd->cursor->y, LCD_WIDTH, gd->font->height, NULL, ROP_WHITENESS);
     }
-    BwInvertCursor();
+    SetCursorMode(cursor_mode);
 }
 
 void BwGetScreenSize(uint8_t* rows, uint8_t* cols) {
@@ -390,36 +409,39 @@ void BwGetScreenSize(uint8_t* rows, uint8_t* cols) {
     }
 }
 
-void BwPutCharRaw(char c) {
+void BwPutCharRaw(char c, CursorMode_e cursor_mode) {
     const uint8_t* bitmap = gd->font->bitmap_data + (gd->font->max_bytes * (uint8_t)c);
-    BwInvertCursor();
-    DrawBitmap(gd->x, gd->y % LCD_HEIGHT, gd->font->max_width, gd->font->height, bitmap);
-    gd->x += gd->font->max_width;
+    SetCursorMode(CURSOR_MODE_HIDE);
+    DrawBitmap(gd->cursor->x, gd->cursor->y, gd->font->max_width, gd->font->height, bitmap);
+    gd->cursor->x += gd->font->max_width;
     gd->col++;
-    BwInvertCursor();
+    SetCursorMode(cursor_mode);
 }
 
 void BwPutChar(char c) {
+    CursorMode_e cursor_mode;
+
+    GetCursorMode(&cursor_mode);
     switch(c) {
         case '\a':
             // TODO: Handle bell.
             break;
         case '\b':
             if(gd->col > 1) {
-                BwSetCursorPos(gd->row, gd->col - 1);
+                BwSetCursor(gd->row, gd->col - 1, cursor_mode);
             } else {
                 // TODO: Handle move to previous row?
             }
             break;
         case '\n':
             // Assume carriage return with line feeds.
-            BwSetCursorPos(gd->row + 1, 1);
+            BwSetCursor(gd->row + 1, 1, cursor_mode);
             break;
         case '\r':
-            BwSetCursorPos(gd->row, 1);
+            BwSetCursor(gd->row, 1, cursor_mode);
             break;
         default:
-            BwPutCharRaw(c);
+            BwPutCharRaw(c, cursor_mode);
             break;
     }
 }
