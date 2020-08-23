@@ -187,7 +187,7 @@ LAB_COLD:
 	MOVE.b	#44,TWidth.w(%a5)		| default terminal width byte
 	MOVE.b	#11,TabSiz.w(%a5)		| save default tab size
 
-	MOVE.b	#22,Iclim.w(%a5)		| default limit for TAB
+	MOVE.b	#33,Iclim.w(%a5)		| default limit for TAB
 
 	LEA		des_sk.w(%a5),%a4		| set descriptor stack start
 
