@@ -419,6 +419,9 @@ void BwPutCharRaw(char c, CursorMode_e cursor_mode) {
     gd->cursor->x += gd->font->max_width;
     if(gd->cursor->x == LCD_WIDTH) {
         gd->cursor->x--;
+    } else if(gd->cursor->x > LCD_WIDTH) {
+        BwSetCursor(gd->row + 1, 1, cursor_mode);
+        return;
     }
     gd->col++;
     SetCursorMode(cursor_mode);
