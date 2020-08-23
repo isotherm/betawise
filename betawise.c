@@ -433,7 +433,11 @@ void BwPutChar(char c) {
     GetCursorMode(&cursor_mode);
     switch(c) {
         case '\a':
-            // TODO: Handle bell.
+            SetCursorMode(CURSOR_MODE_HIDE);
+            LCD_CMD_REG_LEFT = LCD_CMD_REG_RIGHT = LCD_CMD_ALL_PIX_ON(true);
+            SleepCentimilliseconds(10000);
+            LCD_CMD_REG_LEFT = LCD_CMD_REG_RIGHT = LCD_CMD_ALL_PIX_ON(false);
+            SetCursorMode(cursor_mode);
             break;
         case '\b':
             if(gd->col > 1) {
