@@ -209,6 +209,12 @@ void ScanKeyboard();
 void QueueKey(KeyMod_e key);
 void SetKeyModifiers(uint16_t mask);
 
+void SleepCentiseconds(uint32_t centiseconds);
+void SleepCentimilliseconds(uint16_t centimilliseconds);
+uint32_t GetUptimeSeconds();
+uint32_t GetUptimeCentiseconds();
+uint32_t GetUptimeMilliseconds();
+
 void DialogInit(bool single, uint8_t row_first, uint8_t row_last, uint8_t col);
 // marker is usually ' '; id is for the user; shortcut_key and file_size are usually -1.
 int DialogAddItem(char* text, uint8_t text_len, char marker, int id, Key_e shortcut_key, size_t file_size);
