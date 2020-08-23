@@ -439,7 +439,7 @@ void BwPutChar(char c) {
             if(gd->col > 1) {
                 BwSetCursor(gd->row, gd->col - 1, cursor_mode);
             } else {
-                // TODO: Handle move to previous row?
+                BwSetCursor(gd->row - 1, gd->col_count, cursor_mode);
             }
             break;
         case '\n':
