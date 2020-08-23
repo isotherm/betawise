@@ -14,8 +14,8 @@ also result from indiscriminate use. Proceed at your own risk!
 * `Ctrl`+`Home`, `Ctrl`+`End`: Go to beginning or end of screen.
 * `Ctrl`+`G`: Go to address.
   * The address may be entered as decimal or hex (prefixed by `0x`).
-  * The address may have a suffix of `,a5` to access the debugger global data.
-    The debugger reserves the first 256 bytes of this data as a user scratch area.
+  * The debugger reserves 256 bytes for use as a user scratch area. The address
+    may have a suffix of `+` to index into access this scratch pad.
 * `Ctrl`+`I`: Invoke function with up to 6 arguments.
   * The function address and parameters may be entered as above.
   * A function address with a `!` prefix indicates a system call, e.g. `!0`

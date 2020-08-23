@@ -195,10 +195,10 @@ char NumberFromString(char* pBuffer, uint32_t* pNumber) {
     if(syscall) {
         // Calculate system call index.
         n = (uint32_t)&ClearScreen + (n << 1);
-    } else if(pBuffer[0] == ',' && toupper(pBuffer[1]) == 'A' && pBuffer[2] == '5') {
-        // Add A5 (global data) pointer.
-        n += (uint32_t)gd;
-        pBuffer += 3;
+    } else if(pBuffer[0] == '+') {
+        // Add scratch buffer pointer.
+        n += (uint32_t)gd->scratch;
+        pBuffer++;
     }
 
     if(*pBuffer) {
@@ -233,9 +233,12 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
     *status = 0;
     switch(message) {
         case MSG_INIT:
-            memset((char*)gd, 0, sizeof(gd));
+            gd->pAddress = gd->pPrevAddress = 0;
+            gd->mode = MODE_NIBBLE_HI;
+            gd->cursor = 0;
             for(char i = 0; i < BUFFER_COUNT; i++) {
                 gd->buffer[i][0] = ' ';
+                gd->buffer[i][1] = '\0';
             }
             break;
 
