@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 
@@ -8,8 +8,8 @@ from PIL import Image
 im = Image.open(sys.argv[1])
 glyph_count = 256
 img_width, glyph_height = im.size
-glyph_width = img_width / glyph_count
-glyph_bytes = glyph_width * int((glyph_height + 7) / 8)
+glyph_width = img_width // glyph_count
+glyph_bytes = glyph_width * int((glyph_height + 7) // 8)
 
 glyphs = []
 for i in range(glyph_count):

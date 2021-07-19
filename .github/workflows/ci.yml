@@ -8,14 +8,14 @@ on:
 
 jobs:
   linux:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-20.04
     steps:
     - name: Check out repository.
       uses: actions/checkout@v2
       with:
         fetch-depth: 0
     - name: Install build dependencies.
-      run: sudo apt-get install gcc-m68k-linux-gnu python-pil
+      run: sudo apt-get install gcc-m68k-linux-gnu python3-pil
     - name: Build library and applets.
       run: make CROSS_COMPILE=m68k-linux-gnu- all
     - name: Get the tag name.
