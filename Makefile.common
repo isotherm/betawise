@@ -9,10 +9,10 @@ ASFLAGS = --pcrel
 LDFLAGS = -static -T "$(TOP)/betawise.lds" -L"$(TOP)" -lbetawise
 ARFLAGS = rcs
 
-%.o : %.c *.h
+%.o : %.c $(*.h)
 	$(CC) $(CFLAGS) -c $<
 
-%.o : %.asm *.inc
+%.o : %.asm $(*.inc)
 	$(AS) $(ASFLAGS) $< -o $@
 
 %.a : $(OBJ)

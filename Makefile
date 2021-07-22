@@ -1,7 +1,7 @@
 INT = version.h
 OBJ = betawise.o
 TARGET = libbetawise.a
-SUBDIRS = $(wildcard */.)
+SUBDIRS = $(shell find -mindepth 1 -maxdepth 1 -type d -not -path "./.*")
 
 include Makefile.common
 
