@@ -358,8 +358,10 @@ void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
             break;
 
         case MSG_KILLFOCUS:
-            // Restore vertical viewport offset to 0.
-            LCD_CMD_REG_LEFT = LCD_CMD_REG_RIGHT = 0x40;
+            if(gd->cursor != NULL) {
+                // Restore vertical viewport offset to 0.
+                LCD_CMD_REG_LEFT = LCD_CMD_REG_RIGHT = 0x40;
+            }
             break;
     };
 
