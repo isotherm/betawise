@@ -180,7 +180,7 @@ typedef enum _SysInfo_e {
 void ClearScreen();
 void SetCursor(uint8_t row, uint8_t col, CursorMode_e cursor_mode);
 void GetCursorPos(uint8_t* row, uint8_t* col);
-void PutStringCentered(const char *str);
+void PutStringCentered(uint8_t row, const char *str);
 void PutChar(char c);
 void PutStringRaw(const char* str);
 void SetCursorMode(CursorMode_e cursor_mode);
