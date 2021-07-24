@@ -179,7 +179,7 @@ DEFINE_SYSCALL(170, SYS_A2A8);
 DEFINE_SYSCALL(171, SYS_A2AC);
 DEFINE_SYSCALL(172, SYS_A2B0);
 DEFINE_SYSCALL(173, SYS_A2B4);
-DEFINE_SYSCALL(174, GetSystemInfo);
+DEFINE_SYSCALL(174, CallSysInt);
 DEFINE_SYSCALL(175, SYS_A2BC);
 DEFINE_SYSCALL(176, SYS_A2C0);
 DEFINE_SYSCALL(177, SYS_A2C4);
@@ -328,7 +328,7 @@ void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
         case MSG_INIT:
             // Find cursor struct in RAM.
             gd->cursor = NULL;
-            GetSystemInfo(0, SYS_INFO_SYSTEM_FONT_PTR, &gd->font);
+            CallSysInt(0, SYS_INT_GET_SYSTEM_FONT_PTR, &gd->font);
             for(cursor = (void*)0x400; (uint32_t)cursor < (uint32_t)gd; cursor = (void*)cursor + 2) {
                 if((cursor->font == gd->font) && (cursor->row_count == 4) && (cursor->col_count == 40) &&
                    (cursor->y_top == 0) && (cursor->x_left == 12)) {

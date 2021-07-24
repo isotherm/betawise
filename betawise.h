@@ -148,33 +148,33 @@ typedef enum _RopCode_e {
     ROP_SRCPAINT = 7
 } RopCode_e;
 
-// System information.
-typedef enum _SysInfo_e {
-    //SYS_INFO_0000                 = 0x0000,
-    //SYS_INFO_0100                 = 0x0100,
-    //SYS_INFO_0200                 = 0x0200,
-    SYS_INFO_ALPHAWORD_FONT_HEIGHT  = 0x0300,
-    //SYS_INFO_0400                 = 0x0400,
-    //SYS_INFO_0500                 = 0x0500,
-    //SYS_INFO_0600                 = 0x0600,
-    SYS_INFO_SYSTEM_FONT_PTR        = 0x0700,
-    SYS_INFO_ROM_SIZE               = 0x0800,
-    SYS_INFO_IS_NEO_2               = 0x0900,
-    //SYS_INFO_0A00                 = 0x0A00,
-    //SYS_INFO_0B00                 = 0x0B00,
-    //SYS_INFO_0C00                 = 0x0C00,
-    //SYS_INFO_0D00                 = 0x0D00,
-    //SYS_INFO_0E00                 = 0x0E00,
-    //SYS_INFO_0F00                 = 0x0F00,
-    SYS_INFO_SW_VERSION             = 0x1000,
-    //SYS_INFO_2000                 = 0x2000,
-    //SYS_INFO_3000                 = 0x3000,
-    SYS_INFO_SMALL_FONT_PTR         = 0x4000
-    //SYS_INFO_5000                 = 0x5000,
-    //SYS_INFO_8000                 = 0x8000,
-    //SYS_INFO_9000                 = 0x9000,
-    //SYS_INFO_A000                 = 0xA000
-} SysInfo_e;
+// System internal calls.
+typedef enum _SysInt_e {
+    SYS_INT_GET_HW_LEVEL            = 0x0000,
+    SYS_INT_GET_CONTRAST            = 0x0100,
+    SYS_INT_SET_CONTRAST            = 0x0200,
+    SYS_INT_GET_ROW_HEIGHT          = 0x0300,
+    SYS_INT_GET_LCD_HEIGHT          = 0x0400,
+    SYS_INT_GET_LCD_WIDTH           = 0x0500,
+    SYS_INT_GET_ROW_COUNT           = 0x0600,
+    SYS_INT_GET_SYSTEM_FONT_PTR     = 0x0700,
+    SYS_INT_GET_ROM_SIZE            = 0x0800,
+    SYS_INT_IS_NEO_2                = 0x0900,
+    SYS_INT_WIRELESS_DISPLAY_STATUS = 0x0A00,
+    SYS_INT_WIRELESS_TURN_ON        = 0x0B00,
+    //SYS_INT_0C00                  = 0x0C00,
+    //SYS_INT_0D00                  = 0x0D00,
+    //SYS_INT_0E00                  = 0x0E00,
+    //SYS_INT_0F00                  = 0x0F00,
+    SYS_INT_GET_FIRMWARE_VERSION    = 0x1000,
+    //SYS_INT_2000                  = 0x2000,
+    //SYS_INT_3000                  = 0x3000,
+    SYS_INT_GET_SMALL_FONT_PTR      = 0x4000
+    //SYS_INT_5000                  = 0x5000,
+    //SYS_INT_8000                  = 0x8000,
+    //SYS_INT_9000                  = 0x9000,
+    //SYS_INT_A000                  = 0xA000
+} SysInt_e;
 
 // System functions.
 void ClearScreen();
@@ -237,7 +237,7 @@ int AppletSendMessage(uint8_t index, Message_e message, uint32_t param, uint32_t
 // mask=0x8 to process special key. mask=4,2,1 unknown.
 void SYS_A25C(uint8_t mask, KeyMod_e key);
 
-uint32_t GetSystemInfo(uint8_t unused_zero, SysInfo_e info, void* output);
+uint32_t CallSysInt(uint8_t unused_zero, SysInt_e info, void* output);
 
 // Standard library functions.
 int tolower(int c);
