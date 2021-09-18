@@ -1,4 +1,4 @@
-#include "betawise.h"
+#include "os3k.h"
 #include "glyphs.h"
 
 APPLET_HEADER_BEGIN

@@ -1,4 +1,4 @@
-#include "betawise.h"
+#include "os3k.h"
 
 APPLET_HEADER_BEGIN
     APPLET_ID(0xA1BA)

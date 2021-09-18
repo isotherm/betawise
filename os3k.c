@@ -1,5 +1,5 @@
 #define BETAWISE_LIB
-#include "betawise.h"
+#include "os3k.h"
 
 #define DEFINE_SYSCALL(index, name) \
     asm(".global " #name); \

@@ -1,5 +1,5 @@
-#ifndef _BETAWISE_H_
-#define _BETAWISE_H_
+#ifndef _OS3K_H_
+#define _OS3K_H_
 
 #include "version.h"
 

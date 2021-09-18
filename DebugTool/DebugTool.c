@@ -1,4 +1,4 @@
-#include "betawise.h"
+#include "os3k.h"
 
 enum { SCRATCH_SIZE = 256 };
 enum { BUFFER_COUNT = 7 };
