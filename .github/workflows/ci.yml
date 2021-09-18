@@ -17,7 +17,7 @@ jobs:
     - name: Install build dependencies.
       run: sudo apt-get install gcc-m68k-linux-gnu python3-pil
     - name: Build library and applets.
-      run: make CROSS_COMPILE=m68k-linux-gnu- all
+      run: make all
     - name: Get the tag name.
       id: get_tag
       run: echo ::set-output name=TAG::$(git describe --tags | tail -c +2)

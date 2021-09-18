@@ -1,5 +1,9 @@
 TOP = $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+ifeq ($(OS), Windows_NT)
 CROSS_COMPILE = m68k-elf-
+else
+CROSS_COMPILE = m68k-linux-gnu-
+endif
 CC = $(CROSS_COMPILE)gcc
 AS = $(CROSS_COMPILE)as
 LD = $(CROSS_COMPILE)ld
