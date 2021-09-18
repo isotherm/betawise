@@ -274,23 +274,6 @@ DEFINE_SYSCALL(282, SYS_A468);
 DEFINE_SYSCALL(283, SYS_A46C);
 DEFINE_SYSCALL(284, SYS_A470);
 
-int fputs(const char* str, FILE* stream) {
-    while(*str) {
-        if(fputc(*str++, stream) == EOF) {
-            return EOF;
-        }
-    }
-    return fputc('\n', stream);
-}
-
-int putchar(int character) {
-    return fputc(character, stdout);
-}
-
-int puts(const char* str) {
-    return fputs(str, stdout);
-}
-
 struct Cursor_t {
     FontHeader_t* font;
     uint8_t col_count;
