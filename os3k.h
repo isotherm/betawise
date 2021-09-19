@@ -307,14 +307,14 @@ typedef struct _BwGlobalData_t {
 #define GLOBAL_DATA_END \
     } __bw_global_data;
 
-extern char __bw_rom_size;
-extern char __bw_bss_size;
+extern char __os3k_rom_size;
+extern char __os3k_bss_size;
 
 #define APPLET_HEADER_BEGIN \
-    AppletHeader_t __header __attribute__ ((section("bw_header"))) = { \
+    AppletHeader_t __header __attribute__ ((section("os3k_header"))) = { \
         .signature = 0xC0FFEEAD, \
-        .romUsage = (uint32_t)&__bw_rom_size, \
-        .ramUsage = (uint32_t)&__bw_bss_size, \
+        .romUsage = (uint32_t)&__os3k_rom_size, \
+        .ramUsage = (uint32_t)&__os3k_bss_size, \
         .settingsOffset = 0, \
         .flags = 0xFF000000, \
         .headerVersion = 1, \
@@ -341,7 +341,7 @@ extern char __bw_bss_size;
 #define APPLET_LANGUAGE_SV .languageId = 9,
 #define APPLET_HEADER_END \
     }; \
-    uint32_t __footer __attribute__ ((section("bw_footer"))) = { 0xCAFEFEED }; \
+    uint32_t __footer __attribute__ ((section("os3k_footer"))) = { 0xCAFEFEED }; \
 
 #define APPLET_FLAG_HIDDEN 0x001
 #define APPLET_FLAG_FONT (0x010 | 0x020)

@@ -2,8 +2,10 @@
 #include "os3k.h"
 
 #define DEFINE_SYSCALL(index, name) \
+    asm(".section .text." #name); \
     asm(".global " #name); \
-    asm(#name ": .word 0xA000 + 4*" #index)
+    asm(#name ": .word 0xA000 + 4*" #index); \
+    asm(".text");
 
 DEFINE_SYSCALL(0, ClearScreen);
 DEFINE_SYSCALL(1, SetCursor);

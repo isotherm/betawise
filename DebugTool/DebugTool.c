@@ -31,11 +31,12 @@ GLOBAL_DATA_BEGIN
     volatile uint8_t* pAddress;
     volatile uint8_t* pPrevAddress;
     void (*prevBusErrorHandler)();
-    volatile uint8_t busError;
+    uint16_t rawSysCall;
     Mode_e mode;
     short cursor;
     uint8_t rowsPerScreen;
     uint8_t bytesPerScreen;
+    volatile uint8_t busError;
 GLOBAL_DATA_END
 
 void BusErrorHandler() {
@@ -193,8 +194,9 @@ char NumberFromString(char* pBuffer, uint32_t* pNumber) {
     }
 
     if(syscall) {
-        // Calculate system call index.
-        n = (uint32_t)&ClearScreen + (n << 1);
+        // Calculate system call opcode.
+        gd->rawSysCall = 0xA000 | ((n << 2) & 0x7fc);
+        n = (uint32_t)&gd->rawSysCall;
     } else if(pBuffer[0] == '+') {
         // Add scratch buffer pointer.
         n += (uint32_t)gd->scratch;
