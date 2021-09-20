@@ -9,13 +9,42 @@ on:
 jobs:
   linux:
     runs-on: ubuntu-20.04
+    env:
+      CORES: 2
+      TARGET: m68k-elf
+      PREFIX: /opt/m68k-elf
+      BINUTILS_VERSION: 2.36
+      GCC_VERSION: 11.1.0
     steps:
+    - name: Install build dependencies.
+      run: |
+        sudo apt-get update
+        sudo apt-get install libgmp-dev libmpfr-dev libmpc-dev
+        sudo apt-get install python3-pil
+    - name: Download toolchain sources.
+      run: |
+        wget https://ftp.gnu.org/pub/gnu/gcc/gcc-11.1.0/gcc-${GCC_VERSION}.tar.xz -O - | tar xJ
+        wget https://ftp.gnu.org/pub/gnu/binutils/binutils-${BINUTILS_VERSION}.tar.xz -O - | tar xJ
+    - name: Build binutils.
+      working-directory: ./binutils-${{ env.BINUTILS_VERSION }}
+      run: |
+        ./configure --prefix=$PREFIX --target=$TARGET
+        make all -j$CORES
+        sudo make install
+    - name: Build gcc.
+      working-directory: ./gcc-${{ env.GCC_VERSION }}
+      run: |
+        ./configure --prefix=$PREFIX --target=$TARGET --enable-languages=c --disable-libmudflap --disable-libssp --disable-libgomp --disable-libstdcxx-pch --disable-threads --disable-nls --disable-libquadmath --with-gnu-as --with-gnu-ld --without-headers
+        make all-gcc -j$CORES
+        sudo make install-gcc
+    - name: Add toolchain to path and clean up.
+      run: |
+        echo "$PREFIX/bin" >> $GITHUB_PATH
+        rm -rf ./binutils-${BINUTILS_VERSION} ./gcc-${GCC_VERSION}
     - name: Check out repository.
       uses: actions/checkout@v2
       with:
         fetch-depth: 0
-    - name: Install build dependencies.
-      run: sudo apt-get install gcc-m68k-linux-gnu python3-pil
     - name: Build library and applets.
       run: make all
     - name: Get the tag name.

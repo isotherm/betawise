@@ -3,19 +3,18 @@
 
 #include "version.h"
 
-// TODO: Provide our own
+// Standard type definitions.
 #include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <stddef.h>
+typedef void FILE;
+typedef signed char int8_t;
+typedef signed short int16_t;
+typedef signed long int32_t;
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+typedef unsigned long uint32_t;
 
 // Use stream numbers as FILE pointers.
-#undef stdin
-#undef stdout
-#undef stderr
-#undef getchar
-#undef putchar
 #define stdin   ((FILE*)0)
 #define stdout  ((FILE*)1)
 #define stderr  ((FILE*)2)
@@ -240,8 +239,40 @@ void SYS_A25C(uint8_t mask, KeyMod_e key);
 uint32_t CallSysInt(uint8_t unused_zero, SysInt_e info, void* output);
 
 // Standard library functions.
-int tolower(int c);
-int toupper(int c);
+void SYS_A32C();
+int getchar(void);
+void SYS_A334();
+void abort(void);
+int atoi(const char *str);
+long atol(const char *str);
+int sscanf(const char* str, const char* fmt, ...);
+char* fgets(char* str, int num, FILE* stream);
+int fprintf(FILE* stream, const char* fmt, ...);
+int fputc(int ch, FILE* stream);
+int fscanf(FILE* stream, const char* fmt, ...);
+void* memchr(const void* ptr, int value, size_t num);
+int memcmp(const void* ptr1, const void* ptr2, size_t num);
+void* memcpy(void* dst, const void *src, size_t num);
+void* memmove(void* dst, const void* src, size_t num);
+void* memset(void* ptr, int value, size_t num);
+int printf(const char *fmt, ...);
+int rand(void);
+int scanf(const char *fmt, ...);
+int sprintf(char* str, const char *fmt, ...);
+void srand(unsigned int seed);
+char* strcat(char* dst, const char* src);
+char* strchr(const char* str, int ch);
+int strcmp(const char* str1, const char* str2);
+char* strcpy(char* dst, const char* src);
+size_t strlen(const char* str);
+char* strncat(char* dst, const char* src, size_t num);
+int strncmp(const char* str1, const char* str2, size_t num);
+char* strncpy(char* dst, const char* src, size_t num);
+char* strrchr(const char* str, int ch);
+char* strstr(const char* str1, const char* str2);
+int tolower(int ch);
+int toupper(int ch);
+int ungetc(int ch, FILE* stream);
 
 // Betawise library functions.
 void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status);
