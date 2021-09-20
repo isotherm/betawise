@@ -1,7 +1,7 @@
 INT = version.h
 OBJ = os3k.o
 TARGET = libos3k.a
-SUBDIRS = $(shell find -mindepth 1 -maxdepth 1 -type d -not -path "./.*")
+SUBDIRS = $(shell find -mindepth 2 -maxdepth 2 -type f -name Makefile -printf '%h\n')
 
 include Makefile.common
 
