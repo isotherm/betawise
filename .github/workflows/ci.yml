@@ -23,7 +23,7 @@ jobs:
         sudo apt-get install python3-pil
     - name: Download toolchain sources.
       run: |
-        wget https://ftp.gnu.org/pub/gnu/gcc/gcc-11.1.0/gcc-${GCC_VERSION}.tar.xz -O - | tar xJ
+        wget https://ftp.gnu.org/pub/gnu/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.xz -O - | tar xJ
         wget https://ftp.gnu.org/pub/gnu/binutils/binutils-${BINUTILS_VERSION}.tar.xz -O - | tar xJ
     - name: Build binutils.
       working-directory: ./binutils-${{ env.BINUTILS_VERSION }}
