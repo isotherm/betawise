@@ -1,20 +1,14 @@
 #ifndef _OS3K_H_
 #define _OS3K_H_
 
-#include "version.h"
-
-// Standard type definitions.
 #include <stdbool.h>
 #include <stddef.h>
-typedef void FILE;
-typedef signed char int8_t;
-typedef signed short int16_t;
-typedef signed long int32_t;
-typedef unsigned char uint8_t;
-typedef unsigned short uint16_t;
-typedef unsigned long uint32_t;
+#include <stdint.h>
 
-// Use stream numbers as FILE pointers.
+#include "version.h"
+
+// The OS uses stream numbers as FILE pointers.
+typedef void FILE;
 #define stdin   ((FILE*)0)
 #define stdout  ((FILE*)1)
 #define stderr  ((FILE*)2)
