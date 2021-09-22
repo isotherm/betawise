@@ -196,7 +196,7 @@ base_sp:	ds.l	1			| base stack pointer
 
 prg_strt:
 
-ram_size	=	0x8000		| RAM size (32kB)
+ram_size	=	0x1000		| RAM size (4kB)
 		.org	ram_size		| pad .bss section to RAM size
 
 		.text
