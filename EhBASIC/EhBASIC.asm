@@ -75,7 +75,7 @@ nobrk		=	0				| null response to INPUT causes a break
 VEC_OUT:
 	MOVEM.l	%d0-%d1/%a0-%a1,-(%sp)	| save variables for C calling convention
 	MOVEM.l	%d0,-(%sp)			| pass param1, character
-	BSR		BwPutChar			| print the character
+	BSR		putchar			| print the character
 	ADDQ		#4,%sp			| skip params
 VEC_OUT_DONE:
 	MOVEM.l	(%sp)+,%d0-%d1/%a0-%a1	| restore variables for calling convention
@@ -88,7 +88,7 @@ VEC_OUT_DONE:
 
 VEC_IN:
 	MOVEM.l	%d1/%a0-%a1,-(%sp)	| save variables for C calling convention
-	BSR		BwGetChar			| read/wait for a character
+	BSR		getchar			| read/wait for a character
 	TST.b		%d0				| clear the z flag
 	BEQ.s		VEC_IN_EMPTY		| carry is currently cleared
 	ORI.b		#1,%CCR			| set the carry, flag we got a byte
@@ -184,10 +184,10 @@ LAB_COLD:
 	MOVE.w	%d0,prg_strt-2.w(%a5)	| clear start word
 	MOVE.w	%d0,BHsend.w(%a5)		| clear value to string end word
 
-	MOVE.b	#44,TWidth.w(%a5)		| default terminal width byte
-	MOVE.b	#11,TabSiz.w(%a5)		| save default tab size
+	MOVE.b	#0,TWidth.w(%a5)		| default terminal width byte
+	MOVE.b	#10,TabSiz.w(%a5)		| save default tab size
 
-	MOVE.b	#33,Iclim.w(%a5)		| default limit for TAB
+	MOVE.b	#30,Iclim.w(%a5)		| default limit for TAB
 
 	LEA		des_sk.w(%a5),%a4		| set descriptor stack start
 

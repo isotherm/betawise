@@ -1,13 +1,13 @@
 #include "os3k.h"
 
+// We intermix stdio and dialog calls. Need to plan how to resovle this.
+extern void _OS3K_SetCursor(uint8_t row, uint8_t col, CursorMode_e cursor_mode);
+
 enum { SCRATCH_SIZE = 256 };
 enum { BUFFER_COUNT = 7 };
 enum { BUFFER_INPUT = 13 };
 enum { BUFFER_SIZE = 1 + BUFFER_INPUT + 2 };
-
-const uint8_t BYTES_PER_ROW = 8;
-const uint8_t ADDRESS_COL = 3;
-const uint8_t FIRST_BYTE_COL = 12;
+enum { BYTES_PER_ROW = 8 };
 
 typedef enum _Mode_e {
     MODE_NIBBLE_HI = 0,
@@ -37,6 +37,7 @@ GLOBAL_DATA_BEGIN
     uint8_t rowsPerScreen;
     uint8_t bytesPerScreen;
     volatile uint8_t busError;
+    bool isAS3000;
 GLOBAL_DATA_END
 
 void BusErrorHandler() {
@@ -57,15 +58,17 @@ void UninstallBusErrorHandler() {
 
 void DumpSetCursor(char offset, Mode_e mode, CursorMode_e cursor_mode) {
     char row = 1 + (offset / BYTES_PER_ROW);
-    char col = offset % BYTES_PER_ROW;
-    if(mode == MODE_NIBBLE_HI) {
-        col = FIRST_BYTE_COL + (col * 3);
-    } else if(mode == MODE_NIBBLE_LO) {
-        col = FIRST_BYTE_COL + 1 + (col * 3);
-    } else if(mode == MODE_ASCII) {
-        col = FIRST_BYTE_COL + (BYTES_PER_ROW * 3) + col;
+    char col = (offset % BYTES_PER_ROW);
+    if(mode == MODE_ASCII) {
+        col += BYTES_PER_ROW * 3;
+    } else {
+        col *= 3;
+        if(mode == MODE_NIBBLE_LO) {
+            col++;
+        }
     }
-    BwSetCursor(row, col, cursor_mode);
+    col += gd->isAS3000 ? 9 : 12;
+    SetCursor(row, col, cursor_mode);
 }
 
 void DumpSetCursorCur() {
@@ -75,11 +78,21 @@ void DumpSetCursorCur() {
 void DumpRedrawByteHex(uint8_t c, char error) {
     char buffer[4];
     sprintf(buffer, error ? "\xd7\xd7 " : "%02X ", c);
-    BwPutString(buffer);
+    puts(buffer);
 }
 
 void DumpRedrawByteAscii(uint8_t c, char error) {
-    BwPutCharRaw(error ? '\xd7' : c, CURSOR_MODE_HIDE);
+    if(error) {
+        c = '\xd7'; // central X (multiply)
+    } else if(c < 0x20) {
+        c = gd->isAS3000 ? '\x08' : '\xb7'; // small dot
+    }
+    if(gd->isAS3000) {
+        // If we use the stdio function, the screen scrolls.
+        PutChar(c);
+    } else {
+        putchar(c);
+    }
 }
 
 void DumpWriteAndRedrawCur(uint8_t value, uint8_t mask) {
@@ -105,9 +118,9 @@ void DumpRedrawScreen() {
     volatile uint8_t* pAddr = gd->pAddress;
     InstallBusErrorHandler();
     for(char row = 1; row <= gd->rowsPerScreen; row++) {
-        BwSetCursor(row, ADDRESS_COL, CURSOR_MODE_HIDE);
-        sprintf(buffer, "%08X ", pAddr);
-        BwPutString(buffer);
+        SetCursor(row, gd->isAS3000 ? 1 : 3, CURSOR_MODE_HIDE);
+        sprintf(buffer, gd->isAS3000 ? "%-08.7X" : "%08X ", pAddr);
+        puts(buffer);
         for(char byte = 0; byte < BYTES_PER_ROW; byte++) {
             gd->busError = 0;
             buffer[byte] = *pAddr++;
@@ -229,13 +242,15 @@ int NumberPrompt(char* pPrompt, char* pBuffer, short maxLen, char* pDefault) {
 }
 
 void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
-    uint32_t addr;
+    uint32_t scratch;
     char buffer[16];
 
     *status = 0;
     switch(message) {
         case MSG_INIT:
-            gd->pAddress = gd->pPrevAddress = 0;
+            CallSysInt(0, SYS_INT_GET_HW_LEVEL, &scratch);
+            gd->isAS3000 = (scratch < 2);
+            gd->pAddress = gd->pPrevAddress = 0x0;
             gd->mode = MODE_NIBBLE_HI;
             gd->cursor = 0;
             for(char i = 0; i < BUFFER_COUNT; i++) {
@@ -245,9 +260,10 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
             break;
 
         case MSG_SETFOCUS:
-            BwGetScreenSize(&gd->rowsPerScreen, NULL);
+            CallSysInt(0, SYS_INT_GET_ROW_COUNT, &scratch);
+            gd->rowsPerScreen = scratch;
             gd->bytesPerScreen = BYTES_PER_ROW * gd->rowsPerScreen;
-            BwClearScreen();
+            ClearScreen();
             DumpRedrawScreen();
             break;
 
@@ -315,7 +331,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                 case KEY_DOWN:
                     DumpMoveCursor(gd->cursor + BYTES_PER_ROW);
                     break;
-
+                    
                 case KEY_MOD_CTRL | KEY_DOWN:
                     gd->pAddress += gd->bytesPerScreen;
                     DumpRedrawScreen();
@@ -382,7 +398,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                             choice = DialogGetChoice();
                         }
                         GetCursorPos(&row, &col);
-                        SetCursor(row, col + 6, CURSOR_MODE_HIDE);
+                        _OS3K_SetCursor(row, col + 6, CURSOR_MODE_HIDE);
                         NumberPrompt("", (char*)gd->buffer[choice-1] + 1, BUFFER_INPUT, choice > 1 ? "0x" : "!");
                     }
                     DumpRedrawScreen();
@@ -391,13 +407,13 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                 case KEY_MOD_CTRL | KEY_G:
                     buffer[0] = 0;
                     for(;;) {
-                        ClearRowCols(4, 1, 41);
-                        SetCursor(4, 1, CURSOR_MODE_HIDE);
+                        ClearRowCols(4, 1, gd->isAS3000 ? 40 : 41);
+                        _OS3K_SetCursor(4, 1, CURSOR_MODE_HIDE);
                         if(NumberPrompt("Go to address: ", buffer, sizeof(buffer), "0x") == -2) {
                             break;
                         }
-                        if(NumberFromString(buffer, &addr) == 0) {
-                            DumpSetAddress(addr);
+                        if(NumberFromString(buffer, &scratch) == 0) {
+                            DumpSetAddress(scratch);
                             break;
                         }
                     }
@@ -411,10 +427,10 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                     }
                     InstallBusErrorHandler();
                     gd->busError = 0;
-                    addr = *(uint32_t*)(gd->pAddress + gd->cursor);
+                    scratch = *(uint32_t*)(gd->pAddress + gd->cursor);
                     UninstallBusErrorHandler();
                     if(!gd->busError) {
-                        DumpSetAddress(addr);
+                        DumpSetAddress(scratch);
                     }
                     DumpRedrawScreen();
                     break;

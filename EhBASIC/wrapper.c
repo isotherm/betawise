@@ -22,7 +22,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
             break;
 
         case MSG_SETFOCUS:
-            BwClearScreen();
+            ClearScreen();
             SetCursorMode(CURSOR_MODE_SHOW);
             EhBASIC_Resume();
             break;

@@ -230,7 +230,7 @@ int AppletSendMessage(uint8_t index, Message_e message, uint32_t param, uint32_t
 // mask=0x8 to process special key. mask=4,2,1 unknown.
 void SYS_A25C(uint8_t mask, KeyMod_e key);
 
-uint32_t CallSysInt(uint8_t unused_zero, SysInt_e info, void* output);
+uint32_t CallSysInt(uint32_t unused_zero, SysInt_e info, void* output);
 
 // Standard library functions.
 void SYS_A32C();
@@ -242,7 +242,7 @@ long atol(const char *str);
 int sscanf(const char* str, const char* fmt, ...);
 char* fgets(char* str, int num, FILE* stream);
 int fprintf(FILE* stream, const char* fmt, ...);
-int fputc(int ch, FILE* stream);
+int fputc(int c, FILE* stream);
 int fscanf(FILE* stream, const char* fmt, ...);
 void* memchr(const void* ptr, int value, size_t num);
 int memcmp(const void* ptr1, const void* ptr2, size_t num);
@@ -255,29 +255,24 @@ int scanf(const char *fmt, ...);
 int sprintf(char* str, const char *fmt, ...);
 void srand(unsigned int seed);
 char* strcat(char* dst, const char* src);
-char* strchr(const char* str, int ch);
+char* strchr(const char* str, int c);
 int strcmp(const char* str1, const char* str2);
 char* strcpy(char* dst, const char* src);
 size_t strlen(const char* str);
 char* strncat(char* dst, const char* src, size_t num);
 int strncmp(const char* str1, const char* str2, size_t num);
 char* strncpy(char* dst, const char* src, size_t num);
-char* strrchr(const char* str, int ch);
+char* strrchr(const char* str, int c);
 char* strstr(const char* str1, const char* str2);
-int tolower(int ch);
-int toupper(int ch);
-int ungetc(int ch, FILE* stream);
+int tolower(int c);
+int toupper(int c);
+int ungetc(int c, FILE* stream);
 
 // Betawise library functions.
 void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status);
-void BwInvertCursor();
-void BwClearScreen();
-void BwSetCursor(uint8_t row, uint8_t col, CursorMode_e cursor_mode);
-void BwGetScreenSize(uint8_t* rows, uint8_t* cols);
-void BwPutCharRaw(char c, CursorMode_e cursor_mode);
-void BwPutChar(char c);
-void BwPutString(const char* str);
-char BwGetChar();
+int fputs(const char* str, FILE* stream);
+int putchar(int c);
+int puts(const char* str);
 
 // Header definitions.
 typedef struct _AppletHeader_t {
@@ -317,8 +312,9 @@ typedef struct _FontHeader_t {
 
 // Global data definitions.
 typedef struct _BwGlobalData_t {
-    struct Cursor_t* cursor;
     FontHeader_t* font;
+    uint16_t lcd_width;
+    uint16_t lcd_height;
     uint16_t roll;
     uint8_t row;
     uint8_t col;
@@ -388,8 +384,6 @@ extern char __os3k_bss_size;
 #define LCD_CMD_COL_ADDR_END 0xEE
 #define LCD_DATA_REG_LEFT (*(volatile uint8_t*)0x1008001)
 #define LCD_DATA_REG_RIGHT (*(volatile uint8_t*)0x1000001)
-#define LCD_WIDTH 264
-#define LCD_HEIGHT 64
 
 // Global data pointer (applets must store global static data in this struct)
 #ifdef BETAWISE_LIB
