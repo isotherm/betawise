@@ -17,7 +17,8 @@ SECTIONS
     __os3k_rom_size = .;
     . = 0x0;
     .bss : {
-        *(COMMON) *(.bss*)
+        KEEP(*(COMMON))
+        KEEP(*(.bss*))
     }
     __os3k_bss_size = .;
     /DISCARD/ : {
