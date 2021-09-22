@@ -201,6 +201,7 @@ uint8_t GetKeyModifiers();
 void ScanKeyboard();
 void QueueKey(KeyMod_e key);
 void SetKeyModifiers(uint16_t mask);
+bool IsKeyDownNow();
 
 void SleepCentiseconds(uint32_t centiseconds);
 void SleepCentimilliseconds(uint16_t centimilliseconds);
@@ -315,7 +316,7 @@ typedef struct _BwGlobalData_t {
     FontHeader_t* font;
     uint16_t lcd_width;
     uint16_t lcd_height;
-    uint16_t roll;
+    int16_t roll;
     uint8_t row;
     uint8_t col;
     uint8_t row_count;

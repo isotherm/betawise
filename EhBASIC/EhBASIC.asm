@@ -88,7 +88,21 @@ VEC_OUT_DONE:
 
 VEC_IN:
 	MOVEM.l	%d1/%a0-%a1,-(%sp)	| save variables for C calling convention
-	BSR		getchar			| read/wait for a character
+	BCS.s		VEC_IN_SCAN			| force scan (short delay) if requested
+	BSR		IsKeyDownNow		| check if a key is pressed
+	TST.b		%d0				| clear the z flag
+	BEQ		VEC_IN_NOSCAN		| if not, don't delay by scanning
+VEC_IN_SCAN:
+	BSR		ScanKeyboard		| scan keyboard to fill queue
+VEC_IN_NOSCAN:
+	BSR		IsKeyReady			| check if a key is ready
+	TST.b		%d0				| clear the z flag
+	BEQ.s		VEC_IN_EMPTY		| carry is currently cleared
+	PEA		(0).w				| pass param1, don't process special keys
+	BSR		GetKey			| read a key code
+	MOVEM.l	%d0,(%sp)			| pass param1, key code
+	BSR		TranslateKeyToChar	| translate to character
+	ADDQ		#4,%sp			| skip params
 	TST.b		%d0				| clear the z flag
 	BEQ.s		VEC_IN_EMPTY		| carry is currently cleared
 	ORI.b		#1,%CCR			| set the carry, flag we got a byte
@@ -648,6 +662,7 @@ LAB_1357:
 	MOVEQ		#0x00,%d1			| clear buffer index
 	LEA		Ibuffs.w(%a5),%a0		| set buffer base pointer
 LAB_1359:
+	ORI.b		#1,%CCR			| set the carry, force delay
 	JSR		V_INPT.w(%a5)		| call scan input device
 	BCC.s		LAB_1359			| loop if no byte
 
@@ -7144,7 +7159,7 @@ NextH1:
 VEC_CC:
 	TST.b		ccflag.w(%a5)		| check [CTRL-C] check flag
 	BNE.s		RTS_022			| exit if [CTRL-C] check inhibited
-
+	ANDI.b	#254,%CCR			| clear the carry, no delay
 	JSR		V_INPT.w(%a5)		| scan input device
 	BCC.s		LAB_FBA0			| exit if buffer empty
 
@@ -7167,9 +7182,10 @@ RTS_022:
 # returns with carry set if byte in A
 
 INGET:
+	ANDI.b	#254,%CCR			| clear the carry, no delay
 	JSR		V_INPT.w(%a5)		| call scan input device
 	BCS.s		LAB_FB95			| if byte go reset timer
-
+INGET_NOKEY:
 	MOVE.b	ccnull.w(%a5),%d0		| get countdown
 	BEQ.s		RTS_022			| exit if empty
 

@@ -3,6 +3,7 @@
 
 void _OS3K_ClearScreen();
 void _OS3K_SetCursor(uint8_t row, uint8_t col, CursorMode_e cursor_mode);
+char _OS3K_TranslateKeyToChar(KeyMod_e key);
 uint32_t _OS3K_CallSysInt(uint32_t unused_zero, SysInt_e info, void* output);
 int _OS3K_fputc(int c, FILE* stream);
 
@@ -49,7 +50,7 @@ DEFINE_SYSCALL(40, GetModifierKeys);
 DEFINE_SYSCALL(41, ScanKeyboard);
 DEFINE_SYSCALL(42, QueueKey);
 DEFINE_SYSCALL(43, SetModifierKeys);
-DEFINE_SYSCALL(44, SYS_A0B0);
+DEFINE_SYSCALL(44, IsKeyDownNow);
 DEFINE_SYSCALL(45, SYS_A0B4);
 DEFINE_SYSCALL(46, SYS_A0B8);
 DEFINE_SYSCALL(47, SYS_A0BC);
@@ -94,7 +95,7 @@ DEFINE_SYSCALL(85, SYS_A154);
 DEFINE_SYSCALL(86, SYS_A158);
 DEFINE_SYSCALL(87, SYS_A15C); // serial send byte
 DEFINE_SYSCALL(88, SYS_A160); // tolower, handles international chars
-DEFINE_SYSCALL(89, TranslateKeyToChar);
+DEFINE_SYSCALL(89, _OS3K_TranslateKeyToChar);
 DEFINE_SYSCALL(90, SYS_A168);
 DEFINE_SYSCALL(91, SYS_A16C);
 DEFINE_SYSCALL(92, SYS_A170); // keyboard layout
@@ -315,7 +316,7 @@ void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
             _OS3K_CallSysInt(0, SYS_INT_GET_LCD_WIDTH, &scratch);
             gd->lcd_width = scratch;
             _OS3K_CallSysInt(0, SYS_INT_GET_LCD_HEIGHT, &scratch);
-            gd->lcd_height = scratch;
+            gd->lcd_height = scratch & ~1;
             break;
 
         case MSG_SETFOCUS:
@@ -365,9 +366,15 @@ void SetCursor(uint8_t row, uint8_t col, CursorMode_e cursor_mode) {
         if(row < 1) {
             row = 1;
             gd->roll -= gd->font->height;
+            if(gd->roll < 0) {
+                gd->roll += gd->lcd_height;
+            }
         } else {
             row = gd->row_count;
             gd->roll += gd->font->height;
+            if(gd->roll >= gd->lcd_height) {
+                gd->roll -= gd->lcd_height;
+            }
         }
         _LCD_SetScreenRoll(gd->roll);
         clear_row = true;
@@ -389,6 +396,24 @@ void SetCursor(uint8_t row, uint8_t col, CursorMode_e cursor_mode) {
     SetCursorMode(cursor_mode);
 }
 
+char TranslateKeyToChar(KeyMod_e key)
+{
+    char c;
+    c = _OS3K_TranslateKeyToChar(key);
+    if(!c) {
+        key &= ~KEY_MOD_CAPS_LOCK;
+        if(key == KEY_APPLETS) {
+            // Invokes the applets menu and does not return.
+            SYS_A25C(0x8, key);
+        } else if(key == (KEY_MOD_CTRL | KEY_C)) {
+            c = '\x03';
+        } else if(key == KEY_BACKSPACE) {
+            c = '\b';
+        }
+    }
+    return c;
+}
+
 uint32_t CallSysInt(uint32_t unused_zero, SysInt_e info, void* output) {
     if(gd->font) {
         if(info == SYS_INT_GET_ROW_HEIGHT) {
@@ -404,44 +429,39 @@ uint32_t CallSysInt(uint32_t unused_zero, SysInt_e info, void* output) {
 
 int getchar() {
     KeyMod_e key;
-    char c = 0;
+    char c;
 
-    if(!IsKeyReady()) {
-        ScanKeyboard();
-    }
-    key = GetKey(false);
-    c = TranslateKeyToChar(key);
-    if(!c) {
-        key &= ~KEY_MOD_CAPS_LOCK;
-        if(key == KEY_APPLETS) {
-            // Invokes the applets menu and does not return.
-            SYS_A25C(0x8, key);
-        } else if(key == (KEY_MOD_CTRL | KEY_C)) {
-            c = '\x03';
-        } else if(key == KEY_BACKSPACE) {
-            c = '\b';
+    do {
+        while(!IsKeyReady()) {
+            ScanKeyboard();
         }
-    }
+        key = GetKey(false);
+        c = TranslateKeyToChar(key);
+    } while(!c);
     return c;
 }
 
 int fputc(int c, FILE* stream) {
-    if(stream != stdout || !gd->font) {
+    if(stream != stdout) {
         return _OS3K_fputc(c, stream);
     }
 
     CursorMode_e cursor_mode;
     GetCursorMode(&cursor_mode);
+    if(!gd->font) {
+        GetCursorPos(&gd->row, &gd->col);
+    }
     c = (uint8_t)c;
     switch(c) {
         case '\a':
-            SetCursorMode(CURSOR_MODE_HIDE);
-            // TODO: How to flash the AS3000 screen?
-            if(gd->font) {
-                _LCD_AllPixOn(true);
-                SleepCentimilliseconds(10000);
-                _LCD_AllPixOn(false);
+            if(!gd->font) {
+                // TODO: Figure out how to flash AS3000 screen.
+                break;
             }
+            SetCursorMode(CURSOR_MODE_HIDE);
+            _LCD_AllPixOn(true);
+            SleepCentimilliseconds(10000);                
+            _LCD_AllPixOn(false);
             SetCursorMode(cursor_mode);
             return c;
         case '\b':
@@ -452,12 +472,19 @@ int fputc(int c, FILE* stream) {
             }
             return c;
         case '\n':
+            if(!gd->font) {
+                break;
+            }
             // Assume carriage return with line feeds.
             SetCursor(gd->row + 1, 1, cursor_mode);
             return c;
         case '\r':
             SetCursor(gd->row, 1, cursor_mode);
             return c;
+    }
+    
+    if(!gd->font) {
+        return _OS3K_fputc(c, stream);
     }
 
     short offset = gd->font->max_bytes * c;
