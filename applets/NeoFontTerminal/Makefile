@@ -2,7 +2,7 @@ INT = glyphs.h
 OBJ = NeoFontTerminal.o
 TARGET = NeoFontTerminal.OS3KApp
 
-include ../Makefile.common
+include ../../Makefile.common
 
 NeoFontTerminal.o: glyphs.h
 

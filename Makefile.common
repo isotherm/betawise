@@ -1,3 +1,5 @@
+.DEFAULT_GOAL := all
+
 TOP = $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CROSS_COMPILE = m68k-elf-
 CC = $(CROSS_COMPILE)gcc
@@ -6,8 +8,8 @@ LD = $(CROSS_COMPILE)ld
 AR = $(CROSS_COMPILE)ar
 OBJCOPY = $(CROSS_COMPILE)objcopy
 ASFLAGS = --pcrel
-CFLAGS = -Os -I"$(TOP)" -ffunction-sections -fdata-sections
-LDFLAGS = -static -T "$(TOP)/os3k.lds" -L"$(TOP)" -los3k
+CFLAGS = -Os -I"$(TOP)/os3k" -ffunction-sections -fdata-sections
+LDFLAGS = -static -T "$(TOP)/os3k/os3k.lds" -L"$(TOP)/os3k" -los3k
 LDFLAGS += --gc-sections
 ARFLAGS = rcs
 

@@ -66,12 +66,12 @@ jobs:
       with:
         fetch-depth: 0
     - name: Build library and applets.
-      run: make all
+      run: make
     - name: Get the tag name.
       id: get_tag
       run: echo ::set-output name=TAG::$(git describe --tags | tail -c +2)
-    - name: Upload artifacts.
+    - name: Upload applets artifact.
       uses: actions/upload-artifact@v2
       with:
         name: betawise-applets-${{ steps.get_tag.outputs.TAG }}
-        path: "**/*.OS3KApp"
+        path: "applets/**/*.OS3KApp"
