@@ -13,10 +13,10 @@ jobs:
       CORES: 2
       TARGET: m68k-elf
       PREFIX: /opt/m68k-elf
+      ASFLAGS_FOR_TARGET: --pcrel
+      CFLAGS_FOR_TARGET: -mpcrel -fomit-frame-pointer -ffixed-a5 -fshort-enums
       BINUTILS_VERSION: binutils-2.36
       GCC_VERSION: gcc-11.1.0
-      ISL_VERSION: isl-0.18
-      CLOOG_VERSION: cloog-0.18.1
       NEWLIB_VERSION: newlib-4.1.0
     steps:
     - name: Install build dependencies.
@@ -29,10 +29,6 @@ jobs:
         wget https://ftp.gnu.org/pub/gnu/binutils/${BINUTILS_VERSION}.tar.xz -O - | tar xJ
         wget https://ftp.gnu.org/pub/gnu/gcc/${GCC_VERSION}/${GCC_VERSION}.tar.xz -O - | tar xJ
         wget ftp://sourceware.org/pub/newlib/$NEWLIB_VERSION.tar.gz -O - | tar xz
-        pushd $GCC_VERSION
-        wget ftp://gcc.gnu.org/pub/gcc/infrastructure/$ISL_VERSION.tar.bz2 -O - | tar xj
-        wget ftp://gcc.gnu.org/pub/gcc/infrastructure/$CLOOG_VERSION.tar.gz -O - | tar xz
-        popd
         mkdir build-binutils
         mkdir build-gcc
         mkdir build-newlib
@@ -45,7 +41,7 @@ jobs:
     - name: Bootstrap gcc.
       working-directory: ./build-gcc
       run: |
-        ../$GCC_VERSION/configure --prefix=$PREFIX --target=$TARGET --enable-languages=c --with-newlib --disable-libmudflap --disable-libssp --disable-libgomp --disable-libstdcxx-pch --disable-threads --disable-nls --disable-libquadmath --with-gnu-as --with-gnu-ld --without-headers
+        ../$GCC_VERSION/configure --prefix=$PREFIX --target=$TARGET --with-cpu=68000 --disable-multilib --enable-languages=c --with-newlib --disable-libmudflap --disable-libssp --disable-libgomp --disable-libstdcxx-pch --disable-threads --disable-nls --disable-libquadmath --with-gnu-as --with-gnu-ld --without-headers
         make all-gcc -j$CORES
         sudo make install-gcc
     - name: Add toolchain to path.
@@ -54,7 +50,7 @@ jobs:
     - name: Build newlib.
       working-directory: ./build-newlib
       run: |
-        ../$NEWLIB_VERSION/configure --prefix=$PREFIX --target=$TARGET --disable-newlib-multithread --disable-newlib-io-float --enable-lite-exit --disable-newlib-supplied-syscalls
+        ../$NEWLIB_VERSION/configure --prefix=$PREFIX --target=$TARGET --with-cpu=68000 --disable-multilib --disable-newlib-multithread --disable-newlib-io-float --enable-lite-exit --disable-newlib-supplied-syscalls
         make -j$CORES
         make install
     - name: Build libgcc.
