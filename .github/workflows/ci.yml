@@ -9,64 +9,20 @@ on:
 jobs:
   linux:
     runs-on: ubuntu-20.04
-    env:
-      CORES: 2
-      TARGET: m68k-elf
-      PREFIX: /opt/m68k-elf
-      ASFLAGS_FOR_TARGET: --pcrel
-      CFLAGS_FOR_TARGET: -mpcrel -fomit-frame-pointer -ffixed-a5 -fshort-enums
-      BINUTILS_VERSION: binutils-2.36
-      GCC_VERSION: gcc-11.1.0
-      NEWLIB_VERSION: newlib-4.1.0
     steps:
     - name: Install build dependencies.
       run: |
         sudo apt-get update
         sudo apt-get install libgmp-dev libmpfr-dev libmpc-dev
         sudo apt-get install python3-pil
-    - name: Download and prepare toolchain sources.
-      run: |
-        wget https://ftp.gnu.org/pub/gnu/binutils/${BINUTILS_VERSION}.tar.xz -O - | tar xJ
-        wget https://ftp.gnu.org/pub/gnu/gcc/${GCC_VERSION}/${GCC_VERSION}.tar.xz -O - | tar xJ
-        wget ftp://sourceware.org/pub/newlib/$NEWLIB_VERSION.tar.gz -O - | tar xz
-        mkdir build-binutils
-        mkdir build-gcc
-        mkdir build-newlib
-    - name: Build binutils.
-      working-directory: ./build-binutils
-      run: |
-        ../$BINUTILS_VERSION/configure --prefix=$PREFIX --target=$TARGET
-        make -j$CORES
-        sudo make install
-    - name: Bootstrap gcc.
-      working-directory: ./build-gcc
-      run: |
-        ../$GCC_VERSION/configure --prefix=$PREFIX --target=$TARGET --with-cpu=68000 --disable-multilib --enable-languages=c --with-newlib --disable-libmudflap --disable-libssp --disable-libgomp --disable-libstdcxx-pch --disable-threads --disable-nls --disable-libquadmath --with-gnu-as --with-gnu-ld --without-headers
-        make all-gcc -j$CORES
-        sudo make install-gcc
-    - name: Add toolchain to path.
-      run: |
-        echo "$PREFIX/bin" >> $GITHUB_PATH
-    - name: Build newlib.
-      working-directory: ./build-newlib
-      run: |
-        ../$NEWLIB_VERSION/configure --prefix=$PREFIX --target=$TARGET --with-cpu=68000 --disable-multilib --disable-newlib-multithread --disable-newlib-io-float --enable-lite-exit --disable-newlib-supplied-syscalls
-        make -j$CORES
-        make install
-    - name: Build libgcc.
-      working-directory: ./build-gcc
-      run: |
-        make all-target-libgcc -j$CORES
-        sudo make install-target-libgcc
-    - name: Clean up source and build folders.
-      run: |
-        rm -rf build-* ./${BINUTILS_VERSION} ./${GCC_VERSION} ./${NEWLIB_VERSION}
     - name: Check out repository.
       uses: actions/checkout@v2
       with:
         fetch-depth: 0
-    - name: Build library and applets.
-      run: make
+    - name: Build toolchain, library, and applets.
+      run: |
+        echo "$PREFIX/bin" >> $GITHUB_PATH
+        make
     - name: Get the tag name.
       id: get_tag
       run: echo ::set-output name=TAG::$(git describe --tags | tail -c +2)
@@ -75,3 +31,10 @@ jobs:
       with:
         name: betawise-applets-${{ steps.get_tag.outputs.TAG }}
         path: "applets/**/*.OS3KApp"
+    - name: Package toolchain.
+      run: tar cvf m68k-elf-toolchain.tar /opt/m68k-elf
+    - name: Upload toolchain artifact.
+      uses: actions/upload-artifact@v2
+      with:
+        name: m68k-elf-toolchain-${{ steps.get_tag.outputs.TAG }}
+        path: m68k-elf-toolchain.tar

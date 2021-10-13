@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := all
 
 TOP = $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-CROSS_COMPILE = m68k-elf-
+CROSS_COMPILE = /opt/m68k-elf/bin/m68k-elf-
 CC = $(CROSS_COMPILE)gcc
 AS = $(CROSS_COMPILE)as
 LD = $(CROSS_COMPILE)ld
