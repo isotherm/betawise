@@ -31,12 +31,16 @@ jobs:
       with:
         name: betawise-applets-${{ steps.get_tag.outputs.TAG }}
         path: "applets/**/*.OS3KApp"
+    - name: Strip toolchain executables.
+      run: |
+        cd ${HOME}/.local
+        strip `find . -type f -executable ! -path "./m68k-elf/lib/*" ! -path "*/install-tools/*"`
     - name: Package toolchain.
       run: |
         ln -sf ${HOME}/.local /tmp/m68k-elf
-        tar -C /tmp -cvhf m68k-elf-toolchain.tar m68k-elf
+        tar -C /tmp -cvhf toolchain.tar m68k-elf
     - name: Upload toolchain artifact.
       uses: actions/upload-artifact@v2
       with:
-        name: m68k-elf-toolchain-${{ steps.get_tag.outputs.TAG }}
-        path: m68k-elf-toolchain.tar
+        name: m68k-elf-toolchain-${{ steps.get_tag.outputs.TAG }}.tar
+        path: toolchain.tar
