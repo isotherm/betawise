@@ -32,7 +32,9 @@ jobs:
         name: betawise-applets-${{ steps.get_tag.outputs.TAG }}
         path: "applets/**/*.OS3KApp"
     - name: Package toolchain.
-      run: tar cvf m68k-elf-toolchain.tar /opt/m68k-elf
+      run: |
+        ln -sf ${HOME}/.local /tmp/m68k-elf
+        tar -C /tmp -cvhf m68k-elf-toolchain.tar m68k-elf
     - name: Upload toolchain artifact.
       uses: actions/upload-artifact@v2
       with:

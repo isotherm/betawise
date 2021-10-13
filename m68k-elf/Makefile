@@ -1,31 +1,29 @@
 CORES = $(shell nproc)
 TARGET = m68k-elf
-PREFIX = /opt/${TARGET}
+PREFIX = ${HOME}/.local
 ASFLAGS_FOR_TARGET = --pcrel
 CFLAGS_FOR_TARGET = -mpcrel -fomit-frame-pointer -ffixed-a5 -fshort-enums
 BINUTILS_VERSION = binutils-2.36
 GCC_VERSION = gcc-11.1.0
 NEWLIB_VERSION = newlib-4.1.0
 
-export PATH := ${PREFIX}/bin:${PATH}
-
 install: binutils gcc newlib libgcc
 
 binutils: build/binutils/Makefile
 	$(MAKE) -C build/binutils -j${CORES}
-	sudo $(MAKE) -C build/binutils install
+	$(MAKE) -C build/binutils install
 
 gcc: binutils build/gcc/Makefile
 	$(MAKE) -C build/gcc -j${CORES} all-gcc
-	sudo $(MAKE) -C build/gcc install-gcc
+	$(MAKE) -C build/gcc install-gcc
 
 newlib: gcc build/newlib/Makefile
 	$(MAKE) -C build/newlib -j${CORES}
-	sudo env PATH=${PATH} $(MAKE) -C build/newlib install
+	$(MAKE) -C build/newlib install
 
 libgcc: newlib
 	$(MAKE) -C build/gcc -j${CORES} all-target-libgcc
-	sudo $(MAKE) -C build/gcc install-target-libgcc
+	$(MAKE) -C build/gcc install-target-libgcc
 
 clean:
 	rm -rf build
