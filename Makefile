@@ -1,3 +1,6 @@
-SUBDIRS = m68k-elf os3k applets
+SUBDIRS = os3k applets
 
 include Makefile.common
+
+toolchain:
+	make -C m68k-elf
