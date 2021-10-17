@@ -25,35 +25,33 @@ APPLET_HEADER_BEGIN
     APPLET_LANGUAGE_EN_US
 APPLET_HEADER_END
 
-GLOBAL_DATA_BEGIN
-    uint8_t scratch[SCRATCH_SIZE];
-    char buffer[BUFFER_COUNT][BUFFER_SIZE];
-    volatile uint8_t* pAddress;
-    volatile uint8_t* pPrevAddress;
-    void (*prevBusErrorHandler)();
-    uint16_t rawSysCall;
-    Mode_e mode;
-    short cursor;
-    uint8_t rowsPerScreen;
-    uint8_t bytesPerScreen;
-    volatile uint8_t busError;
-    bool isAS3000;
-GLOBAL_DATA_END
+uint8_t g_scratch[SCRATCH_SIZE];
+char g_buffer[BUFFER_COUNT][BUFFER_SIZE];
+volatile uint8_t* g_pAddress;
+volatile uint8_t* g_pPrevAddress;
+void (*g_prevBusErrorHandler)();
+uint16_t g_rawSysCall;
+Mode_e g_mode;
+short g_cursor;
+uint8_t g_rowsPerScreen;
+uint8_t g_bytesPerScreen;
+volatile uint8_t g_busError;
+bool g_isAS3000;
 
 void BusErrorHandler() {
-    gd->busError = 1;
+    g_busError = 1;
     asm("add.w #8,%sp");
     asm("rte");
     __builtin_unreachable();
 }
 
 void InstallBusErrorHandler() {
-    gd->prevBusErrorHandler = BUS_ERROR_HANDLER_PTR;
+    g_prevBusErrorHandler = BUS_ERROR_HANDLER_PTR;
     BUS_ERROR_HANDLER_PTR = &BusErrorHandler;
 }
 
 void UninstallBusErrorHandler() {
-    BUS_ERROR_HANDLER_PTR = gd->prevBusErrorHandler;
+    BUS_ERROR_HANDLER_PTR = g_prevBusErrorHandler;
 }
 
 void DumpSetCursor(char offset, Mode_e mode, CursorMode_e cursor_mode) {
@@ -67,12 +65,12 @@ void DumpSetCursor(char offset, Mode_e mode, CursorMode_e cursor_mode) {
             col++;
         }
     }
-    col += gd->isAS3000 ? 9 : 12;
+    col += g_isAS3000 ? 9 : 12;
     SetCursor(row, col, cursor_mode);
 }
 
 void DumpSetCursorCur() {
-    DumpSetCursor(gd->cursor, gd->mode, CURSOR_MODE_SHOW);
+    DumpSetCursor(g_cursor, g_mode, CURSOR_MODE_SHOW);
 }
 
 void DumpRedrawByteHex(uint8_t c, char error) {
@@ -85,9 +83,9 @@ void DumpRedrawByteAscii(uint8_t c, char error) {
     if(error) {
         c = '\xd7'; // central X (multiply)
     } else if(c < 0x20) {
-        c = gd->isAS3000 ? '\x08' : '\xb7'; // small dot
+        c = g_isAS3000 ? '\x08' : '\xb7'; // small dot
     }
-    if(gd->isAS3000) {
+    if(g_isAS3000) {
         // If we use the stdio function, the screen scrolls.
         PutChar(c);
     } else {
@@ -96,35 +94,35 @@ void DumpRedrawByteAscii(uint8_t c, char error) {
 }
 
 void DumpWriteAndRedrawCur(uint8_t value, uint8_t mask) {
-    volatile uint8_t* p = &gd->pAddress[gd->cursor];
+    volatile uint8_t* p = &g_pAddress[g_cursor];
     InstallBusErrorHandler();
-    gd->busError = 0;
+    g_busError = 0;
     value = (*p & mask) | value;
-    if(!mask || !gd->busError) {
+    if(!mask || !g_busError) {
         *p = value;
     }
-    gd->busError = 0;
+    g_busError = 0;
     uint8_t c = *p;
     UninstallBusErrorHandler();
-    DumpSetCursor(gd->cursor, MODE_NIBBLE_HI, CURSOR_MODE_HIDE);
-    DumpRedrawByteHex(c, gd->busError);
-    DumpSetCursor(gd->cursor, MODE_ASCII, CURSOR_MODE_HIDE);
-    DumpRedrawByteAscii(c, gd->busError);
+    DumpSetCursor(g_cursor, MODE_NIBBLE_HI, CURSOR_MODE_HIDE);
+    DumpRedrawByteHex(c, g_busError);
+    DumpSetCursor(g_cursor, MODE_ASCII, CURSOR_MODE_HIDE);
+    DumpRedrawByteAscii(c, g_busError);
 }
 
 void DumpRedrawScreen() {
     uint8_t buffer[BYTES_PER_ROW > 10 ? BYTES_PER_ROW : 10];
     char busError[BYTES_PER_ROW];
-    volatile uint8_t* pAddr = gd->pAddress;
+    volatile uint8_t* pAddr = g_pAddress;
     InstallBusErrorHandler();
-    for(char row = 1; row <= gd->rowsPerScreen; row++) {
-        SetCursor(row, gd->isAS3000 ? 1 : 3, CURSOR_MODE_HIDE);
-        sprintf(buffer, gd->isAS3000 ? "%-08.7X" : "%08X ", pAddr);
+    for(char row = 1; row <= g_rowsPerScreen; row++) {
+        SetCursor(row, g_isAS3000 ? 1 : 3, CURSOR_MODE_HIDE);
+        sprintf(buffer, g_isAS3000 ? "%-08.7X" : "%08X ", pAddr);
         puts(buffer);
         for(char byte = 0; byte < BYTES_PER_ROW; byte++) {
-            gd->busError = 0;
+            g_busError = 0;
             buffer[byte] = *pAddr++;
-            busError[byte] = gd->busError;
+            busError[byte] = g_busError;
         }
         for(char byte = 0; byte < BYTES_PER_ROW; byte++) {
             DumpRedrawByteHex(buffer[byte], busError[byte]);
@@ -138,14 +136,14 @@ void DumpRedrawScreen() {
 }
 
 void DumpMoveCursor(char cursor) {
-    gd->cursor = cursor;
-    if(gd->cursor < 0) {
-        gd->pAddress -= BYTES_PER_ROW;
-        gd->cursor += BYTES_PER_ROW;
+    g_cursor = cursor;
+    if(g_cursor < 0) {
+        g_pAddress -= BYTES_PER_ROW;
+        g_cursor += BYTES_PER_ROW;
         DumpRedrawScreen();
-    } else if(gd->cursor >= gd->bytesPerScreen) {
-        gd->pAddress += BYTES_PER_ROW;
-        gd->cursor -= BYTES_PER_ROW;
+    } else if(g_cursor >= g_bytesPerScreen) {
+        g_pAddress += BYTES_PER_ROW;
+        g_cursor -= BYTES_PER_ROW;
         DumpRedrawScreen();
     } else {
         DumpSetCursorCur();
@@ -153,11 +151,11 @@ void DumpMoveCursor(char cursor) {
 }
 
 void DumpSetAddress(uint32_t addr) {
-    gd->pPrevAddress = gd->pAddress + gd->cursor;
-    gd->pAddress = (volatile uint8_t*)(addr & ~(BYTES_PER_ROW - 1));
-    gd->cursor = addr & (BYTES_PER_ROW - 1);
-    if(gd->mode == MODE_NIBBLE_LO) {
-        gd->mode = MODE_NIBBLE_HI;
+    g_pPrevAddress = g_pAddress + g_cursor;
+    g_pAddress = (volatile uint8_t*)(addr & ~(BYTES_PER_ROW - 1));
+    g_cursor = addr & (BYTES_PER_ROW - 1);
+    if(g_mode == MODE_NIBBLE_LO) {
+        g_mode = MODE_NIBBLE_HI;
     }
 }
 
@@ -208,11 +206,11 @@ char NumberFromString(char* pBuffer, uint32_t* pNumber) {
 
     if(syscall) {
         // Calculate system call opcode.
-        gd->rawSysCall = 0xA000 | ((n << 2) & 0x7fc);
-        n = (uint32_t)&gd->rawSysCall;
+        g_rawSysCall = 0xA000 | ((n << 2) & 0x7fc);
+        n = (uint32_t)&g_rawSysCall;
     } else if(pBuffer[0] == '+') {
         // Add scratch buffer pointer.
-        n += (uint32_t)gd->scratch;
+        n += (uint32_t)g_scratch;
         pBuffer++;
     }
 
@@ -249,108 +247,108 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
     switch(message) {
         case MSG_INIT:
             CallSysInt(0, SYS_INT_GET_HW_LEVEL, &scratch);
-            gd->isAS3000 = (scratch < 2);
-            gd->pAddress = gd->pPrevAddress = 0x0;
-            gd->mode = MODE_NIBBLE_HI;
-            gd->cursor = 0;
+            g_isAS3000 = (scratch < 2);
+            g_pAddress = g_pPrevAddress = 0x0;
+            g_mode = MODE_NIBBLE_HI;
+            g_cursor = 0;
             for(char i = 0; i < BUFFER_COUNT; i++) {
-                gd->buffer[i][0] = ' ';
-                gd->buffer[i][1] = '\0';
+                g_buffer[i][0] = ' ';
+                g_buffer[i][1] = '\0';
             }
             break;
 
         case MSG_SETFOCUS:
             CallSysInt(0, SYS_INT_GET_ROW_COUNT, &scratch);
-            gd->rowsPerScreen = scratch;
-            gd->bytesPerScreen = BYTES_PER_ROW * gd->rowsPerScreen;
+            g_rowsPerScreen = scratch;
+            g_bytesPerScreen = BYTES_PER_ROW * g_rowsPerScreen;
             ClearScreen();
             DumpRedrawScreen();
             break;
 
         case MSG_CHAR:
             if(param == '\t') {
-                gd->mode = (gd->mode == MODE_ASCII ? MODE_NIBBLE_HI : MODE_ASCII);
+                g_mode = (g_mode == MODE_ASCII ? MODE_NIBBLE_HI : MODE_ASCII);
                 DumpSetCursorCur();
             } else if(param == '\r') {
                 // Do nothing. Don't insert as text.
-            } else if(gd->mode == MODE_NIBBLE_HI) {
+            } else if(g_mode == MODE_NIBBLE_HI) {
                 char nibble = HexCharToNibble(param);
                 if(nibble >= 0) {
                     DumpWriteAndRedrawCur(nibble << 4, 0x0F);
-                    gd->mode = MODE_NIBBLE_LO;
+                    g_mode = MODE_NIBBLE_LO;
                     DumpSetCursorCur();
                 }
-            } else if(gd->mode == MODE_NIBBLE_LO) {
+            } else if(g_mode == MODE_NIBBLE_LO) {
                 char nibble = HexCharToNibble(param);
                 if(nibble >= 0) {
                     DumpWriteAndRedrawCur(nibble, 0xF0);
-                    gd->mode = MODE_NIBBLE_HI;
-                    DumpMoveCursor(gd->cursor + 1);
+                    g_mode = MODE_NIBBLE_HI;
+                    DumpMoveCursor(g_cursor + 1);
                 }
-            } else if(gd->mode == MODE_ASCII) {
+            } else if(g_mode == MODE_ASCII) {
                 DumpWriteAndRedrawCur(param, 0x00);
-                DumpMoveCursor(gd->cursor + 1);
+                DumpMoveCursor(g_cursor + 1);
             }
             break;
 
         case MSG_KEY:
             switch(param & ~KEY_MOD_CAPS_LOCK) {
                 case KEY_LEFT:
-                    if(gd->mode == MODE_NIBBLE_LO) {
-                        gd->mode = MODE_NIBBLE_HI;
+                    if(g_mode == MODE_NIBBLE_LO) {
+                        g_mode = MODE_NIBBLE_HI;
                         DumpSetCursorCur();
                     } else {
-                        if(gd->mode == MODE_NIBBLE_HI) {
-                            gd->mode = MODE_NIBBLE_LO;
+                        if(g_mode == MODE_NIBBLE_HI) {
+                            g_mode = MODE_NIBBLE_LO;
                         }
-                        DumpMoveCursor(gd->cursor - 1);
+                        DumpMoveCursor(g_cursor - 1);
                     }
                     break;
 
                 case KEY_RIGHT:
-                    if(gd->mode == MODE_NIBBLE_HI) {
-                        gd->mode = MODE_NIBBLE_LO;
+                    if(g_mode == MODE_NIBBLE_HI) {
+                        g_mode = MODE_NIBBLE_LO;
                         DumpSetCursorCur();
                     } else {
-                        if(gd->mode == MODE_NIBBLE_LO) {
-                            gd->mode = MODE_NIBBLE_HI;
+                        if(g_mode == MODE_NIBBLE_LO) {
+                            g_mode = MODE_NIBBLE_HI;
                         }
-                        DumpMoveCursor(gd->cursor + 1);
+                        DumpMoveCursor(g_cursor + 1);
                     }
                     break;
 
                 case KEY_UP:
-                    DumpMoveCursor(gd->cursor - BYTES_PER_ROW);
+                    DumpMoveCursor(g_cursor - BYTES_PER_ROW);
                     break;
 
                 case KEY_MOD_CTRL | KEY_UP:
-                    gd->pAddress -= gd->bytesPerScreen;
+                    g_pAddress -= g_bytesPerScreen;
                     DumpRedrawScreen();
                     break;
 
                 case KEY_DOWN:
-                    DumpMoveCursor(gd->cursor + BYTES_PER_ROW);
+                    DumpMoveCursor(g_cursor + BYTES_PER_ROW);
                     break;
                     
                 case KEY_MOD_CTRL | KEY_DOWN:
-                    gd->pAddress += gd->bytesPerScreen;
+                    g_pAddress += g_bytesPerScreen;
                     DumpRedrawScreen();
                     break;
 
                 case KEY_HOME:
-                    DumpMoveCursor(gd->cursor & ~(BYTES_PER_ROW - 1));
+                    DumpMoveCursor(g_cursor & ~(BYTES_PER_ROW - 1));
                     break;
 
                 case KEY_MOD_CTRL | KEY_HOME:
-                    DumpMoveCursor(gd->cursor & ~(gd->bytesPerScreen - 1));
+                    DumpMoveCursor(g_cursor & ~(g_bytesPerScreen - 1));
                     break;
 
                 case KEY_END:
-                    DumpMoveCursor(gd->cursor | (BYTES_PER_ROW - 1));
+                    DumpMoveCursor(g_cursor | (BYTES_PER_ROW - 1));
                     break;
 
                 case KEY_MOD_CTRL | KEY_END:
-                    DumpMoveCursor(gd->cursor | (gd->bytesPerScreen - 1));
+                    DumpMoveCursor(g_cursor | (g_bytesPerScreen - 1));
                     break;
 
                 case KEY_MOD_CTRL | KEY_I:
@@ -363,9 +361,9 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                         DialogAddExitKey(KEY_ESC);
                         for(char i = 0; i < BUFFER_COUNT; i++) {
                             const int keys[] = {KEY_F, KEY_4, KEY_1, KEY_5, KEY_2, KEY_6, KEY_3};
-                            char len = strlen((char*)gd->buffer[i]);
-                            int valid = !NumberFromString((char*)gd->buffer[i] + 1, &stack[i]);
-                            DialogAddItem((char*)gd->buffer[i], len, valid ? ' ' : '\xd7', !valid, keys[i], -1);
+                            char len = strlen((char*)g_buffer[i]);
+                            int valid = !NumberFromString((char*)g_buffer[i] + 1, &stack[i]);
+                            DialogAddItem((char*)g_buffer[i], len, valid ? ' ' : '\xd7', !valid, keys[i], -1);
                         }
                         DialogAddItem("all f(1,2,...)", 14, '\x10', 0, KEY_C, -1);
                         DialogSetChoice(choice);
@@ -399,7 +397,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                         }
                         GetCursorPos(&row, &col);
                         _OS3K_SetCursor(row, col + 6, CURSOR_MODE_HIDE);
-                        NumberPrompt("", (char*)gd->buffer[choice-1] + 1, BUFFER_INPUT, choice > 1 ? "0x" : "!");
+                        NumberPrompt("", (char*)g_buffer[choice-1] + 1, BUFFER_INPUT, choice > 1 ? "0x" : "!");
                     }
                     DumpRedrawScreen();
                     break;
@@ -407,7 +405,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                 case KEY_MOD_CTRL | KEY_G:
                     buffer[0] = 0;
                     for(;;) {
-                        ClearRowCols(4, 1, gd->isAS3000 ? 40 : 41);
+                        ClearRowCols(4, 1, g_isAS3000 ? 40 : 41);
                         _OS3K_SetCursor(4, 1, CURSOR_MODE_HIDE);
                         if(NumberPrompt("Go to address: ", buffer, sizeof(buffer), "0x") == -2) {
                             break;
@@ -422,21 +420,21 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
 
                 case KEY_MOD_CTRL | KEY_MOD_LEFTSHIFT | KEY_G:
                 case KEY_MOD_CTRL | KEY_MOD_RIGHTSHIFT | KEY_G:
-                    if(gd->cursor & 1) {
+                    if(g_cursor & 1) {
                         break;
                     }
                     InstallBusErrorHandler();
-                    gd->busError = 0;
-                    scratch = *(uint32_t*)(gd->pAddress + gd->cursor);
+                    g_busError = 0;
+                    scratch = *(uint32_t*)(g_pAddress + g_cursor);
                     UninstallBusErrorHandler();
-                    if(!gd->busError) {
+                    if(!g_busError) {
                         DumpSetAddress(scratch);
                     }
                     DumpRedrawScreen();
                     break;
 
                 case KEY_BACKSPACE:
-                    DumpSetAddress((uint32_t)gd->pPrevAddress);
+                    DumpSetAddress((uint32_t)g_pPrevAddress);
                     DumpRedrawScreen();
                     break;
 
@@ -445,7 +443,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                     break;
 
                 case KEY_CLEAR_FILE:
-                    memset((char*)gd->scratch, 0, sizeof(gd->scratch));
+                    memset((char*)g_scratch, 0, sizeof(g_scratch));
                     DumpRedrawScreen();
                     break;
             }

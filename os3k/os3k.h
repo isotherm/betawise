@@ -311,24 +311,6 @@ typedef struct _FontHeader_t {
     const uint8_t* bitmap_data;
 } FontHeader_t;
 
-// Global data definitions.
-typedef struct _BwGlobalData_t {
-    FontHeader_t* font;
-    uint16_t lcd_width;
-    uint16_t lcd_height;
-    int16_t roll;
-    uint8_t row;
-    uint8_t col;
-    uint8_t row_count;
-    uint8_t col_count;
-} BwGlobalData_t;
-
-#define GLOBAL_DATA_BEGIN \
-    struct _GlobalData_t { \
-        BwGlobalData_t __bw_private;
-#define GLOBAL_DATA_END \
-    } __bw_global_data;
-
 extern char __os3k_rom_size;
 extern char __os3k_bss_size;
 
@@ -385,13 +367,5 @@ extern char __os3k_bss_size;
 #define LCD_CMD_COL_ADDR_END 0xEE
 #define LCD_DATA_REG_LEFT (*(volatile uint8_t*)0x1008001)
 #define LCD_DATA_REG_RIGHT (*(volatile uint8_t*)0x1000001)
-
-// Global data pointer (applets must store global static data in this struct)
-#ifdef BETAWISE_LIB
-typedef struct _BwGlobalData_t GlobalData_t;
-#else
-typedef struct _GlobalData_t GlobalData_t;
-#endif
-register GlobalData_t* gd asm("a5");
 
 #endif

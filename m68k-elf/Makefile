@@ -3,7 +3,7 @@ TARGET = m68k-elf
 PREFIX = ${HOME}/.local
 ASFLAGS_FOR_TARGET = --pcrel
 CFLAGS_FOR_TARGET = -mpcrel -fomit-frame-pointer -ffixed-a5 -fshort-enums
-BINUTILS_VERSION = binutils-2.36
+BINUTILS_VERSION = binutils-2.36.1
 GCC_VERSION = gcc-11.1.0
 NEWLIB_VERSION = newlib-4.1.0
 
@@ -31,6 +31,7 @@ clean:
 src/${BINUTILS_VERSION}/configure:
 	mkdir -p src
 	cd src; wget https://ftp.gnu.org/pub/gnu/binutils/${BINUTILS_VERSION}.tar.xz -O - | tar xJ
+	cd src/${BINUTILS_VERSION}; git apply ../../binutils-a5-data-segment.patch
 
 src/${GCC_VERSION}/configure:
 	mkdir -p src

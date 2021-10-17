@@ -1,5 +1,13 @@
-#define BETAWISE_LIB
 #include "os3k.h"
+
+FontHeader_t* g_pCurFont;
+uint16_t g_LcdWidth;
+uint16_t g_LcdHeight;
+int16_t g_CurLcdRoll;
+uint8_t g_CurRow;
+uint8_t g_CurCol;
+uint8_t g_MaxRow;
+uint8_t g_MaxCol;
 
 void _OS3K_ClearScreen();
 void _OS3K_SetCursor(uint8_t row, uint8_t col, CursorMode_e cursor_mode);
@@ -8,11 +16,11 @@ uint32_t _OS3K_CallSysInt(uint32_t unused_zero, SysInt_e info, void* output);
 int _OS3K_fputc(int c, FILE* stream);
 
 struct Cursor_t {
-    FontHeader_t* font;
-    uint8_t col_count;
-    uint8_t row_count;
-    uint16_t y_top;
-    uint16_t x_left;
+    FontHeader_t* pFont;
+    uint8_t nCols;
+    uint8_t nRows;
+    uint16_t yOrigin;
+    uint16_t xOrigin;
     uint16_t x;
     uint16_t y;
     bool visible;
@@ -36,31 +44,31 @@ void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
 
     switch(message) {
         case MSG_INIT:
-            gd->font = NULL;
-            _OS3K_CallSysInt(0, SYS_INT_GET_SYSTEM_FONT_PTR, &gd->font);
+            g_pCurFont = NULL;
+            _OS3K_CallSysInt(0, SYS_INT_GET_SYSTEM_FONT_PTR, &g_pCurFont);
             _OS3K_CallSysInt(0, SYS_INT_GET_LCD_WIDTH, &scratch);
-            gd->lcd_width = scratch;
+            g_LcdWidth = scratch;
             _OS3K_CallSysInt(0, SYS_INT_GET_LCD_HEIGHT, &scratch);
-            gd->lcd_height = scratch & ~1;
+            g_LcdHeight = scratch & ~1;
             break;
 
         case MSG_SETFOCUS:
             _OS3K_ClearScreen();
-            if(!gd->font) {
+            if(!g_pCurFont) {
                 break;
             }
             // Initialize screen and font.
             appletIndex = AppletFindById(0xA1F0);
             if(appletIndex > 0) {
-                AppletSendMessage(appletIndex, 0x1000002, (uint32_t)&gd->font, status);
+                AppletSendMessage(appletIndex, 0x1000002, (uint32_t)&g_pCurFont, status);
             }
             // Use constant integers to avoid long division.
-            gd->col_count = (uint16_t)gd->lcd_width / 6;
-            gd->row_count = gd->font->height == 16 ? (gd->lcd_height / 16) : (gd->lcd_height / 8);
+            g_MaxCol = (uint16_t)g_LcdWidth / 6;
+            g_MaxRow = g_pCurFont->height == 16 ? (g_LcdHeight / 16) : (g_LcdHeight / 8);
             break;
 
         case MSG_KILLFOCUS:
-            if(gd->font) {
+            if(g_pCurFont) {
                 _LCD_SetScreenRoll(0);
             }
             break;
@@ -72,51 +80,51 @@ void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
 
 void ClearScreen() {
     _OS3K_ClearScreen();
-    if(gd->font) {
-        gd->row = gd->col = 1;
-        gd->roll = 0;
-        _LCD_SetScreenRoll(gd->roll);
+    if(g_pCurFont) {
+        g_CurRow = g_CurCol = 1;
+        g_CurLcdRoll = 0;
+        _LCD_SetScreenRoll(g_CurLcdRoll);
     }
 }
 
 void SetCursor(uint8_t row, uint8_t col, CursorMode_e cursor_mode) {
-    if(!gd->font) {
+    if(!g_pCurFont) {
         _OS3K_SetCursor(row, col, cursor_mode);
         return;
     }
 
     bool clear_row = false;
     SetCursorMode(CURSOR_MODE_HIDE);
-    if(row < 1 || row > gd->row_count) {
+    if(row < 1 || row > g_MaxRow) {
         if(row < 1) {
             row = 1;
-            gd->roll -= gd->font->height;
-            if(gd->roll < 0) {
-                gd->roll += gd->lcd_height;
+            g_CurLcdRoll -= g_pCurFont->height;
+            if(g_CurLcdRoll < 0) {
+                g_CurLcdRoll += g_LcdHeight;
             }
         } else {
-            row = gd->row_count;
-            gd->roll += gd->font->height;
-            if(gd->roll >= gd->lcd_height) {
-                gd->roll -= gd->lcd_height;
+            row = g_MaxRow;
+            g_CurLcdRoll += g_pCurFont->height;
+            if(g_CurLcdRoll >= g_LcdHeight) {
+                g_CurLcdRoll -= g_LcdHeight;
             }
         }
-        _LCD_SetScreenRoll(gd->roll);
+        _LCD_SetScreenRoll(g_CurLcdRoll);
         clear_row = true;
     }
-    gd->row = row;
-    gd->col = col;
-    CURSOR_STRUCT->font = gd->font;
-    CURSOR_STRUCT->x = (col - 1) * gd->font->max_width;
-    if(CURSOR_STRUCT->x == gd->lcd_width) {
+    g_CurRow = row;
+    g_CurCol = col;
+    CURSOR_STRUCT->pFont = g_pCurFont;
+    CURSOR_STRUCT->x = (col - 1) * g_pCurFont->max_width;
+    if(CURSOR_STRUCT->x == g_LcdWidth) {
         CURSOR_STRUCT->x--;
     }
-    CURSOR_STRUCT->y = ((row - 1) * gd->font->height) + gd->roll;
-    if(CURSOR_STRUCT->y >= gd->lcd_height) {
-        CURSOR_STRUCT->y -= gd->lcd_height;
+    CURSOR_STRUCT->y = ((row - 1) * g_pCurFont->height) + g_CurLcdRoll;
+    if(CURSOR_STRUCT->y >= g_LcdHeight) {
+        CURSOR_STRUCT->y -= g_LcdHeight;
     }
     if(clear_row) {
-        RasterOp(CURSOR_STRUCT->x, CURSOR_STRUCT->y, gd->lcd_width, gd->font->height, NULL, ROP_WHITENESS);
+        RasterOp(CURSOR_STRUCT->x, CURSOR_STRUCT->y, g_LcdWidth, g_pCurFont->height, NULL, ROP_WHITENESS);
     }
     SetCursorMode(cursor_mode);
 }
@@ -140,12 +148,12 @@ char TranslateKeyToChar(KeyMod_e key)
 }
 
 uint32_t CallSysInt(uint32_t unused_zero, SysInt_e info, void* output) {
-    if(gd->font) {
+    if(g_pCurFont) {
         if(info == SYS_INT_GET_ROW_HEIGHT) {
-            *(uint32_t*)output = gd->font->height;
+            *(uint32_t*)output = g_pCurFont->height;
             return 0;
         } else if(info == SYS_INT_GET_ROW_COUNT) {
-            *(uint32_t*)output = gd->row_count;
+            *(uint32_t*)output = g_MaxRow;
             return 0;
         }
     }
@@ -173,13 +181,13 @@ int fputc(int c, FILE* stream) {
 
     CursorMode_e cursor_mode;
     GetCursorMode(&cursor_mode);
-    if(!gd->font) {
-        GetCursorPos(&gd->row, &gd->col);
+    if(!g_pCurFont) {
+        GetCursorPos(&g_CurRow, &g_CurCol);
     }
     c = (uint8_t)c;
     switch(c) {
         case '\a':
-            if(!gd->font) {
+            if(!g_pCurFont) {
                 // TODO: Figure out how to flash AS3000 screen.
                 break;
             }
@@ -190,41 +198,41 @@ int fputc(int c, FILE* stream) {
             SetCursorMode(cursor_mode);
             return c;
         case '\b':
-            if(gd->col > 1) {
-                SetCursor(gd->row, gd->col - 1, cursor_mode);
+            if(g_CurCol > 1) {
+                SetCursor(g_CurRow, g_CurCol - 1, cursor_mode);
             } else {
-                SetCursor(gd->row - 1, gd->col_count, cursor_mode);
+                SetCursor(g_CurRow - 1, g_MaxCol, cursor_mode);
             }
             return c;
         case '\n':
-            if(!gd->font) {
+            if(!g_pCurFont) {
                 break;
             }
             // Assume carriage return with line feeds.
-            SetCursor(gd->row + 1, 1, cursor_mode);
+            SetCursor(g_CurRow + 1, 1, cursor_mode);
             return c;
         case '\r':
-            SetCursor(gd->row, 1, cursor_mode);
+            SetCursor(g_CurRow, 1, cursor_mode);
             return c;
     }
     
-    if(!gd->font) {
+    if(!g_pCurFont) {
         return _OS3K_fputc(c, stream);
     }
 
-    short offset = gd->font->max_bytes * c;
-    const uint8_t* bitmap = gd->font->bitmap_data + offset;
-    if(CURSOR_STRUCT->x == (gd->lcd_width - 1)) {
-        SetCursor(gd->row + 1, 1, CURSOR_MODE_HIDE);
+    short offset = g_pCurFont->max_bytes * c;
+    const uint8_t* bitmap = g_pCurFont->bitmap_data + offset;
+    if(CURSOR_STRUCT->x == (g_LcdWidth - 1)) {
+        SetCursor(g_CurRow + 1, 1, CURSOR_MODE_HIDE);
     } else {
         SetCursorMode(CURSOR_MODE_HIDE);
     }
-    DrawBitmap(CURSOR_STRUCT->x, CURSOR_STRUCT->y, gd->font->max_width, gd->font->height, bitmap);
-    CURSOR_STRUCT->x += gd->font->max_width;
-    if(CURSOR_STRUCT->x == gd->lcd_width) {
+    DrawBitmap(CURSOR_STRUCT->x, CURSOR_STRUCT->y, g_pCurFont->max_width, g_pCurFont->height, bitmap);
+    CURSOR_STRUCT->x += g_pCurFont->max_width;
+    if(CURSOR_STRUCT->x == g_LcdWidth) {
         CURSOR_STRUCT->x--;
     }
-    gd->col++;
+    g_CurCol++;
     SetCursorMode(cursor_mode);
     return c;
 }

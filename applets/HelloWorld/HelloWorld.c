@@ -8,9 +8,6 @@ APPLET_HEADER_BEGIN
     APPLET_LANGUAGE_EN_US
 APPLET_HEADER_END
 
-GLOBAL_DATA_BEGIN
-GLOBAL_DATA_END
-
 void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
     *status = 0;
     switch(message) {

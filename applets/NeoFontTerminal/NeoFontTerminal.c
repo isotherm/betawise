@@ -10,9 +10,7 @@ APPLET_HEADER_BEGIN
     APPLET_LANGUAGE_EN_US
 APPLET_HEADER_END
 
-GLOBAL_DATA_BEGIN
-    FontHeader_t font;
-GLOBAL_DATA_END
+FontHeader_t g_pFontHeader;
 
 void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
     *status = 0;
@@ -22,7 +20,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
             break;
 
         case 0x1000002:
-            *(FontHeader_t**)param = &gd->font;
+            *(FontHeader_t**)param = &g_pFontHeader;
             break;
 
         case 0x1000003:
@@ -32,15 +30,15 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
             break;
 
         case 0x1000006:
-            *(FontHeader_t**)param = &gd->font;
+            *(FontHeader_t**)param = &g_pFontHeader;
         case MSG_INIT:
-            gd->font.height = GLYPH_HEIGHT;
-            gd->font.max_width = GLYPH_WIDTH;
-            gd->font.max_bytes = GLYPH_BYTES;
+            g_pFontHeader.height = GLYPH_HEIGHT;
+            g_pFontHeader.max_width = GLYPH_WIDTH;
+            g_pFontHeader.max_bytes = GLYPH_BYTES;
             // Monospaced, so no lookup tables required.
-            gd->font.width_table = 0;
-            gd->font.offset_table = 0;
-            gd->font.bitmap_data = GLYPHS[0];
+            g_pFontHeader.width_table = 0;
+            g_pFontHeader.offset_table = 0;
+            g_pFontHeader.bitmap_data = GLYPHS[0];
             break;
     }
 }
