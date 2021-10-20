@@ -5,10 +5,16 @@ BINUTILS_VERSION = binutils-2.36.1
 GCC_VERSION = gcc-11.1.0
 NEWLIB_VERSION = newlib-4.1.0
 
+# -fno-cse-follow-jumps is a workaround to avoid an internal RTL error
+# when buliding _mulxc3.o in libgcc. Activation of that optimization
+# with PC-relative addressing produces RTL that the 68K backend can't
+# recognize (specifically, it tries to directly access the long double
+# values, which have been assigned to a constant pool.
+export CFLAGS_FOR_TARGET = -mpcrel -fomit-frame-pointer -ffixed-a5 -fshort-enums \
+	-Os -fno-cse-follow-jumps
 export ASFLAGS_FOR_TARGET = --pcrel
-export CFLAGS_FOR_TARGET = -mpcrel -fomit-frame-pointer -ffixed-a5 -fshort-enums
 
-install: binutils gcc newlib #libgcc
+install: binutils gcc newlib libgcc
 
 binutils: build/binutils/Makefile
 	$(MAKE) -C build/binutils -j${CORES}
