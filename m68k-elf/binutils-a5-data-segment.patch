@@ -1,8 +1,8 @@
 diff --git a/bfd/elf32-m68k.c b/bfd/elf32-m68k.c
-index 16aa5918518..624d779e7a9 100644
+index 16aa5918518..c4e91c100c6 100644
 --- a/bfd/elf32-m68k.c
 +++ b/bfd/elf32-m68k.c
-@@ -3789,12 +3789,27 @@ elf_m68k_relocate_section (bfd *output_bfd,
+@@ -3789,12 +3789,28 @@ elf_m68k_relocate_section (bfd *output_bfd,
  
  	  break;
  
@@ -12,7 +12,7 @@ index 16aa5918518..624d779e7a9 100644
  	case R_68K_PC8:
  	case R_68K_PC16:
  	case R_68K_PC32:
-+	  if (sec->output_section
++	  if (sec != NULL && sec->output_section != NULL
 +	      && (sec->output_section->flags & SEC_READONLY) == 0)
 +	    {
 +	      unsigned char code;
@@ -24,6 +24,7 @@ index 16aa5918518..624d779e7a9 100644
 +	      bfd_put_8 (input_bfd, (code & 0xC0) | 0x2D, ptr);
 +	      /* Adjust to normal instead of PC-relative relocations. This counts
 +	         on the two sets of three howtos being sequential.  */
++	      r_type = ELF32_R_TYPE (rel->r_info -= 3);
 +	      howto -= 3;
 +	    }
 +	  /* Fall through.  */
