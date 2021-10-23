@@ -1,0 +1,114 @@
+diff --git a/libgcc/config/m68k/lb1sf68.S b/libgcc/config/m68k/lb1sf68.S
+index 86caf345a00..5e443af4006 100644
+--- a/libgcc/config/m68k/lb1sf68.S
++++ b/libgcc/config/m68k/lb1sf68.S
+@@ -119,107 +119,27 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+ 
+ #else /* __PIC__ */
+ 
+-# if defined (__uClinux__)
+-
+-	/* Versions for uClinux */
+-
+-#  if defined(__ID_SHARED_LIBRARY__)
+-
+-	/* -mid-shared-library versions  */
+-
+-	.macro PICLEA sym, reg
+-	movel	a5@(_current_shared_library_a5_offset_), \reg
+-	movel	\sym@GOT(\reg), \reg
+-	.endm
+-
+-	.macro PICPEA sym, areg
+-	movel	a5@(_current_shared_library_a5_offset_), \areg
+-	movel	\sym@GOT(\areg), sp@-
+-	.endm
+-
+-	.macro PICCALL addr
+-	PICLEA	\addr,a0
+-	jsr	a0@
+-	.endm
+-
+-	.macro PICJUMP addr
+-	PICLEA	\addr,a0
+-	jmp	a0@
+-	.endm
+-
+-#  else /* !__ID_SHARED_LIBRARY__ */
+-
+-	/* Versions for -msep-data */
+-
+ 	.macro PICLEA sym, reg
+-	movel	\sym@GOT(a5), \reg
++	lea	pc@(\sym), \reg
+ 	.endm
+ 
+ 	.macro PICPEA sym, areg
+-	movel	\sym@GOT(a5), sp@-
++	pea	pc@(\sym)
+ 	.endm
+ 
+ 	.macro PICCALL addr
+-#if defined (__mcoldfire__) && !defined (__mcfisab__) && !defined (__mcfisac__)
+ 	lea	\addr-.-8,a0
+ 	jsr	pc@(a0)
+-#else
+-	jbsr	\addr
+-#endif
+ 	.endm
+ 
+ 	.macro PICJUMP addr
+ 	/* ISA C has no bra.l instruction, and since this assembly file
+ 	   gets assembled into multiple object files, we avoid the
+ 	   bra instruction entirely.  */
+-#if defined (__mcoldfire__) && !defined (__mcfisab__)
+ 	lea	\addr-.-8,a0
+ 	jmp	pc@(a0)
+-#else
+-	bra	\addr
+-#endif
+-	.endm
+-
+-#  endif
+-
+-# else /* !__uClinux__ */
+-
+-	/* Versions for Linux */
+-
+-	.macro PICLEA sym, reg
+-	movel	#_GLOBAL_OFFSET_TABLE_@GOTPC, \reg
+-	lea	(-6, pc, \reg), \reg
+-	movel	\sym@GOT(\reg), \reg
+-	.endm
+-
+-	.macro PICPEA sym, areg
+-	movel	#_GLOBAL_OFFSET_TABLE_@GOTPC, \areg
+-	lea	(-6, pc, \areg), \areg
+-	movel	\sym@GOT(\areg), sp@-
+-	.endm
+-
+-	.macro PICCALL addr
+-#if defined (__mcoldfire__) && !defined (__mcfisab__) && !defined (__mcfisac__)
+-	lea	\addr-.-8,a0
+-	jsr	pc@(a0)
+-#else
+-	jbsr	\addr
+-#endif
+-	.endm
+-
+-	.macro PICJUMP addr
+-	/* ISA C has no bra.l instruction, and since this assembly file
+-	   gets assembled into multiple object files, we avoid the
+-	   bra instruction entirely.  */
+-#if defined (__mcoldfire__) && !defined (__mcfisab__)
+-	lea	\addr-.-8,a0
+-	jmp	pc@(a0)
+-#else
+-	bra	\addr
+-#endif
+ 	.endm
+ 
+-# endif
+ #endif /* __PIC__ */
+ 
+ 
