@@ -124,7 +124,10 @@ typedef enum _Message_e {
     MSG_CHAR            = 0x20,
     MSG_KEY             = 0x21,
     MSG_USB_PLUG        = 0x30001,
+    MSG_USB_UNK_07      = 0x30007,
     MSG_USB_UNPLUG      = 0x3000C,
+    MSG_USB_UNK_1E      = 0x3001E,
+    MSG_USB_UNK_1F      = 0x3001F,
     MSG_MOD_SYNTHETIC   = 0x1000000
 } Message_e;
 
