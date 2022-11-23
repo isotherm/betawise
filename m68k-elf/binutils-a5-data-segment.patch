@@ -1,8 +1,8 @@
 diff --git a/bfd/elf32-m68k.c b/bfd/elf32-m68k.c
-index 16aa5918518..c4e91c100c6 100644
+index 16aa5918518..5f70f174e1c 100644
 --- a/bfd/elf32-m68k.c
 +++ b/bfd/elf32-m68k.c
-@@ -3789,12 +3789,28 @@ elf_m68k_relocate_section (bfd *output_bfd,
+@@ -3789,12 +3789,29 @@ elf_m68k_relocate_section (bfd *output_bfd,
  
  	  break;
  
@@ -19,9 +19,10 @@ index 16aa5918518..c4e91c100c6 100644
 +	      bfd_byte *ptr;
 +
 +	      /* TODO: Verify the op is valid for modification.  */
-+	      ptr = (bfd_byte *) contents + rel->r_offset - 1;
++	      ptr = (bfd_byte *) contents + rel->r_offset + 5;
 +	      code = bfd_get_8 (input_bfd, ptr);
-+	      bfd_put_8 (input_bfd, (code & 0xC0) | 0x2D, ptr);
++	      bfd_put_8 (input_bfd, (code & 0xC0) | 0x35, ptr);
++	      bfd_put_8 (input_bfd, 0, ptr + 2);
 +	      /* Adjust to normal instead of PC-relative relocations. This counts
 +	         on the two sets of three howtos being sequential.  */
 +	      r_type = ELF32_R_TYPE (rel->r_info -= 3);

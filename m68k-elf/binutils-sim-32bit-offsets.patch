@@ -1,0 +1,61 @@
+diff --git a/gas/config/tc-m68k.c b/gas/config/tc-m68k.c
+index 4fd6c45733f..d551e496939 100644
+--- a/gas/config/tc-m68k.c
++++ b/gas/config/tc-m68k.c
+@@ -1,3 +1,4 @@
++
+ /* tc-m68k.c -- Assemble for the m68k family
+    Copyright (C) 1987-2021 Free Software Foundation, Inc.
+ 
+@@ -846,7 +847,7 @@ relax_typeS md_relax_table[] =
+ 
+   {	1, 	1,  0, 0 },		/* PCREL1632 doesn't come BYTE.  */
+   { 32767, -32768,  2, TAB (PCREL1632, LONG) },
+-  {	0,	0,  6, 0 },
++  {	0,	0,  8, 0 },
+   {	1,	1,  0, 0 },
+ 
+   {   125,   -130,  0, TAB (PCINDEX, SHORT) },
+@@ -2584,15 +2585,9 @@ m68k_ip (char *instring)
+ 	      if (!issword (nextword)
+ 		  || (isvar (&opP->disp)
+ 		      && ((opP->disp.size == SIZE_UNSPEC
+-			   && flag_short_refs == 0
+-			   && cpu_of_arch (current_architecture) >= m68020
+-			   && ! arch_coldfire_p (current_architecture))
++			   && flag_short_refs == 0)
+ 			  || opP->disp.size == SIZE_LONG)))
+ 		{
+-		  if (cpu_of_arch (current_architecture) < m68020
+-		      || arch_coldfire_p (current_architecture))
+-		    opP->error =
+-		      _("displacement too large for this architecture; needs 68020 or higher");
+ 		  if (opP->reg == PC)
+ 		    tmpreg = 0x3B;	/* 7.3 */
+ 		  else
+@@ -5107,13 +5102,21 @@ md_convert_frag_1 (fragS *fragP)
+     case TAB (PCREL1632, LONG):
+       /* Already set to mode 7.3; this indicates: PC indirect with
+ 	 suppressed index, 32-bit displacement.  */
+-      *buffer_address++ = 0x01;
+-      *buffer_address++ = 0x70;
+-      fragP->fr_fix += 2;
++
++      /* Move 32-bit offset right away. */
+       fixP = fix_new (fragP, (int) (fragP->fr_fix), 4, fragP->fr_symbol,
+ 		      fragP->fr_offset, 1, RELAX_RELOC_PC32);
+-      fixP->fx_pcrel_adjust = 2;
+       fragP->fr_fix += 4;
++      /* Copy opcode forward and use PC with D7 as index.  */
++      buffer_address += 4;
++      *buffer_address++ = fragP->fr_opcode[0];
++      *buffer_address++ = fragP->fr_opcode[1];
++      *buffer_address++ = 0x78;
++      *buffer_address++ = 0xFA;
++      fragP->fr_fix += 4;
++      /* Change original op to move offset into D7 register. */
++      fragP->fr_opcode[0] = 0x2E;
++      fragP->fr_opcode[1] = 0x3C;
+       break;
+     case TAB (PCINDEX, BYTE):
+       gas_assert (fragP->fr_fix >= 2);

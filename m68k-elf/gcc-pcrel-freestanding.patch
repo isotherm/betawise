@@ -1,3 +1,16 @@
+diff --git a/gcc/config/m68k/m68k.c b/gcc/config/m68k/m68k.c
+index 40bdcb052f8..74fb892889c 100644
+--- a/gcc/config/m68k/m68k.c
++++ b/gcc/config/m68k/m68k.c
+@@ -5227,7 +5227,7 @@ print_operand_address (FILE *file, rtx addr)
+ 	  /* (d16,PC) or (bd,PC,Xn) (with suppressed index register).  */
+ 	  fputc ('(', file);
+ 	  output_addr_const (file, addr);
+-	  asm_fprintf (file, flag_pic == 1 ? ":w,%Rpc)" : ":l,%Rpc)");
++	  asm_fprintf (file, ",%Rpc)");
+ 	}
+       else
+ 	{
 diff --git a/libgcc/config/m68k/lb1sf68.S b/libgcc/config/m68k/lb1sf68.S
 index 86caf345a00..5e443af4006 100644
 --- a/libgcc/config/m68k/lb1sf68.S
