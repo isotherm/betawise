@@ -10,9 +10,9 @@ APPLET_HEADER_BEGIN
     APPLET_LANGUAGE_EN_US
 APPLET_HEADER_END
 
-FontHeader_t g_pFontHeader;
+static FontHeader_t g_pFontHeader;
 
-void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
+void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
     *status = 0;
     switch(message) {
         case 0x1000001:
