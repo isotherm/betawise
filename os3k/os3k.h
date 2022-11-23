@@ -318,7 +318,7 @@ extern char __os3k_rom_size;
 extern char __os3k_bss_size;
 
 #define APPLET_HEADER_BEGIN \
-    AppletHeader_t __header __attribute__ ((section("os3k_header"))) = { \
+    const AppletHeader_t __header __attribute__ ((section("os3k_header"))) = { \
         .signature = 0xC0FFEEAD, \
         .romUsage = (uint32_t)&__os3k_rom_size, \
         .ramUsage = (uint32_t)&__os3k_bss_size, \
@@ -348,7 +348,7 @@ extern char __os3k_bss_size;
 #define APPLET_LANGUAGE_SV .languageId = 9,
 #define APPLET_HEADER_END \
     }; \
-    uint32_t __footer __attribute__ ((section("os3k_footer"))) = { 0xCAFEFEED }; \
+    const uint32_t __footer __attribute__ ((section("os3k_footer"))) = { 0xCAFEFEED }; \
 
 #define APPLET_FLAG_HIDDEN 0x001
 #define APPLET_FLAG_FONT (0x010 | 0x020)

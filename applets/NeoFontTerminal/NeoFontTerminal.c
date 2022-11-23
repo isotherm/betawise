@@ -16,7 +16,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
     *status = 0;
     switch(message) {
         case 0x1000001:
-            *(char**)param = APPLET_FONT_NAME_PTR;
+            *(const char**)param = APPLET_FONT_NAME_PTR;
             break;
 
         case 0x1000002:
