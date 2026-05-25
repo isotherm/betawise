@@ -38,12 +38,10 @@ clean:
 src/${BINUTILS_VERSION}/configure:
 	mkdir -p src
 	cd src; wget https://ftp.gnu.org/pub/gnu/binutils/${BINUTILS_VERSION}.tar.xz -O - | tar xJ
-	cd src/${BINUTILS_VERSION}; git apply ../../binutils-a5-data-segment.patch; git apply ../../binutils-sim-32bit-offsets.patch
 
 src/${GCC_VERSION}/configure:
 	mkdir -p src
 	cd src; wget https://ftp.gnu.org/pub/gnu/gcc/${GCC_VERSION}/${GCC_VERSION}.tar.xz -O - | tar xJ
-	cd src/${GCC_VERSION}; git apply ../../gcc-pcrel-freestanding.patch
 
 src/${NEWLIB_VERSION}/configure:
 	mkdir -p src
