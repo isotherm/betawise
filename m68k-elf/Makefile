@@ -1,9 +1,9 @@
 CORES = $(shell nproc)
 TARGET = m68k-elf
 PREFIX = ${HOME}/.local
-BINUTILS_VERSION = binutils-2.36.1
-GCC_VERSION = gcc-11.1.0
-NEWLIB_VERSION = newlib-4.1.0
+BINUTILS_VERSION = binutils-2.46.0
+GCC_VERSION = gcc-16.1.0
+NEWLIB_VERSION = newlib-4.6.0.20260123
 
 # -fno-cse-follow-jumps is a workaround to avoid an internal RTL error
 # when buliding _mulxc3.o in libgcc. Activation of that optimization
