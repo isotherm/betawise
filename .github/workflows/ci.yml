@@ -8,7 +8,7 @@ on:
 
 jobs:
   linux:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
     - name: Install build dependencies.
       run: |
@@ -16,9 +16,12 @@ jobs:
         sudo apt-get install libgmp-dev libmpfr-dev libmpc-dev
         sudo apt-get install python3-pil
     - name: Check out repository.
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
+    - name: Get the tag name.
+      id: get_tag
+      run: echo TAG=$(git describe --tags | tail -c +2) >> $GITHUB_OUTPUT
     - name: Build toolchain.
       run: |
         echo "$PREFIX/bin" >> $GITHUB_PATH
@@ -30,7 +33,7 @@ jobs:
         ln -sf ${HOME}/.local /tmp/m68k-elf
         tar -C /tmp -cvhf toolchain.tar m68k-elf
     - name: Upload toolchain artifact.
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: m68k-elf-toolchain-${{ steps.get_tag.outputs.TAG }}.tar
         path: toolchain.tar
@@ -38,11 +41,8 @@ jobs:
       run: |
         echo "$PREFIX/bin" >> $GITHUB_PATH
         make
-    - name: Get the tag name.
-      id: get_tag
-      run: echo ::set-output name=TAG::$(git describe --tags | tail -c +2)
     - name: Upload applets artifact.
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: betawise-applets-${{ steps.get_tag.outputs.TAG }}
         path: "applets/**/*.OS3KApp"
