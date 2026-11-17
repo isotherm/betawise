@@ -39,6 +39,7 @@ endif
 	test "$$final_count" = "$$reloc_count"
 	$(OBJCOPY) --update-section .data.reloc=$(basename $@).reloc $(basename $@).elf
 	$(OBJCOPY) -O binary $(basename $@).elf $@
+	$(RM) $(basename $@).reloc
 
 CLEAN_SUBDIRS ?= $(SUBDIRS)
 CLEAN_TARGETS = $(addprefix clean-,$(CLEAN_SUBDIRS))

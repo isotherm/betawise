@@ -5,6 +5,14 @@ Several custom applets for the AlphaSmart NEO / NEO2, and tools to create them.
 Any `m68k-elf` gcc cross compiler should work. On Windows, I have successfully
 used [MinGW GCC for M68K](https://sourceforge.net/projects/mingw-gcc-68k-elf/).
 
+Initialize the pinned MicroPython submodule before building all applets
+from the repository root.
+
+```sh
+git submodule update --init applets/MicroPython/upstream
+make -j4
+```
+
 OS3K applets should support two-byte alignment for their RAM and flash
 bases. Firmware placement may put either base two bytes past a
 four-byte boundary, even when the linker aligns offsets within an

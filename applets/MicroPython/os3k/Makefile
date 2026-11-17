@@ -7,6 +7,8 @@ QSTR_DEFS = qstrdefsport.h
 include $(TOP)/py/py.mk
 
 CFLAGS += -I. -I$(TOP) -I$(BUILD) -m68000 -malign-int -msep-data -fomit-frame-pointer
+# OS3K supplies libc calls directly, without glibc fortify wrappers.
+CFLAGS += -U_FORTIFY_SOURCE
 CFLAGS += -fno-store-merging -Os -DNDEBUG -ffunction-sections -fdata-sections
 OBJ = $(PY_CORE_O)
 

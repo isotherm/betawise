@@ -12,9 +12,8 @@ runs all cases. Pass an executable path to override it and an optional
 case name to run just that case.
 
 ```sh
-make -j4
 git submodule update --init applets/MicroPython/upstream
-make -C applets/MicroPython/os3k -j4
+make -j4
 ./tests/mame/asma3k/check.sh
 ./tests/mame/asma3k/check.sh ../mame/mame memory
 ```
