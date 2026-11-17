@@ -273,6 +273,7 @@ int toupper(int c);
 int ungetc(int c, FILE* stream);
 
 // Betawise library functions.
+void Os3kEntry(Message_e message, uint32_t param, uint32_t* status);
 void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status);
 int fputs(const char* str, FILE* stream);
 int putchar(int c);
@@ -315,13 +316,13 @@ typedef struct _FontHeader_t {
 } FontHeader_t;
 
 extern char __os3k_rom_size;
-extern char __os3k_bss_size;
+extern char __os3k_ram_size;
 
 #define APPLET_HEADER_BEGIN \
     const AppletHeader_t __header __attribute__ ((section("os3k_header"))) = { \
         .signature = 0xC0FFEEAD, \
         .romUsage = (uint32_t)&__os3k_rom_size, \
-        .ramUsage = (uint32_t)&__os3k_bss_size, \
+        .ramUsage = (uint32_t)&__os3k_ram_size, \
         .settingsOffset = 0, \
         .flags = 0xFF000000, \
         .headerVersion = 1, \
@@ -329,7 +330,7 @@ extern char __os3k_bss_size;
         .name = "Test", \
         .minAsmVersion = 0, \
         .fileUsage = 0, \
-        .entryPoint = &BwProcessMessage, \
+        .entryPoint = &Os3kEntry, \
         .magic = {0, 1, 2},
 #define APPLET_FLAGS(param) .flags = 0xFF000000 | (param),
 #define APPLET_ID(param) .id = param,

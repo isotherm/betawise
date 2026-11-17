@@ -1,6 +1,7 @@
-SUBDIRS = os3k applets
+SUBDIRS = os3k m68k-test applets
 
 include Makefile.common
 
-toolchain:
-	make -C m68k-elf
+ifneq ($(MAKECMDGOALS),clean)
+m68k-test applets: os3k
+endif

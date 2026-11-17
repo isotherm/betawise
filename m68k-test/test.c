@@ -433,6 +433,20 @@ int main(void)
 }
 
 #ifndef QEMU_TEST
+#ifdef OS3K_QEMU_SMOKE
+void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
+    extern const AppletHeader_t __header;
+    static volatile unsigned int dispatch_count;
+    if (message == MSG_INIT) {
+        *status = main();
+        if (dispatch_count || (uint32_t)&__header != param)
+            *status |= 1u << 18;
+        dispatch_count = 1;
+    } else {
+        *status = dispatch_count++ != param;
+    }
+}
+#else
 void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
     *status = 0;
     switch(message) {
@@ -441,6 +455,8 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
             break;
     }
 }
+
+#endif
 
 APPLET_HEADER_BEGIN
     APPLET_ID(0xA1FF)

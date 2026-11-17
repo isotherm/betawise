@@ -1,4 +1,4 @@
-OBJ = test.o externs.o crt0.o
+OBJ = test.o externs.o
 TARGET = test.OS3KApp
 
 include ../Makefile.common

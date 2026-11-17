@@ -1,17 +1,19 @@
 .DEFAULT_GOAL := all
 
 TOP = $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-CROSS_COMPILE = m68k-elf-
+CROSS_COMPILE = m68k-linux-gnu-
 CC = $(CROSS_COMPILE)gcc
 AS = $(CROSS_COMPILE)as
 LD = $(CROSS_COMPILE)ld
 AR = $(CROSS_COMPILE)ar
+READELF = $(CROSS_COMPILE)readelf
 OBJCOPY = $(CROSS_COMPILE)objcopy
-ASFLAGS = --pcrel
-CFLAGS = -mpcrel -fomit-frame-pointer -ffixed-a5 -fshort-enums
+ASFLAGS = --pcrel -m68000
+CFLAGS = -m68000 -msep-data -fomit-frame-pointer -fshort-enums
 CFLAGS += -Os -I"$(TOP)/os3k" -ffunction-sections -fdata-sections
-LDFLAGS = -static -T "$(TOP)/os3k/os3k.lds" -L"$(TOP)/os3k" -los3k
-LDFLAGS += --gc-sections
+OS3K_LIB = $(TOP)/os3k/libos3k.a
+LDFLAGS = -static -T "$(TOP)/os3k/os3k.lds" $(OS3K_LIB)
+LDFLAGS += --gc-sections --emit-relocs
 ARFLAGS = rcs
 
 %.o : %.c $(*.h)
@@ -20,12 +22,13 @@ ARFLAGS = rcs
 %.o : %.asm $(*.inc)
 	$(AS) $(ASFLAGS) $< -o $@
 
-%.a : $(OBJ)
-	$(AR) $(ARFLAGS) $@ $^
-
-%.OS3KApp : $(OBJ)
-	$(LD) $^ $(LDFLAGS) -o $@
-	$(OBJCOPY) -O binary $@ $@
+%.OS3KApp : $(OBJ) $(TOP)/os3k/os3k.lds $(TOP)/os3k/fixups.py $(OS3K_LIB)
+	$(LD) $(OBJ) $(LDFLAGS) --defsym __os3k_reloc_size=0 -o $(basename $@).elf
+	set -e; reloc_count=$$(python3 "$(TOP)/os3k/fixups.py" "$(READELF)" $(basename $@).elf $(basename $@).reloc); \
+	$(LD) $(OBJ) $(LDFLAGS) --defsym __os3k_reloc_size=$$reloc_count -o $(basename $@).elf; \
+	test "$$(python3 "$(TOP)/os3k/fixups.py" "$(READELF)" $(basename $@).elf $(basename $@).reloc)" = "$$reloc_count"
+	$(OBJCOPY) --update-section .data.reloc=$(basename $@).reloc $(basename $@).elf
+	$(OBJCOPY) -O binary $(basename $@).elf $@
 
 .PHONY: all clean $(SUBDIRS)
 

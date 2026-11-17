@@ -38,18 +38,51 @@ cmp "$build/offsets" "$build/final-offsets"
 } | xxd -r -p > "$build/relocs.bin"
 "${cross}objcopy" --update-section .data.reloc="$build/relocs.bin" "$build/test.elf"
 
-"${cross}objcopy" --adjust-start 0x10000000 \
-    --change-section-address .text+0x10000000 \
-    --change-section-address .data.reloc+0x10000000 \
-    --change-section-address .got+0x20000000 \
-    --change-section-address .data+0x20000000 \
-    --change-section-address .bss+0x20000000 \
-    "$build/test.elf" "$build/test-moved.elf"
+# Keep the link-time offsets, but map neither test image at address zero.
+# Hosted runners can reject low mappings through vm.mmap_min_addr.
+map_image() {
+    local image=$1 flash_bias=$2 ram_bias=$3
+    "${cross}objcopy" --adjust-start "$flash_bias" \
+        --change-section-address ".text+$flash_bias" \
+        --change-section-address ".data.reloc+$flash_bias" \
+        --change-section-address ".got+$ram_bias" \
+        --change-section-address ".data+$ram_bias" \
+        --change-section-address ".bss+$ram_bias" \
+        "$build/test.elf" "$build/$image.elf"
+}
 
-for image in test test-moved; do
+map_image test-base 0x20000 0
+map_image test-moved 0x10020000 0x20000000
+
+for image in test-base test-moved; do
     if ! "$qemu" -cpu m68000 "$build/$image.elf"; then
         echo "$image failed" >&2
         exit 1
     fi
     echo "$image passed"
+done
+
+# Package the same test payload with the production linker and entry stub.
+# Stub out firmware-dependent C services so QEMU can drive the message ABI.
+os3k=$(realpath ../os3k)
+cat > "$build/version.h" <<'VERSION'
+#define BETAWISE_VERSION_MAJOR 0
+#define BETAWISE_VERSION_MINOR 0
+#define BETAWISE_VERSION_REVISION " "
+VERSION
+"${cross}gcc" -Os -m68000 -msep-data -fomit-frame-pointer -fshort-enums \
+    -ffreestanding -ffunction-sections -fdata-sections -DOS3K_QEMU_SMOKE \
+    -I"$build" -I"$os3k" -c test.c -o "$build/test.o"
+"${cross}gcc" -Os -m68000 -msep-data -c externs.c -o "$build/externs.o"
+"${cross}gcc" -m68000 -c "$os3k/crt0.S" -o "$build/crt0.o"
+make -C "$build" -f "$os3k/../Makefile.common" CROSS_COMPILE="$cross" \
+    OS3K_LIB= 'OBJ=test.o externs.o crt0.o' smoke.OS3KApp
+for text_address in 0x10020 0x320020; do
+    "${cross}gcc" -m68000 -static -nostdlib -Wa,-I,"$build" \
+        -Wl,-Ttext,"$text_address",--build-id=none dispatch.S -o "$build/dispatch.elf"
+    if ! "$qemu" -cpu m68000 "$build/dispatch.elf"; then
+        echo "packed applet dispatch failed at $text_address" >&2
+        exit 1
+    fi
+    echo "packed applet dispatch passed at $text_address"
 done
