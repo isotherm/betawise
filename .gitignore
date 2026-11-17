@@ -1,6 +1,7 @@
 *.o
 *.a
 *.OS3KApp
+*.OS3KOS
 *.elf
 *.reloc
 version.h

@@ -1,23 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if (( $# < 2 || $# > 3 )); then
-    echo "usage: $0 MAME ROM_DIRECTORY [hello|memory|invoke|syscall|string|handler]" >&2
+if (( $# > 2 )); then
+    echo "usage: $0 [MAME [hello|memory|invoke|syscall|string|handler|micropython]]" >&2
     exit 2
 fi
-mame=$(realpath "$1")
-roms=$(realpath "$2")
 test_dir=$(cd -- "$(dirname -- "$0")" && pwd)
 root=$(cd -- "$test_dir/../.." && pwd)
+mame=$(realpath "${1:-$root/../mame/mame}")
 nm=${CROSS_COMPILE:-m68k-linux-gnu-}nm
-if (( $# == 3 )); then
-    cases=("$3")
+if (( $# == 2 )); then
+    cases=("$2")
 else
-    cases=(hello memory invoke syscall string handler)
+    cases=(hello memory invoke syscall string handler micropython)
+fi
+
+mame_roms="$(dirname -- "$mame")/roms"
+full_rom="$test_dir/OS3KROM.OS3KOS"
+small_rom="$test_dir/SMALLOS3KROM.OS3KOS"
+if [[ ! -f $small_rom ]]; then
+    small_rom="$mame_roms/asma3k/smallos3krom.os3kos"
+fi
+if [[ ! -f $full_rom || ! -f $small_rom ]]; then
+    echo "Place OS3KROM.OS3KOS and SMALLOS3KROM.OS3KOS beside check.sh (see tests/mame/README.md)." >&2
+    exit 2
 fi
 
 work=$(mktemp -d)
+roms="$work/roms"
+mkdir -p "$roms/asma3k"
+ln -s "$full_rom" "$roms/asma3k/os3krom.os3kos"
+ln -s "$small_rom" "$roms/asma3k/smallos3krom.os3kos"
 echo "MAME test output: $work"
+failures=0
 for test_case in "${cases[@]}"; do
     case "$test_case" in
         hello) applet=HelloWorld; seconds=12 ;;
@@ -26,38 +41,48 @@ for test_case in "${cases[@]}"; do
         syscall) applet=DebugTool; seconds=26 ;;
         string) applet=DebugTool; seconds=46 ;;
         handler) applet=DebugTool; seconds=30 ;;
+        micropython) applet=MicroPython; seconds=60 ;;
         *) echo "Unknown case: $test_case" >&2; exit 2 ;;
     esac
 
     artifact="$root/applets/$applet/$applet"
-    if [[ ! -f $artifact.OS3KApp || ! -f $artifact.elf ]]; then
-        echo "Build the applets with make before running this check." >&2
+    if [[ $applet == MicroPython ]]; then
+        artifact="$root/applets/MicroPython/os3k/MicroPython"
+    fi
+    if [[ ! -f $artifact.OS3KApp || ( $applet == DebugTool && ! -f $artifact.elf ) ]]; then
+        echo "Build $applet before running this check (see tests/mame/README.md)." >&2
         exit 2
     fi
 
     run="$work/$test_case"
     mkdir "$run"
     {
-        printf 'local test_case = "%s"\nlocal symbols = {\n' "$test_case"
-        "$nm" -P "$artifact.elf" |
-            awk '$1 ~ /^(g_scratch|g_pAddress|g_cursor|g_busError|BusErrorHandler|__header)$/ {
-                printf "    %s = 0x%s,\n", $1, $3
-            }'
-        printf '}\n'
-        cat "$test_dir/asma3k.lua"
+        printf 'local test_case = "%s"\n' "$test_case"
+        if [[ $applet == DebugTool ]]; then
+            printf 'local symbols = {\n'
+            "$nm" -P "$artifact.elf" |
+                awk '$1 ~ /^(g_scratch|g_pAddress|g_cursor|g_busError|BusErrorHandler|__header)$/ {
+                    printf "    %s = 0x%s,\n", $1, $3
+                }'
+            printf '}\n'
+        fi
+        cat "$test_dir/asma3k.lua" "$test_dir/$applet.lua"
     } > "$run/check.lua"
 
-    (
+    echo "RUN  $test_case"
+    if (
         cd "$run"
-        "$mame" asma3k -rompath "$roms" -nvram_directory nvram \
+        SDL_VIDEODRIVER=dummy "$mame" asma3k -rompath "$roms;$mame_roms" -nvram_directory nvram \
             -snapshot_directory snap -applet "$artifact.OS3KApp" \
             -video none -sound none -nothrottle -seconds_to_run "$seconds" \
             -autoboot_delay 0 -autoboot_script "$run/check.lua" > mame.log 2>&1
-    )
-    if ! grep -Fxq "PASS $test_case" "$run/mame.log" || grep -q 'LUA ERROR' "$run/mame.log"; then
+    ) && grep -Fxq "PASS $test_case" "$run/mame.log" && ! grep -q 'LUA ERROR' "$run/mame.log"; then
+        echo "PASS $test_case"
+    else
         tail -30 "$run/mame.log" >&2
-        echo "MAME check failed: $test_case ($run)" >&2
-        exit 1
+        echo "FAIL $test_case ($run/mame.log)" >&2
+        failures=$((failures + 1))
     fi
-    echo "PASS $test_case"
 done
+echo "$((${#cases[@]} - failures))/${#cases[@]} MAME checks passed"
+(( failures == 0 ))
