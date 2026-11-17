@@ -12,8 +12,7 @@ APPLET_HEADER_BEGIN
     APPLET_LANGUAGE_EN_US
 APPLET_HEADER_END
 
-// Keep input and its cursor on one row of the AS3000's 40-column LCD.
-enum { MAX_INPUT_LINE = 35, STACK_BUDGET = 4096 };
+enum { STACK_BUDGET = 4096 };
 static uint32_t heap[4096];
 static char source[512];
 static size_t length;
@@ -100,7 +99,7 @@ static void input(char c) {
         putchar('\n');
         at_line_start = true;
         prompt();
-    } else if (c >= ' ' && length - line_start < MAX_INPUT_LINE && length + 1 < sizeof(source)) {
+    } else if (c >= ' ' && length + 1 < sizeof(source)) {
         source[length++] = c;
         mp_hal_stdout_tx_strn_cooked(&c, 1);
     }

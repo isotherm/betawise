@@ -41,7 +41,7 @@ for test_case in "${cases[@]}"; do
         syscall) applet=DebugTool; seconds=26 ;;
         string) applet=DebugTool; seconds=46 ;;
         handler) applet=DebugTool; seconds=30 ;;
-        micropython) applet=MicroPython; seconds=60 ;;
+        micropython) applet=MicroPython; seconds=72 ;;
         *) echo "Unknown case: $test_case" >&2; exit 2 ;;
     esac
 

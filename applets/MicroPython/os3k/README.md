@@ -20,9 +20,8 @@ assignments, Backspace, and multiline input terminated by a blank line.
 Variables persist when switching applets and are initialized anew when the
 firmware sends `WM_INIT`. The REPL redraws the current prompt and unfinished
 input when it regains focus. A visible cursor marks the input position.
-Each input line accepts up to 35 characters to leave room for the prompt
-and cursor on the AS3000. A multiline statement is limited to 511
-characters. The VM has a 16 KiB heap.
+Long input lines wrap on the display. Each statement can contain up to
+511 characters, including newlines in multiline input. The VM has a 16 KiB heap.
 
 Keyboard input arrives in OS3K key and character messages so the guest can
 continue handling applet switching between commands. Betawise's blocking
