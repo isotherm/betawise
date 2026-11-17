@@ -1,7 +1,8 @@
 .DEFAULT_GOAL := all
+.DELETE_ON_ERROR:
 
 TOP = $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-CROSS_COMPILE = m68k-linux-gnu-
+CROSS_COMPILE ?= m68k-linux-gnu-
 CC = $(CROSS_COMPILE)gcc
 AS = $(CROSS_COMPILE)as
 LD = $(CROSS_COMPILE)ld
@@ -15,29 +16,53 @@ OS3K_LIB = $(TOP)/os3k/libos3k.a
 LDFLAGS = -static -T "$(TOP)/os3k/os3k.lds" $(OS3K_LIB)
 LDFLAGS += --gc-sections --emit-relocs
 ARFLAGS = rcs
+OS3K_HEADERS ?= $(TOP)/os3k/os3k.h $(TOP)/os3k/version.h
 
-%.o : %.c $(TOP)/os3k/os3k.h $(TOP)/os3k/version.h
-	$(CC) $(CFLAGS) -c $<
+%.o : %.c $(OS3K_HEADERS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-%.o : %.asm $(*.inc)
+%.o : %.asm
 	$(AS) $(ASFLAGS) $< -o $@
+
+# Keep objects produced by the implicit rules for incremental builds.
+ifneq ($(strip $(OBJ)),)
+$(OBJ):
+endif
 
 %.OS3KApp : $(OBJ) $(TOP)/os3k/os3k.lds $(TOP)/os3k/fixups.py $(OS3K_LIB)
 	$(LD) $(OBJ) $(LDFLAGS) --defsym __os3k_reloc_size=0 -o $(basename $@).elf
 	set -e; reloc_count=$$(python3 "$(TOP)/os3k/fixups.py" "$(READELF)" $(basename $@).elf $(basename $@).reloc); \
 	$(LD) $(OBJ) $(LDFLAGS) --defsym __os3k_reloc_size=$$reloc_count -o $(basename $@).elf; \
-	test "$$(python3 "$(TOP)/os3k/fixups.py" "$(READELF)" $(basename $@).elf $(basename $@).reloc)" = "$$reloc_count"
+	final_count=$$(python3 "$(TOP)/os3k/fixups.py" "$(READELF)" $(basename $@).elf $(basename $@).reloc); \
+	test "$$final_count" = "$$reloc_count"
 	$(OBJCOPY) --update-section .data.reloc=$(basename $@).reloc $(basename $@).elf
 	$(OBJCOPY) -O binary $(basename $@).elf $@
 
-.PHONY: all clean $(SUBDIRS)
+CLEAN_SUBDIRS ?= $(SUBDIRS)
+CLEAN_TARGETS = $(addprefix clean-,$(CLEAN_SUBDIRS))
+APPLET_IMAGES = $(filter %.OS3KApp,$(TARGET))
+APPLET_INTERMEDIATES = $(APPLET_IMAGES:.OS3KApp=.elf) $(APPLET_IMAGES:.OS3KApp=.reloc)
 
-$(TARGET):
+.PHONY: all clean $(SUBDIRS) $(CLEAN_TARGETS)
 
+# Keep mixed requests such as "make -j clean all" in goal order.
+ifneq ($(filter clean,$(MAKECMDGOALS)),)
+ifneq ($(filter-out clean,$(MAKECMDGOALS)),)
+.NOTPARALLEL:
+endif
+endif
+
+ifneq ($(strip $(SUBDIRS)),)
 $(SUBDIRS):
-	+$(MAKE) -C $@ $(MAKECMDGOALS)
+	+$(MAKE) -C $@ all
+endif
 
-all:: $(TARGET) $(SUBDIRS)
+ifneq ($(strip $(CLEAN_TARGETS)),)
+$(CLEAN_TARGETS): clean-%:
+	+$(MAKE) -C $* clean
+endif
 
-clean: $(SUBDIRS)
-	rm -f $(INT) $(OBJ) $(TARGET)
+all: $(TARGET) $(SUBDIRS)
+
+clean: $(CLEAN_TARGETS)
+	$(RM) $(INT) $(OBJ) $(TARGET) $(APPLET_INTERMEDIATES)
