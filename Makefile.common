@@ -11,6 +11,8 @@ READELF = $(CROSS_COMPILE)readelf
 OBJCOPY = $(CROSS_COMPILE)objcopy
 ASFLAGS = --pcrel -m68000
 CFLAGS = -m68000 -msep-data -fomit-frame-pointer -fshort-enums
+# Prevent GCC from merging byte stores into an unaligned word store.
+CFLAGS += -fno-store-merging
 CFLAGS += -Os -I"$(TOP)/os3k" -ffunction-sections -fdata-sections
 OS3K_LIB = $(TOP)/os3k/libos3k.a
 LDFLAGS = -static -T "$(TOP)/os3k/os3k.lds" $(OS3K_LIB)
@@ -26,7 +28,7 @@ OS3K_HEADERS ?= $(TOP)/os3k/os3k.h $(TOP)/os3k/version.h
 
 # Keep objects produced by the implicit rules for incremental builds.
 ifneq ($(strip $(OBJ)),)
-$(OBJ):
+$(OBJ): $(TOP)/Makefile.common
 endif
 
 %.OS3KApp : $(OBJ) $(TOP)/os3k/os3k.lds $(TOP)/os3k/fixups.py $(OS3K_LIB)

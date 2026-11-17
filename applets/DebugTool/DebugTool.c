@@ -38,12 +38,24 @@ uint8_t g_bytesPerScreen;
 volatile uint8_t g_busError;
 bool g_isAS3000;
 
-void BusErrorHandler() {
-    g_busError = 1;
-    asm("add.w #8,%sp");
-    asm("rte");
-    __builtin_unreachable();
-}
+extern void BusErrorHandler(void);
+
+/* Keep this outside a C function so GCC cannot push A5 onto the exception frame. */
+asm(
+    ".pushsection .text.BusErrorHandler,\"ax\"\n"
+    ".balign 2\n"
+    ".global BusErrorHandler\n"
+    ".type BusErrorHandler,@function\n"
+    "BusErrorHandler:\n"
+    "move.l %a0,-(%sp)\n"
+    "movea.l g_busError@GOT.w(%a5),%a0\n"
+    "move.b #1,(%a0)\n"
+    "movea.l (%sp)+,%a0\n"
+    "addq.l #8,%sp\n" /* Skip the extra 68000 bus-error frame words. */
+    "rte\n"
+    ".size BusErrorHandler,.-BusErrorHandler\n"
+    ".popsection\n"
+);
 
 void InstallBusErrorHandler() {
     g_prevBusErrorHandler = BUS_ERROR_HANDLER_PTR;
