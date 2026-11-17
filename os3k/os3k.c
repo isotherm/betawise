@@ -53,8 +53,8 @@ void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
             break;
 
         case MSG_SETFOCUS:
-            _OS3K_ClearScreen();
             if(!g_pCurFont) {
+                _OS3K_ClearScreen();
                 break;
             }
             // Initialize screen and font.
@@ -65,6 +65,7 @@ void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
             // Use constant integers to avoid long division.
             g_MaxCol = (uint16_t)g_LcdWidth / 6;
             g_MaxRow = g_pCurFont->height == 16 ? (g_LcdHeight / 16) : (g_LcdHeight / 8);
+            ClearScreen();
             break;
 
         case MSG_KILLFOCUS:
@@ -81,9 +82,9 @@ void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
 void ClearScreen() {
     _OS3K_ClearScreen();
     if(g_pCurFont) {
-        g_CurRow = g_CurCol = 1;
         g_CurLcdRoll = 0;
         _LCD_SetScreenRoll(g_CurLcdRoll);
+        SetCursor(1, 1, CURSOR_MODE_HIDE);
     }
 }
 
