@@ -1,5 +1,4 @@
-Debugging Tool
-==============
+# Debugging Tool
 
 **IMPORTANT**: Back up all documents first! Use of the debug tools applet
 allows modifying memory, performing I/O, and calling arbitrary routines. A

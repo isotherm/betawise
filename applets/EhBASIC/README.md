@@ -1,5 +1,4 @@
-EhBASIC68
-=========
+# EhBASIC68
 
 Enhanced BASIC is a BASIC interpreter for the 68k family microprocessors. It
 is constructed to be quick and powerful and easily ported between 68k systems.
