@@ -1,5 +1,5 @@
-SUBDIRS = os3k m68k-test applets
+SUBDIRS = os3k tests/qemu applets
 
 include Makefile.common
 
-m68k-test applets: os3k
+tests/qemu applets: os3k

@@ -22,7 +22,7 @@ jobs:
       id: get_tag
       run: echo TAG=$(git describe --tags | tail -c +2) >> $GITHUB_OUTPUT
     - name: Run m68k relocation tests.
-      run: make -C m68k-test check
+      run: make -C tests/qemu check
     - name: Build library and applets.
       run: |
         echo "$PREFIX/bin" >> $GITHUB_PATH

@@ -5,8 +5,8 @@ SmartApplet image slot and a directory containing the AS3000 ROM set.
 
 ```sh
 make -j4
-./mame-test/check.sh ../mame/mame ../mame/roms
-./mame-test/check.sh ../mame/mame ../mame/roms memory
+./tests/mame/check.sh ../mame/mame ../mame/roms
+./tests/mame/check.sh ../mame/mame ../mame/roms memory
 ```
 
 Each case starts with fresh temporary NVRAM, mounts one applet, answers the

@@ -1,7 +1,7 @@
 OBJ = test.o externs.o
 TARGET = test.OS3KApp
 
-include ../Makefile.common
+include ../../Makefile.common
 
 .PHONY: check
 check:

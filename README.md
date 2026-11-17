@@ -7,6 +7,11 @@ Compiling
 Any `m68k-elf` gcc cross compiler should work. On Windows, I have successfully
 used [MinGW GCC for M68K](https://sourceforge.net/projects/mingw-gcc-68k-elf/).
 
+Testing
+-------
+Run `make -C tests/qemu check` for the relocation and startup tests.
+For firmware-driven applet tests, see [AS3000 MAME tests](tests/mame/README.md).
+
 Installing Custom Applets
 -------------------------
 Using [Neo Manager](https://support.renaissance.com/techkb/techkb/13002475e.asp):

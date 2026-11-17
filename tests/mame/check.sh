@@ -7,7 +7,8 @@ if (( $# < 2 || $# > 3 )); then
 fi
 mame=$(realpath "$1")
 roms=$(realpath "$2")
-root=$(cd -- "$(dirname -- "$0")/.." && pwd)
+test_dir=$(cd -- "$(dirname -- "$0")" && pwd)
+root=$(cd -- "$test_dir/../.." && pwd)
 nm=${CROSS_COMPILE:-m68k-linux-gnu-}nm
 if (( $# == 3 )); then
     cases=("$3")
@@ -43,7 +44,7 @@ for test_case in "${cases[@]}"; do
                 printf "    %s = 0x%s,\n", $1, $3
             }'
         printf '}\n'
-        cat "$root/mame-test/asma3k.lua"
+        cat "$test_dir/asma3k.lua"
     } > "$run/check.lua"
 
     (

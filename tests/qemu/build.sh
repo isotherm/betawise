@@ -64,7 +64,7 @@ done
 
 # Package the same test payload with the production linker and entry stub.
 # Stub out firmware-dependent C services so QEMU can drive the message ABI.
-os3k=$(realpath ../os3k)
+os3k=$(realpath ../../os3k)
 cat > "$build/version.h" <<'VERSION'
 #define BETAWISE_VERSION_MAJOR 0
 #define BETAWISE_VERSION_MINOR 0
