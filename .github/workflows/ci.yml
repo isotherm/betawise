@@ -19,6 +19,10 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+    - name: Install QEMU test dependencies.
+      run: sudo apt-get install -y gcc-m68k-linux-gnu qemu-user xxd
+    - name: Run m68k relocation tests.
+      run: make -C m68k-test check
     - name: Get the tag name.
       id: get_tag
       run: echo TAG=$(git describe --tags | tail -c +2) >> $GITHUB_OUTPUT

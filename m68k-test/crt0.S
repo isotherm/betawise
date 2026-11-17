@@ -1,4 +1,7 @@
-/* start.S */
+/* QEMU Linux-user entry point. Model flash and RAM at two load addresses. */
+#ifdef QEMU_TEST
+.section .text.startup.qemu,"ax"
+#endif
 .global _start
 
 .extern main
@@ -12,7 +15,7 @@ _start:
     ori.l   #0x80000000, %d0
     move.l  %d0, %a5
 
-    | Begin of Neo loader
+    | Apply the applet fixups while flash is mapped read-only.
 
     lea     (__code_start__, %pc), %a6
 
@@ -24,7 +27,12 @@ _start:
     move.l  %d0, (%a0)+
     bne     .L_got_loop
 .L_got_done:
+#ifdef QEMU_TEST
+    move.l  #__reloc_table_offset, %a0
+    adda.l  %a6, %a0
+#else
     addq    #4, %a0
+#endif
 
 .L_rela_loop:
     move.l  (%a0)+, %d0
@@ -39,8 +47,10 @@ _start:
 
     jsr      (main, %pc)
 
-    | Return value through qemu
-    move.l   %d0, %d1
+    | Linux exit status only preserves eight bits. Fold the full mask.
+    tst.l    %d0
+    sne      %d1
+    andi.l   #1, %d1
     moveq    #1, %d0
     trap     #0
 
@@ -57,3 +67,5 @@ _start:
     add.l   %a5, %d0
 .L_do_fixup_done:
     rts
+
+.section .note.GNU-stack,"",@progbits

@@ -1,38 +1,14 @@
-/* neo_test2.c - Revised and extended Neo relocation test harness
- *
- * Tests all relocation scenarios relevant to the Neo memory model:
- *
- *   Case  1: Code -> local code (PC-relative 16-bit jbsr)
- *   Case  2: Code -> extern code (GOT or 2-insn synthetic call)
- *   Case  3: Code -> far extern code (same as case 2)
- *   Case  4: const function pointer in .rodata (ROM addr, GOT entry)
- *   Case  5: volatile const vtable struct in .rodata (forced emission)
- *   Case  6: local mutable data, A5-relative 16-bit
- *   Case  7: extern mutable data, A5-relative (not GOT-indirect)
- *   Case  8: .data code pointer (single)
- *   Case  9: .data data pointer, A5 base
- *   Case 10: switch/case jump table (PC-relative, no reloc needed)
- *   Case 11: .data array of function pointers (multiple reloc entries)
- *   Case 12: .rodata array of function pointers
- *   Case 13: .data array of data pointers (data -> data)
- *   Case 14: .data array of .rodata string pointers (data -> rodata)
- *   Case 15: mixed struct in .data (ROM ptr + A5 ptr + code ptr)
- *   Case 16: pointer-to-pointer chain (fn_ptr_p -> fn_ptr -> func_a)
- *
- * Returns 0 on full pass, bitmask of failed cases otherwise.
- * Bit N set in return value = case N+1 failed.
- *
- * Ordering note:
- *   Cases 11 and 12 accumulate into results[10] via func_a/b/c.
- *   Case 12 snapshots results[10] into results[11] before case 16.
- *   Case 16 resets results[10] to 0, then calls func_a only.
- *   Final check: results[10] == 0x000000AA (case 16 only)
- *                results[11] == 0x00CCBBAA (cases 11+12 accumulated)
- *
+#ifndef QEMU_TEST
+#include "os3k.h"
+#endif
+
+/*
+ * Exercise stock m68k -msep-data with independently displaced flash and RAM.
+ * main returns a bitmask of failing cases. crt0 converts it to an exit status.
  */
 
 /* ================================================================
- * Extern declarations (defined in extern_module.c)
+ * Extern declarations (defined in externs.c)
  * ================================================================ */
 extern int  extern_int;
 extern int  extern_array[64];
@@ -43,7 +19,7 @@ extern void extern_binary(void);      /* sets extern_int = 0x0000F00D */
 typedef void (*func_ptr_t)(void);
 
 /* Forward declarations */
-static void local_helper(void);
+static __attribute__((noinline, noclone)) void local_helper(void);
 static void local_print_fn(void);
 static void local_unary_fn(void);
 static void func_a(void);
@@ -58,28 +34,28 @@ static int  streq(const char *a, const char *b);
 static volatile unsigned int results[16];
 
 /* ================================================================
- * Local mutable data — .data, A5-relative
+ * Local mutable data reached through the A5-based GOT
  * ================================================================ */
-static int  local_int      = 42;
-static int  local_array[4] = { 1, 2, 3, 4 };
-static char local_char     = 'X';
+static volatile int local_int      = 42;
+static volatile int local_array[4] = { 1, 2, 3, 4 };
+static volatile char local_char     = 'X';
 static int  val_a          = 0xA;
 static int  val_b          = 0xB;
 
 /* ================================================================
  * CASE 8: Single .data code pointer
- * Access: A5-relative load; call: indirect through loaded pointer.
+ * The pointer is loaded through the GOT, then called indirectly.
  * ================================================================ */
 volatile func_ptr_t data_code_ptr = (func_ptr_t)&extern_near_func;
 
 /* ================================================================
  * CASE 9: Single .data data pointer
  * ================================================================ */
-volatile int *data_data_ptr = (int *)&local_int;
+volatile int *data_data_ptr = &local_int;
 
 /* ================================================================
  * CASE 11: .data array of function pointers
- * Each element initialised to 0; crt0 patches individually.
+ * Each function address is relocated individually.
  * ================================================================ */
 volatile func_ptr_t dispatch_table[3] = {
     (func_ptr_t)&func_a,
@@ -116,13 +92,13 @@ const char *str_ptrs[2] = {
  * ================================================================ */
 typedef struct {
     const char *name;
-    int        *state;
+    volatile int *state;
     func_ptr_t  handler;
 } mixed_t;
 
 volatile static mixed_t mixed = {
     .name    = (const char *)&hello_str,
-    .state   = (int *)&local_int,
+    .state   = &local_int,
     .handler = (func_ptr_t)&local_helper,
 };
 
@@ -137,10 +113,9 @@ func_ptr_t *fn_ptr_p = (func_ptr_t *)&fn_ptr;
 
 /* ================================================================
  * CASE 4: const function pointer in .rodata
- * Absolute ROM address; accessed PC-relative.
- * After crt0/GOT processing, value is correct absolute address.
+ * The pointer object resides in RAM and is relocated to point into flash.
  * ================================================================ */
-const func_ptr_t rodata_code_ptr = extern_near_func;
+const func_ptr_t volatile rodata_code_ptr = extern_near_func;
 
 /* ================================================================
  * CASE 5: volatile const vtable struct in .rodata
@@ -179,12 +154,16 @@ volatile const neo_type_t test_type = {
 
 /* ================================================================
  * CASE 12: .rodata array of function pointers
- * ROM-resident; each element is an absolute ROM address requiring
- * a relocation entry for ROM-base patching.
+ * The table is relocated in RAM. Its targets are in flash.
  * ================================================================ */
-const func_ptr_t rodata_handlers[] = {
+const func_ptr_t volatile rodata_handlers[] = {
     func_a, func_b, func_c
 };
+
+/* Pointer addends within RAM and flash, plus a null in the same image. */
+static const char *volatile suffix = hello_str + 2;
+static int *volatile interior = &extern_array[63];
+static func_ptr_t volatile optional_handler;
 
 /* ================================================================
  * Local function implementations
@@ -206,20 +185,20 @@ static int streq(const char *a, const char *b)
  * Test functions
  * ================================================================ */
 
-/* Case 1: local static call — jbsr local_helper:w(pc) */
+/* Case 1: call a local function. */
 void test_case_1(void)
 {
     local_helper();
 }
 
-/* Case 2: extern call — GOT or 2-insn synthetic */
+/* Case 2: nearby external call through the GOT. */
 void test_case_2(void)
 {
     extern_near_func();
     results[1] = (unsigned int)extern_int;
 }
 
-/* Case 3: far extern call — same mechanism as case 2 */
+/* Case 3: external call beyond the signed PC16 range. */
 void test_case_3(void)
 {
     extern_far_func();
@@ -257,7 +236,7 @@ void test_case_6(void)
     results[5] = ok;
 }
 
-/* Case 7: extern mutable data, direct A5-relative (not GOT-indirect) */
+/* Case 7: external mutable data reached through the GOT. */
 void test_case_7(void)
 {
     unsigned int ok = 0;
@@ -286,14 +265,16 @@ void test_case_9(void)
 }
 
 /* Case 10: switch/case jump table — PC-relative on m68k, no reloc */
-static int switch_helper(int x)
+static volatile int switch_values[] = { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE };
+
+static __attribute__((noinline, noclone)) int switch_helper(int x)
 {
     switch (x) {
-        case 0:  return 0xAA;
-        case 1:  return 0xBB;
-        case 2:  return 0xCC;
-        case 3:  return 0xDD;
-        case 4:  return 0xEE;
+        case 0:  return switch_values[0];
+        case 1:  return switch_values[1];
+        case 2:  return switch_values[2];
+        case 3:  return switch_values[3];
+        case 4:  return switch_values[4];
         default: return 0xFF;
     }
 }
@@ -320,8 +301,7 @@ void test_case_11(void)
 }
 
 /* Case 12: .rodata array of function pointers
- * func_a/b/c OR more bits into results[10] (no change, same bits).
- * Snapshot into results[11] for independent checking. */
+ * Snapshot the independently accumulated result in results[11]. */
 void test_case_12(void)
 {
     rodata_handlers[0]();
@@ -379,27 +359,32 @@ int main(void)
     unsigned int failures = 0;
 
     test_case_1();
+    if (results[0] != 0x11111111) failures |= (1u << 0);
     test_case_2();
     test_case_3();
     test_case_4();
     test_case_5();
     test_case_6();
+    if (extern_array[0] || extern_array[63] || results[15]) failures |= (1u << 16);
     test_case_7();
     test_case_8();
     test_case_9();
     test_case_10();
     test_case_11();
+    if (results[10] != 0x00CCBBAA) failures |= (1u << 10);
+    results[10] = 0;
     test_case_12();   /* snapshots results[10] into results[11] */
     test_case_13();
     test_case_14();
     test_case_15();   /* resets results[0], re-calls local_helper */
     test_case_16();   /* resets results[10], calls func_a only */
 
+    if (interior != &extern_array[63] || *interior != 0x77000002 ||
+        suffix != hello_str + 2 || !streq(suffix, "llo") || optional_handler != 0)
+        failures |= (1u << 17);
+
     /* ---- check results ---- */
 
-    /* Case  1: local call wrote sentinel */
-    /* Note: case 15 resets and re-triggers results[0] via local_helper */
-    if (results[0]  != 0x11111111) failures |= (1u <<  0);
 
     /* Case  2: extern_near_func set extern_int = 0xBEEF */
     if (results[1]  != 0x0000BEEF) failures |= (1u <<  1);
@@ -428,8 +413,6 @@ int main(void)
     /* Case 10: switch/case — all 6 branches correct */
     if (results[9]  != 0x0000003F) failures |= (1u <<  9);
 
-    /* Case 11/16: results[10] reset by case 16 then func_a only */
-    if (results[10] != 0x000000AA) failures |= (1u << 10);
 
     /* Case 12: snapshot of full accumulation from cases 11+12 */
     if (results[11] != 0x00CCBBAA) failures |= (1u << 11);
@@ -448,3 +431,22 @@ int main(void)
 
     return (int)failures;
 }
+
+#ifndef QEMU_TEST
+void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
+    *status = 0;
+    switch(message) {
+        case MSG_INIT:
+            main();
+            break;
+    }
+}
+
+APPLET_HEADER_BEGIN
+    APPLET_ID(0xA1FF)
+    APPLET_NAME("M68K Test Harness")
+    APPLET_INFO("Copyright (c) 2026 Alpaxo Software")
+    APPLET_VERSION(BETAWISE_VERSION_MAJOR, BETAWISE_VERSION_MINOR, BETAWISE_VERSION_REVISION)
+    APPLET_LANGUAGE_EN_US
+APPLET_HEADER_END
+#endif
