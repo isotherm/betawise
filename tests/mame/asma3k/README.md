@@ -15,8 +15,8 @@ case name to run just that case.
 make -j4
 git submodule update --init applets/MicroPython/upstream
 make -C applets/MicroPython/os3k -j4
-./tests/mame/check.sh
-./tests/mame/check.sh ../mame/mame memory
+./tests/mame/asma3k/check.sh
+./tests/mame/asma3k/check.sh ../mame/mame memory
 ```
 
 Each case starts with fresh temporary NVRAM, mounts one applet, answers the

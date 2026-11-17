@@ -6,7 +6,7 @@ if (( $# > 2 )); then
     exit 2
 fi
 test_dir=$(cd -- "$(dirname -- "$0")" && pwd)
-root=$(cd -- "$test_dir/../.." && pwd)
+root=$(cd -- "$test_dir/../../.." && pwd)
 mame=$(realpath "${1:-$root/../mame/mame}")
 nm=${CROSS_COMPILE:-m68k-linux-gnu-}nm
 if (( $# == 2 )); then
@@ -22,7 +22,7 @@ if [[ ! -f $small_rom ]]; then
     small_rom="$mame_roms/asma3k/smallos3krom.os3kos"
 fi
 if [[ ! -f $full_rom || ! -f $small_rom ]]; then
-    echo "Place OS3KROM.OS3KOS and SMALLOS3KROM.OS3KOS beside check.sh (see tests/mame/README.md)." >&2
+    echo "Place OS3KROM.OS3KOS and SMALLOS3KROM.OS3KOS beside check.sh (see tests/mame/asma3k/README.md)." >&2
     exit 2
 fi
 
@@ -50,7 +50,7 @@ for test_case in "${cases[@]}"; do
         artifact="$root/applets/MicroPython/os3k/MicroPython"
     fi
     if [[ ! -f $artifact.OS3KApp || ( $applet == DebugTool && ! -f $artifact.elf ) ]]; then
-        echo "Build $applet before running this check (see tests/mame/README.md)." >&2
+        echo "Build $applet before running this check (see tests/mame/asma3k/README.md)." >&2
         exit 2
     fi
 
