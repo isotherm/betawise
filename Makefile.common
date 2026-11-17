@@ -16,7 +16,7 @@ LDFLAGS = -static -T "$(TOP)/os3k/os3k.lds" $(OS3K_LIB)
 LDFLAGS += --gc-sections --emit-relocs
 ARFLAGS = rcs
 
-%.o : %.c $(*.h)
+%.o : %.c $(TOP)/os3k/os3k.h $(TOP)/os3k/version.h
 	$(CC) $(CFLAGS) -c $<
 
 %.o : %.asm $(*.inc)
