@@ -1,78 +1,53 @@
-# AS3000 warm applet installation on System 3.01
+# AS3000 Manager finalizer and warm applet registration
 
-MAME's SmartApplet slot appends an image to flash during machine reset. On a
-warm boot, this ROM uses the existing applet directory in backed-up RAM. In a
-test with AlphaWord Plus 3.0D already registered, Hello World's image persisted
-at guest address `0x420cdc`, but the menu listed only AlphaWord. The second
-header was read at PC `0x4c3254` during full initialization and was skipped
-during the warm boot.
+These addresses are for the AS3000 System 3.01 full ROM
+`os3krom.os3kos`, mapped at `0x004c0000` in MAME. Its SHA-256 is
+`732dca63399d883071ce41cc07ad352fa19c506b7b8c307ace16d5c53e6f8708`.
 
-## Reset markers
+## Ghidra addresses
 
-These addresses describe the bundled ROM with System 3.01 and 256 KiB of RAM.
-Tests used disposable copies of both NVRAM files.
-
-| Guest RAM word | Value on warm boot | Result of clearing the word |
+| Runtime address | File offset | Role |
 | --- | --- | --- |
-| `0x3566` | `0x0d89` | The branch at `0x4c748c` falls through. Firmware clears file RAM, scans flash via `0x4c3038`, and registers Hello World. The existing AlphaWord text is lost. |
-| `0x3568` | `0x2675` | Firmware reinitializes registered applets, including a verified `WM_INIT` for AlphaWord. The AlphaWord text survives. Hello World stays absent from the menu. |
+| **`0x004c1564`** | **`0x1564`** | **Manager selector `0x07`, finalize applet write.** Starts with `clr.w (0x3568).l`. |
+| `0x004c0c3a` | `0x0c3a` | Manager request handler. The word-offset jump table at `0x004c0d24` has entry `0x0840` for selector `0x07`. Define the table in Ghidra to resolve this computed reference. |
+| `0x004c1782` | `0x1782` | New-slot path in the finalizer writes the applet header pointer, flags, ID, and header metadata into the directory. The finalizer reduces the applet RAM allocation floor at `0x004c1598`. |
+| `0x004c1870` | `0x1870` | Manager selector `0x08`, restart. Responds with `0x52`. The receive path calls the warm startup entry at `0x004c007a` after sending this response. |
+| `0x004c78b0` | `0x78b0` | Pushes `WM_INIT` (`0x18`) before calling the registered applet at `0x004c78b6`. |
+| `0x004d12d4` | `0x112d4` | A-line exception handler. Masks the opcode with `0x03fc` and uses it as a byte offset into the pointer table at `0x004eac1c`. |
 
-The startup code also recognizes `0xbddf` at `0x418` and clears both markers
-and `0x3564`. That routes through full initialization. The reinitialization code
-dispatches message `0x18` at `0x4c78b0` and calls the applet entry at
-`0x4c78b6`.
+The finalizer uses state created by the preceding install commands, including
+the staged applet header pointer at guest RAM `0x0452`. It is a branch of the
+Manager packet handler. None of the 256 pointers reachable through the
+AS3000 A-line handler directly targets the packet handler, finalizer, restart
+selector, or warm startup entry. This check leaves open indirect call chains.
 
-## File-preserving proof of concept
+## What the existing clients do
 
-1. Mount AlphaWord Plus on fresh NVRAM, complete the guest's initial setup,
-   enter `saved file test` in File 1, and quit MAME.
-2. Relaunch with the same NVRAM and mount Hello World. After MAME exits, copy
-   the resulting flash and RAM. Use another copy of that flash with fresh RAM,
-   complete initialization, and exit to obtain a reference applet directory.
-3. Copy these ranges from the reference RAM into the warm test copy. The
-   offsets refer to the third directory slot and the RAM allocation floor.
+Local neotools sends the begin request, streams and programs blocks, then
+sends `0x07` and waits for `0x48`. For a device initially in HID mode, the
+cleanup path sends `0x08` to return it to keyboard mode. The applet install
+path contains no file download and reupload sequence. The public
+[Manager transaction analysis](https://github.com/SamDelorean/betawise/blob/os3k/base-analysis/docs/os3k-manager-applet-installation-transaction.md)
+identifies the transaction in AS3000, NEO 2005, and NEO 2013 firmware. The
+file-preserving AS3000 transport path remains to be tested end to end in MAME.
 
-   | Offset | Size | Field |
-   | --- | --- | --- |
-   | `0x0d8a` | 4 | Applet header pointer, `0x420cdc` |
-   | `0x0e06` | 2 | Applet ID, `0xa1a0` |
-   | `0x0e4a` | 4 | Applet flags, `0xff000000` |
-   | `0x0eca` | 4 | Header metadata copied from applet offset `0x80` |
-   | `0x34d6` | 4 | Applet A5 base, `0x3ca2a` |
-   | `0x354e` | 4 | New applet RAM allocation floor, `0x3ca2a` |
+The branch review found no public syscall that registers an appended applet
+and reinitializes the directory. A244 (`AppletSendMessage`) requires a
+registered target and turns a forwarded `WM_INIT` into a synthetic message.
+OS3K's applet startup checks for the plain `WM_INIT` value before initializing
+its data. A244 is therefore unsuitable for registering the new image or
+replaying its normal startup. See the
+[A244 firmware analysis](https://github.com/SamDelorean/betawise/blob/os3k/base-analysis/docs/applet-send-message-a244-source-first-closure.md).
 
-4. Clear the word at `0x3568` in the warm test copy. Boot it with no image
-   mounted. Breakpoints at `0x408094` and `0x420dc4` recorded message `0x18`
-   in the first stack argument for AlphaWord Plus and Hello World, respectively.
+## MAME observations
 
-The boot displayed the initialization screen without asking to restart. Both
-applets appeared in the menu. Hello World displayed its greeting, and File 1
-still showed the saved text after switching back. This is a two-applet test
-with a fileless addition requiring 94 bytes of applet RAM. The file heap and
-applet RAM share the same address space.
+Writing an image to flash through the SmartApplet slot preserved the AlphaWord
+file, but warm startup kept using the old directory. A disposable snapshot
+proved that registering a small fileless applet before asking the firmware to
+reinitialize could preserve the file and deliver `WM_INIT` to both applets.
+Clearing the full-initialization marker at `0x3566` erased the file. The
+RAM-edit experiment has no implementation in the driver.
 
-## Implementation options
-
-- A ROM-specific incremental registration path could append a directory entry
-  while the CPU is held in reset, preserve existing A5 bases, and request the
-  reinitialization at `0x3568`. It would need ROM identification, bounds and
-  file allocation checks, and tests with full files, applets that own files,
-  replacement, and removal. A new applet's RAM allocation can collide with
-  live file pages.
-- The firmware's native updater provides a hardware-oriented path. The
-  archived Updater source handles command 80 by starting a watchdog reset
-  for the ROM updater, or asking the user to power-cycle after the RAM
-  updater. PG3 is the device power latch. MAME would need to model the
-  power transition and the updater transport and implement flash command
-  handling. The AS3000 manual documents Command+Ctrl+U for entering the
-  updater and warns that SmartApplet downloads erase files and settings.
-  Capturing an actual Manager session for System 3.01 would establish
-  whether it preserves files by export and restore or through a different
-  registration path.
-- Export, normal full initialization, and reimport through the firmware's
-  file-transfer interface would leave allocation decisions to the guest.
-  That requires working file transfer in both directions.
-
-A power cycle by itself takes the warm path tested above. Jumping to the scan
-routine by changing PC would also require constructing its firmware call
-context and separating directory rebuilding from the file allocator.
+Driving the native Manager transaction would let the guest manage its applet
+directory and file allocator. It requires a Manager transport and the flash
+commands used by the guest, which the cartridge loader currently bypasses.
