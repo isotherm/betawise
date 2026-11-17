@@ -69,6 +69,9 @@ image:
 
 .bss
 .balign 4
+.if ram_bias
+.skip ram_bias
+.endif
 applet_ram:
     .skip 4096
 

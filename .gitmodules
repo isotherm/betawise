@@ -1,0 +1,3 @@
+[submodule "applets/MicroPython/upstream"]
+	path = applets/MicroPython/upstream
+	url = https://github.com/micropython/micropython.git

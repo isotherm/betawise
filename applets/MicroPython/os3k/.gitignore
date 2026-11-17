@@ -1,0 +1,5 @@
+/build/
+/*.o
+/*.elf
+/*.reloc
+/*.OS3KApp

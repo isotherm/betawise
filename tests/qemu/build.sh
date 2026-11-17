@@ -78,11 +78,13 @@ VERSION
 make -C "$build" -f "$os3k/../Makefile.common" CROSS_COMPILE="$cross" \
     OS3K_LIB= 'OBJ=test.o externs.o crt0.o' smoke.OS3KApp
 for text_address in 0x10020 0x320020; do
-    "${cross}gcc" -m68000 -static -nostdlib -Wa,-I,"$build" \
-        -Wl,-Ttext,"$text_address",--build-id=none dispatch.S -o "$build/dispatch.elf"
-    if ! "$qemu" -cpu m68000 "$build/dispatch.elf"; then
-        echo "packed applet dispatch failed at $text_address" >&2
-        exit 1
-    fi
-    echo "packed applet dispatch passed at $text_address"
+    for ram_bias in 0 2; do
+        "${cross}gcc" -m68000 -static -nostdlib -Wa,-I,"$build",--defsym,ram_bias="$ram_bias" \
+            -Wl,-Ttext,"$text_address",--build-id=none dispatch.S -o "$build/dispatch.elf"
+        if ! "$qemu" -cpu m68000 "$build/dispatch.elf"; then
+            echo "packed applet dispatch failed at $text_address with RAM bias $ram_bias" >&2
+            exit 1
+        fi
+        echo "packed applet dispatch passed at $text_address with RAM bias $ram_bias"
+    done
 done
