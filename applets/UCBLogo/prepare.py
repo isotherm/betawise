@@ -17,7 +17,7 @@ if head != revision:
 dest.mkdir(exist_ok=True)
 commands = set("""
 fd forward bk back rt right lt left repeat repcount cs clearscreen
-pu penup pd pendown home print st showturtle ht hideturtle
+pu penup pd pendown home print st showturtle ht hideturtle to ct cleartext er erase
 """.split())
 for path in upstream.iterdir():
     if path.suffix not in (".c", ".h"):
@@ -25,6 +25,7 @@ for path in upstream.iterdir():
     source = path.read_text(encoding="latin1")
     if path.name == "logo.h":
         source = source.replace("#define SEG_SIZE        16000", "#define SEG_SIZE        128")
+        source = source.replace("#define MAX_PHYS_LINE   5000", "#define MAX_PHYS_LINE   1024")
     elif path.name == "init.c":
         # Keep the evaluator and intern table initialization intact.
         source = re.sub(r'^([ \t]+)\{"([^"]+)".*?\},[^\n]*$',

@@ -115,9 +115,17 @@ FILE *fopen(const char *path, const char *mode)
     return NULL;
 }
 int fclose(FILE *stream) { (void)stream; return EOF; }
-int feof(FILE *stream) { (void)stream; return 1; }
+static const char *definition_input;
+
+int feof(FILE *stream)
+{
+    return stream != stdin || !definition_input || !*definition_input;
+}
 void clearerr(FILE *stream) { (void)stream; }
-int getc(FILE *stream) { (void)stream; return EOF; }
+int getc(FILE *stream)
+{
+    return feof(stream) ? EOF : (unsigned char)*definition_input++;
+}
 char *neo_fgets(char *text, int size, FILE *stream)
 {
     (void)text;
@@ -202,6 +210,16 @@ int interactive;
 int x_coord, y_coord, x_max = 22, y_max = 1;
 void delayed_int(void) {}
 
+extern void neo_cleartext(void);
+
+NODE *lcleartext(NODE *args)
+{
+    (void)args;
+    x_coord = y_coord = 0;
+    neo_cleartext();
+    return UNBOUND;
+}
+
 static unsigned steps;
 int neo_tick(void)
 {
@@ -249,10 +267,11 @@ static void sample_heap(NODE **anchor)
     neo_heap_stats.samples = index + 1;
 }
 
-void neo_eval(char *text)
+void neo_eval(char *text, const char *body)
 {
     static int initialized;
     if (failed || setjmp(session)) {
+        definition_input = NULL;
         neo_fputs("Logo runtime stopped", stdout);
         return;
     }
@@ -268,13 +287,17 @@ void neo_eval(char *text)
     }
     check_reserve_tank();
     steps = 1200;
-    current_line = make_static_strnode(text);
-    NODE *program = parser(current_line, TRUE);
+    definition_input = body;
+    // A procedure retains its TO header after the REPL input is reused.
+    current_line = body ? make_strnode(text, NULL, strlen(text), STRING, strnzcpy)
+                        : make_static_strnode(text);
+    NODE *program = NOT_THROWING ? parser(current_line, TRUE) : NIL;
     if (program != NIL && NOT_THROWING)
         eval_driver(program);
     if (stopping_flag == THROWING)
         err_print(NULL);
     stopping_flag = RUN;
+    definition_input = NULL;
     current_line = NIL;
     sample_heap(&stack_anchor);
     bottom_stack = NULL;

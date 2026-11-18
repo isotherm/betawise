@@ -12,3 +12,9 @@ int neo_putc(int, FILE *);
 #define isdigit(ch) ((unsigned)((ch) - '0') <= 9)
 #define isupper(ch) ((unsigned)((ch) - 'A') <= 25)
 #define islower(ch) ((unsigned)((ch) - 'a') <= 25)
+#undef tolower
+static inline int neo_ascii_tolower(int ch)
+{
+    return isupper(ch) ? ch + ('a' - 'A') : ch;
+}
+#define tolower(ch) neo_ascii_tolower(ch)

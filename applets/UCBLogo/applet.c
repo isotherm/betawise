@@ -12,9 +12,13 @@ APPLET_HEADER_END
 enum { WIDTH = 264, SPLIT = 132, HEIGHT = 64, COLS = 22, ROWS = HEIGHT / GLYPH_HEIGHT };
 static uint8_t transcript[ROWS][COLS];
 static char source[128];
+static char definition_header[sizeof(source)];
+static char definition_body[1024];
+static unsigned definition_length;
+static bool defining;
 static unsigned length, row, column, top_row;
 static int pen_x, pen_y;
-void neo_eval(char *text);
+void neo_eval(char *text, const char *body);
 void neo_toggle_turtle(void);
 
 static unsigned lcd_y(unsigned y)
@@ -56,12 +60,20 @@ static void redraw(void)
     unsigned visible = COLS - 3;
     unsigned first = length > visible ? length - visible : 0;
     unsigned cursor = 2 + length - first;
-    draw_glyph(row, 0, '?');
+    draw_glyph(row, 0, defining ? '>' : '?');
     draw_glyph(row, 1, ' ');
     for (unsigned x = 2; x < COLS; ++x)
         draw_glyph(row, x, x < cursor ? source[first + x - 2] : ' ');
     RasterOp(cursor * GLYPH_WIDTH, lcd_y(row), 1,
              GLYPH_HEIGHT, NULL, ROP_BLACKNESS);
+}
+
+void neo_cleartext(void)
+{
+    RasterOp(0, 0, SPLIT, HEIGHT, NULL, ROP_WHITENESS);
+    memset(transcript, 0, sizeof(transcript));
+    row = column = top_row = 0;
+    LCD_CMD_REG_LEFT = LCD_CMD_START_LINE(0);
 }
 
 void neo_clear(void)
@@ -122,18 +134,66 @@ void neo_output(int ch)
     }
 }
 
+/* Match a complete first word, ignoring case and leading whitespace. */
+static const char *after_word(const char *line, const char *word)
+{
+    while (*line == ' ' || *line == '\t')
+        ++line;
+    while (*word) {
+        if ((*line | 0x20) != *word)
+            return NULL;
+        ++line;
+        ++word;
+    }
+    if (*line && *line != ' ' && *line != '\t' && *line != ';')
+        return NULL;
+    while (*line == ' ' || *line == '\t')
+        ++line;
+    return line;
+}
+
+static void submit(void)
+{
+    if (defining) {
+        if (length + 2 > sizeof(definition_body) - definition_length) {
+            defining = false;
+            const char *message = "Definition too long";
+            while (*message)
+                neo_output(*message++);
+            return;
+        }
+        memcpy(definition_body + definition_length, source, length);
+        definition_length += length;
+        definition_body[definition_length++] = '\n';
+        definition_body[definition_length] = 0;
+        const char *tail = after_word(source, "end");
+        if (tail && (!*tail || *tail == ';')) {
+            defining = false;
+            neo_eval(definition_header, definition_body);
+        }
+    } else {
+        const char *tail = after_word(source, "to");
+        if (tail && *tail && *tail != ';') {
+            memcpy(definition_header, source, length + 1);
+            definition_length = 0;
+            defining = true;
+        } else if (length) {
+            neo_eval(source, NULL);
+        }
+    }
+}
+
 static void run(void)
 {
     // Replace the editable row (including its cursor) with the transcript.
     RasterOp(0, lcd_y(row), SPLIT, GLYPH_HEIGHT, NULL, ROP_WHITENESS);
-    neo_output('?');
+    neo_output(defining ? '>' : '?');
     neo_output(' ');
     for (unsigned i = 0; i < length; ++i)
         neo_output(source[i]);
     newline();
 
-    if (length)
-        neo_eval(source);
+    submit();
     if (column)
         newline();
     length = 0;
@@ -168,6 +228,9 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t *status)
             if (length)
                 source[--length] = 0;
             break;
+        case KEY_MOD_CTRL | KEY_C:
+            defining = false;
+            /* Fall through to clear the current input. */
         case KEY_MOD_CTRL | KEY_U:
             length = 0;
             source[0] = 0;

@@ -5,7 +5,23 @@ interpreter. It opens at a blank `? ` prompt with the turtle at the center
 of the right pane. Type `repeat 4 [fd 20 rt 90]` to draw a sample square.
 Use **Ctrl+U** to clear the input, **Backspace** to edit, and **Enter** to
 evaluate. Try `print 42` for text output or `cs` to clear the canvas and
-return the turtle to its origin.
+return the turtle to its origin. Use `ct` or `cleartext` to clear the
+transcript and return to the top-left prompt.
+
+Define a procedure by entering each line separately:
+
+```logo
+to square :size
+  repeat 4 [fd :size rt 90]
+end
+square 20
+```
+
+The prompt changes to `>` while collecting the body and returns to `?`
+after `END`. Use **Ctrl+C** to discard an unfinished definition. The body
+buffer holds up to 1,023 bytes including newlines. Definitions live in
+memory for the current applet session. Use `erase [square]` or
+`er [square]` to remove a procedure before defining it again.
 
 The profile includes forward, back, left, right, pen up and down, home,
 clear screen, repeat, repcount, print, and show/hide turtle (`ST`/`HT`). The left pane keeps a scrolling transcript of submitted commands
@@ -64,14 +80,15 @@ automated run, start with fresh NVRAM and add these options to the
 documented MAME command. Use an absolute path for the Lua script.
 
 ```text
--video none -sound none -nothrottle -seconds_to_run 61
+-video none -sound none -nothrottle -seconds_to_run 130
 -autoboot_delay 0 -autoboot_script /absolute/path/to/applets/UCBLogo/smoke.lua
 ```
 
 The optional script checks the blank prompt, types the square command,
 then types and runs
 `print 42` and `cs` twice without clearing input between commands. It also
-checks hiding, turning, and showing the turtle. The verified run showed the expected pixels for
+checks hiding, turning, and showing the turtle and defines and calls a
+parameterized square procedure, then erases and redefines it. The verified run showed the expected pixels for
 all four edges, `42` in the output row, and a cleared trail after
 `cs`. Physical NEO hardware has not been tested.
 

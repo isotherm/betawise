@@ -35,7 +35,15 @@ tap(950, enter)
 
 local function type_keys(frame, keys)
     for index, name in ipairs(keys) do
-        tap(frame + 40 * (index - 1), named_key(name))
+        local at = frame + 40 * (index - 1)
+        if name == "Colon" then
+            local shift = named_key("Left Shift")
+            events[at] = function() shift:set_value(1) end
+            tap(at + 5, named_key("Semicolon"))
+            events[at + 30] = function() shift:clear_value() end
+        else
+            tap(at, named_key(name))
+        end
     end
 end
 
@@ -49,9 +57,30 @@ type_keys(2940, {"H", "T", "Enter"})
 type_keys(3100, {"R", "T", "Space", "9", "0", "Enter"})
 type_keys(3380, {"S", "T", "Enter"})
 
+type_keys(3600, {"C", "S", "Enter"})
+type_keys(3740, {"T", "O", "Space", "Q", "Space", "Colon", "N", "Enter"})
+type_keys(4100, {"R", "E", "P", "E", "A", "T", "Space", "4", "Space",
+                 "Left bracket", "F", "D", "Space", "Colon", "N", "Space",
+                 "R", "T", "Space", "9", "0", "Right bracket", "Enter"})
+type_keys(5060, {"E", "N", "D", "Enter"})
+type_keys(5260, {"Q", "Space", "2", "0", "Enter"})
+
+type_keys(5520, {"C", "T", "Enter"})
+type_keys(5680, {"C", "L", "E", "A", "R", "T", "E", "X", "T", "Enter"})
+
+type_keys(6160, {"E", "R", "A", "S", "E", "Space", "Left bracket", "Q", "Right bracket", "Enter"})
+type_keys(6600, {"Q", "Space", "2", "0", "Enter"})
+type_keys(6840, {"T", "O", "Space", "Q", "Enter"})
+type_keys(7080, {"F", "D", "Space", "3", "0", "Enter"})
+type_keys(7360, {"E", "N", "D", "Enter"})
+type_keys(7580, {"Q", "Enter"})
+
 local snapshots = {
     [1050] = true, [2050] = true, [2510] = true, [2740] = true,
     [2910] = true, [3070] = true, [3350] = true, [3510] = true,
+    [4070] = true, [5230] = true, [5460] = true,
+    [5640] = true, [6080] = true,
+    [6820] = true, [7700] = true,
 }
 
 local reported = 0
