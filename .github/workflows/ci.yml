@@ -18,8 +18,8 @@ jobs:
       uses: actions/checkout@v5
       with:
         fetch-depth: 0
-    - name: Initialize MicroPython sources.
-      run: git submodule update --init applets/MicroPython/upstream
+    - name: Initialize pinned submodules.
+      run: git submodule update --init
     - name: Get the tag name.
       id: get_tag
       run: echo TAG=$(git describe --tags | tail -c +2) >> $GITHUB_OUTPUT

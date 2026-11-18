@@ -188,6 +188,10 @@ void PutString(const char* str);
 
 void DrawBitmap(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint8_t* bitmap);
 void RasterOp(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t* bitmap, RopCode_e rop);
+/* NEO LCD primitives. true draws black and false draws white.
+ * DrawLine includes both endpoints. Coordinates are screen pixel positions. */
+void DrawPixel(uint16_t x, uint16_t y, bool black);
+void DrawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, bool black);
 
 void ProgressBar(uint8_t row, uint16_t value, uint16_t total);
 // exit_keys is a list of key codes that exit text input. Terminated by -1 (\xFF).

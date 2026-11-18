@@ -1,0 +1,12 @@
+#define STDC_HEADERS 1
+#define HAVE_MEMCPY 1
+#define X_DISPLAY_MISSING 1
+#define RETSIGTYPE void
+#define VERSION "6.2.5"
+#define PUNY 1
+#define GC_TWOBYTE 1
+#define HAVE_UNISTD_H 1
+#define LIBLOC ""
+#define HELPLOC ""
+#define CSLSLOC ""
+#define TEMPLOC ""

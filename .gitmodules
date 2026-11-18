@@ -1,3 +1,9 @@
 [submodule "applets/MicroPython/upstream"]
 	path = applets/MicroPython/upstream
 	url = https://github.com/micropython/micropython.git
+[submodule "applets/UCBLogo/upstream"]
+	path = applets/UCBLogo/upstream
+	url = https://github.com/jrincayc/ucblogo-code.git
+[submodule "applets/UCBLogo/softfloat"]
+	path = applets/UCBLogo/softfloat
+	url = https://github.com/ucb-bar/berkeley-softfloat-3.git
