@@ -19,7 +19,7 @@ jobs:
       with:
         fetch-depth: 0
     - name: Initialize pinned submodules.
-      run: git submodule update --init
+      run: git submodule update --init applets/MicroPython/upstream applets/UCBLogo/upstream
     - name: Get the tag name.
       id: get_tag
       run: echo TAG=$(git describe --tags | tail -c +2) >> $GITHUB_OUTPUT
@@ -29,6 +29,7 @@ jobs:
       run: |
         echo "$PREFIX/bin" >> $GITHUB_PATH
         make
+        os3k/compiler-rt/check.sh
     - name: Upload applets artifact.
       uses: actions/upload-artifact@v6
       with:

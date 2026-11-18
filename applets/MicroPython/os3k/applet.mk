@@ -7,7 +7,7 @@ TARGET = MicroPython.OS3KApp
 include ../../../Makefile.common
 
 CFLAGS += -I. -I$(MICROPY_DIR) -I$(BUILD) -DNDEBUG -fno-short-enums -malign-int
-LDFLAGS += --start-group $(MP_ARCHIVE) $(OS3K_LIB) $(shell $(CC) -m68000 -print-libgcc-file-name) --end-group
+LDFLAGS += --start-group $(MP_ARCHIVE) $(OS3K_LIB) --end-group
 
 MicroPython.o: mpconfigport.h $(BUILD)/genhdr/qstrdefs.generated.h
-MicroPython.OS3KApp: applet.mk $(MP_ARCHIVE)
+$(TARGET): applet.mk $(MP_ARCHIVE)

@@ -42,22 +42,13 @@ objects and their pointer fields. In testing, removing this option
 caused the allocation stress case to fail. The compiler flag does not
 change where OS3K loads the applet.
 
-## Compiler runtime
+## Floating point
 
-Debian's m68k-linux-gnu GCC 12.2.0-13 was configured with
-`--disable-multilib`. Its `-m68000`, `-mcpu=68302`, and `-m68020` switches
-all select the same libgcc archive. GCC rejects `-mcpu=68328`; this toolchain
-uses `-m68000` for DragonBall. The archive contains long-displacement
-`BSR.L` (`61 ff`) in `__divsi3`, `__modsi3`, and `__umodsi3`. The
-shared OS3K library supplies 68000 division and remainder helpers.
-MicroPython still uses the toolchain archive for 32-bit multiplication.
+Python floats use software IEEE 754 single precision. The REPL supports
+decimal literals, arithmetic, comparisons, `divmod`, and `round`.
+The port builds the required math routines from MicroPython's bundled
+libm. The minimal profile leaves complex numbers and the `math` module
+disabled.
 
-```sh
-m68k-linux-gnu-gcc -print-multi-lib
-m68k-linux-gnu-gcc -m68000 -print-libgcc-file-name
-m68k-linux-gnu-objdump -dr "$(m68k-linux-gnu-gcc -m68000 -print-libgcc-file-name)"
-```
-
-A toolchain with a verified 68000 libgcc multilib can supply the helpers
-directly. The observed instruction comes from the prebuilt archive. The
-test does not date the first compiler or package release with these bytes.
+The applet uses the [OS3K compiler runtime](../../../os3k/compiler-rt/README.md)
+for both integer helpers and soft float.

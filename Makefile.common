@@ -10,7 +10,7 @@ AR = $(CROSS_COMPILE)ar
 READELF = $(CROSS_COMPILE)readelf
 OBJCOPY = $(CROSS_COMPILE)objcopy
 ASFLAGS = --pcrel -m68000
-CFLAGS = -m68000 -msep-data -fomit-frame-pointer -fshort-enums
+CFLAGS = -m68000 -msoft-float -msep-data -fomit-frame-pointer -fshort-enums
 # Prevent GCC from merging byte stores into an unaligned word store.
 CFLAGS += -fno-store-merging
 CFLAGS += -Os -I"$(TOP)/os3k" -ffunction-sections -fdata-sections

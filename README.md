@@ -9,13 +9,17 @@ Use the [SmartApplet ID block registry](applets/REGISTRY.md) to look up assignme
 Any `m68k-elf` gcc cross compiler should work. On Windows, I have successfully
 used [MinGW GCC for M68K](https://sourceforge.net/projects/mingw-gcc-68k-elf/).
 
-Initialize the pinned MicroPython, UCBLogo, and Berkeley SoftFloat
-submodules before building all applets from the repository root.
+Initialize the pinned MicroPython and UCBLogo submodules before building
+all applets from the repository root.
 
 ```sh
-git submodule update --init
+git submodule update --init applets/MicroPython/upstream applets/UCBLogo/upstream
 make -j4
 ```
+
+`libos3k.a` supplies 68000 integer and soft-float helpers through the
+normal applet link. See the [compiler runtime notes](os3k/compiler-rt/README.md)
+for the source pin and arithmetic test.
 
 OS3K applets should support two-byte alignment for their RAM and flash
 bases. Firmware placement may put either base two bytes past a

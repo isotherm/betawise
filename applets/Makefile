@@ -7,3 +7,7 @@ SUBDIRS = $(filter-out $(DISABLED_APPLETS),$(APPLET_DIRS))
 CLEAN_SUBDIRS = $(APPLET_DIRS)
 
 include ../Makefile.common
+
+ifneq ($(filter NeoFontTerminal,$(SUBDIRS)),)
+UCBLogo: NeoFontTerminal
+endif

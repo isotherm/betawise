@@ -15,11 +15,11 @@ Execution has a step limit so a large loop or move yields back to OS3K.
 
 ## Build
 
-Run from the BetaWise root to initialize the pinned UCBLogo and Berkeley
-SoftFloat submodules and build the applet.
+Run from the BetaWise root to initialize the pinned UCBLogo submodule and
+build the applet.
 
 ```sh
-git submodule update --init applets/UCBLogo/upstream applets/UCBLogo/softfloat
+git submodule update --init applets/UCBLogo/upstream
 make -C os3k
 make -C applets/UCBLogo -j4
 ```
@@ -27,8 +27,7 @@ make -C applets/UCBLogo -j4
 The output is `applets/UCBLogo/UCBLogo.OS3KApp`. The pristine submodule is
 pinned to [UCBLogo 6.2.5](https://github.com/jrincayc/ucblogo-code/releases/tag/version_6.2.5)
 (commit `a0215433f07384e4c42fe247525867f11e6f32f7`). Set `UPSTREAM` to use
-another checkout of the same revision. Set `SOFTFLOAT` to use another
-Berkeley SoftFloat source tree. The default is the pinned submodule.
+another checkout of the same revision.
 
 `prepare.py` copies the upstream sources into `build/` and adapts those
 copies for OS3K. It registers only the supported primitives, embeds the
@@ -39,9 +38,7 @@ point in place of the desktop entry point and terminal backend. The turtle
 outline uses the triangle geometry from the 6.2.5 release.
 
 UCBLogo is GPLv3 or later under the upstream source notices. Floating
-point uses [Berkeley SoftFloat](softfloat/COPYING.txt)
-compiled for 68000, since the local Linux cross-compiler's default
-floating-point helpers require a newer 68k CPU.
+point uses the [OS3K compiler runtime](../../os3k/compiler-rt/README.md).
 
 ## OS3K backend
 

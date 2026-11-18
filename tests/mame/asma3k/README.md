@@ -35,7 +35,7 @@ contains the MAME logs, generated Lua scripts, snapshots, and test NVRAM.
   jumps to DebugTool's bus-error handler. It checks the error flag and return
   value after `RTE`.
 - `micropython` checks the REPL prompt, arithmetic and division errors, Backspace,
-  multiline input, and allocation stress.
+  multiline input, allocation stress, and single-precision float arithmetic.
 
 The AS3000 driver uses two KS0066 character LCD controllers. Lua reads their
 DDRAM save items for text assertions. The runner also saves screenshots for
