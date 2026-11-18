@@ -6,7 +6,7 @@
 #include "py/runtime.h"
 
 APPLET_HEADER_BEGIN
-    APPLET_ID(0xA1A2)
+    APPLET_ID(0xA1C0)
     APPLET_NAME("MicroPython")
     APPLET_VERSION(0, 1, 0)
     APPLET_LANGUAGE_EN_US

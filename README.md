@@ -1,6 +1,10 @@
 # BetaWise
 Several custom applets for the AlphaSmart NEO / NEO2, and tools to create them.
 
+## SmartApplet ID Block Registry
+
+Use the [SmartApplet ID block registry](applets/REGISTRY.md) to look up assignments or request a block.
+
 ## Compiling
 Any `m68k-elf` gcc cross compiler should work. On Windows, I have successfully
 used [MinGW GCC for M68K](https://sourceforge.net/projects/mingw-gcc-68k-elf/).
