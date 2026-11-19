@@ -32,7 +32,8 @@ callers supply evidence of usage, not permission to infer an untested contract.
 
 Each topic has a README containing findings, disassembly evidence, confidence,
 and unresolved questions. Maintained C/Python/Lua test sources live beside the README.
-Topics without maintained probes have only a README and state their coverage gaps.
+Cross-subsystem legacy cases and the complete execution-coverage gate live under
+[coverage/](coverage/README.md); topic-specific probes stay beside their findings.
 Obsolete exploratory scripts and reproducible execution logs are not retained.
 No firmware binaries are copied here. The localization comparison bitmap is kept
 as a useful visual artifact requested during the investigation.
@@ -42,17 +43,20 @@ as a useful visual artifact requested during the investigation.
 From the workspace root:
 
 ```sh
-python3 betawise/research/abi-audit/run.py /tmp/os3k-syscall-validation
+python3 betawise/research/syscalls/coverage/run.py /path/on/disk/os3k-validation
 ```
 
 The shared [ABI audit](../abi-audit/README.md),
 [ROM inventory](../abi-audit/rom-inventory.json), and
-[vendor-image inventory](../abi-audit/vendor-image-inventory.json) identify inputs.
-The runner first checks all eighteen production pointer bridges under QEMU,
-then checks compiler conventions, raw pointer behavior, variadic and aggregate
-cases, serial callbacks, localization/idle settings, and battery/dialog cases on
-AS3000 3.01 and Neo 3.21. It does not exhaustively certify every documented syscall.
-Neo 3.01 observations must be distinguished from live Neo 3.21 tests.
+[vendor-image inventory](../abi-audit/vendor-image-inventory.json) identify
+inputs. The runner first checks all eighteen production pointer bridges under
+QEMU, then checks compiler conventions, raw pointer behavior, variadic and
+aggregate cases, serial callbacks, localization/idle settings, and
+battery/dialog cases on AS3000 3.01 and Neo 3.21. The complete runner adds the
+legacy and newer subsystem suites, records native dispatch-table accesses, and
+fails if a defined syscall has no execution evidence. Function-level coverage
+does not exhaustively certify every branch or hardware path. Neo 3.01
+observations must be distinguished from live Neo 3.21 tests.
 
 Maintained subsystem probes live beside their topic README.
 Mixed battery/dialog tests live once under `power/` and are linked from

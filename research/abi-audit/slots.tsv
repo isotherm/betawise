@@ -34,7 +34,7 @@ slot	opcode	symbol	header_declaration	ABI_review	AS3000_target	Neo_3_01_target	N
 32	A080	ProgressBar	yes	declared: shared ABI rules reviewed; semantics not rederived	004CC04C	005CBBA4	0041C5C4
 33	A084	TextBox	yes	declared: shared ABI rules reviewed; semantics not rederived	004CC17C	005CBCD4	0041C6F4
 34	A088	WaitForKey	yes	declared: shared ABI rules reviewed; semantics not rederived	004CC47C	005CBFD4	0041C9F4
-35	A08C	StringCompare	yes	declared: shared ABI rules reviewed; semantics not rederived	004CC388	005CBEE0	0041C900
+35	A08C	StringCompare	yes	AS3000 3.01/Neo 3.21: byte options and signed-byte difference; count 0/255 unbounded; Ghidra/ROM and maintained boundary cases	004CC388	005CBEE0	0041C900
 36	A090	DisplayMessage	yes	declared: shared ABI rules reviewed; semantics not rederived	004CC43C	005CBF94	0041C9B4
 37	A094	GetKey	yes	declared: shared ABI rules reviewed; semantics not rederived	004CE094	005D2078	00423068
 38	A098	DrainKeyBuffer	yes	declared: shared ABI rules reviewed; semantics not rederived	004CE070	005D2054	00423044

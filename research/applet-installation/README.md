@@ -23,20 +23,21 @@ selector, or warm startup entry. This check leaves open indirect call chains.
 
 ## What the existing clients do
 
-Local neotools sends the begin request, streams and programs blocks, then
-sends `0x07` and waits for `0x48`. For a device initially in HID mode, the
-cleanup path sends `0x08` to return it to keyboard mode. The applet install
-path contains no file download and reupload sequence. The public
+Local neotools sends the begin request, streams and programs blocks, then sends
+`0x07` and waits for `0x48`. For a device initially in HID mode, the cleanup
+path sends `0x08` to return it to keyboard mode. The applet install path
+contains no file download and reupload sequence. The public
 [Manager transaction analysis](https://github.com/SamDelorean/betawise/blob/os3k/base-analysis/docs/os3k-manager-applet-installation-transaction.md)
 identifies the transaction in AS3000 3.01, NEO 3.01, and NEO 3.21 firmware. The
-file-preserving AS3000 3.01 transport path remains to be tested end to end in MAME.
+file-preserving AS3000 3.01 transport path remains to be tested end to end in
+MAME.
 
-The branch review found no public syscall that registers an appended applet
-and reinitializes the directory. A244 (`AppletSendMessage`) requires a
-registered target and turns a forwarded `WM_INIT` into a synthetic message.
-OS3K's applet startup checks for the plain `WM_INIT` value before initializing
-its data. A244 is therefore unsuitable for registering the new image or
-replaying its normal startup. See the
+The branch review found no public syscall that registers an appended applet and
+reinitializes the directory. A244 (`AppletSendMessage`) requires a registered
+target and turns a forwarded `WM_INIT` into a synthetic message. OS3K's applet
+startup checks for the plain `WM_INIT` value before initializing its data. A244
+is therefore unsuitable for registering the new image or replaying its normal
+startup. See the
 [A244 firmware analysis](https://github.com/SamDelorean/betawise/blob/os3k/base-analysis/docs/applet-send-message-a244-source-first-closure.md).
 
 ## MAME observations

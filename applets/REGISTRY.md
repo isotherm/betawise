@@ -1,6 +1,7 @@
 # SmartApplet ID block registry
 
-Betawise maintains the canonical list of SmartApplet ID block assignments. See [HISTORICAL.md](HISTORICAL.md) for historical IDs.
+Betawise maintains the canonical list of SmartApplet ID block assignments. See
+[HISTORICAL.md](HISTORICAL.md) for historical IDs.
 
 | Inclusive range | Owner |
 | --- | --- |

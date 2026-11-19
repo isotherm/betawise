@@ -32,12 +32,13 @@ not separately retained in each record. Keep the original input storage alive.
 Self-closing tags can have empty content spans. The parser has shared global
 state and a ten-level stack, not a per-call reentrant context.
 
-The filter receives path, current name, signed byte depth and signed byte
-output index (four stack slots). The supplied default callback at 442F7A
-returns zero. Thus **NULL validates syntax but retains no elements**. An
-The scanner writes the proposed record before consulting the filter, so valid
-output storage is required even with a NULL filter. An accepting callback returns a nonzero word; compiled C confirms argument order
-and that paths begin with slash. It executes synchronously with inherited A5.
+The filter receives path, current name, signed byte depth and signed byte output
+index (four stack slots). The supplied default callback at 442F7A returns zero.
+Thus **NULL validates syntax but retains no elements**. An The scanner writes
+the proposed record before consulting the filter, so valid output storage is
+required even with a NULL filter. An accepting callback returns a nonzero word;
+compiled C confirms argument order and that paths begin with slash. It executes
+synchronously with inherited A5.
 
 Status codes found in the original branches include 0 success, 1 invalid
 name-state transition, 2 syntax/entity error, 5 incomplete input, 6 depth limit,

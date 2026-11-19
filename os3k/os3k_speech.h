@@ -69,7 +69,7 @@ typedef void (*SpeechCallback_t)(SpeechEvent_e event, void* userData);
  * @return Acceptance result; only D0's low byte is defined.
  */
 SpeechQueueResult_e SpeechEnqueue(SpeechNotifyFlags_e notifyFlags, const char* text,
-                                 SpeechCallback_t callback, void* userData);
+                                  SpeechCallback_t callback, void* userData);
 
 /** @brief Control speech enablement, queue state, or settings.
  *

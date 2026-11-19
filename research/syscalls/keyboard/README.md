@@ -26,7 +26,10 @@ not work on every Neo emulator build.
 
 ## Tests and reproduction
 
-There is no maintained standalone suite for all earlier keyboard slots. The linked localization and Send-speed cases provide only their stated coverage.
+The [legacy keyboard group](../coverage/README.md) checks queue order, empty
+reads, readiness, modifier replacement, held-key sampling, accessibility
+settings, fresh-key waits, text entry exit, and list-dialog selection. The
+localization and Send-speed suites supply the remaining conversion/settings checks.
 
 Maintained character tests: [localization/](../localization/README.md).
 Maintained Send-speed checks: [power/](../power/README.md).
@@ -56,7 +59,8 @@ key for later processing. This shared state can affect subsequent callers.
 The tested Neo skips composition when no applet context is selected or the
 selected header ID is 0xA002 (the vendor Calculator); its ordinary key-table conversion still runs.
 
-< Tested Neo only: set both saved and active values to Fastest. Getter returns 4, not 0xDE. AS3000 3.01 rejects this request.
+Tested Neo only: set both saved and active values to Fastest. Getter returns 4,
+not 0xDE. AS3000 3.01 rejects this request.
 
 Syscall 0xA11C. Values 1 through 4 change the active setting only. The tested
 Neo also accepts SEND_SPEED_FASTEST_AND_DEFAULT, replacing both active and

@@ -3,6 +3,8 @@
 from pathlib import Path
 import sys,json,subprocess,os,hashlib
 here=Path(__file__).resolve().parent;repo=here.parents[2];workspace=repo.parent
+sys.path.insert(0, str(here.parent / 'coverage'))
+from syscall_coverage import instrument
 out=Path(sys.argv[1]).resolve();out.mkdir(parents=True,exist_ok=True)
 roms=out/'roms/asneo';roms.mkdir(parents=True,exist_ok=True)
 for name in ['os3kneorom.os3kos','smallos3kneorom.os3kos']:
@@ -27,7 +29,7 @@ for r in json.loads((repo/'research/abi-audit/rom-inventory.json').read_text()):
  script=script.replace('@TYPED_BYTES@',','.join(map(str,blob))).replace('@TYPED_CODE@',str(code))
  for key,value in symbols.items():script=script.replace('@'+key+'@',str(value))
  assert '@'not in script,'unexpanded placeholder'
- lua=folder/'probe.lua';lua.write_text(script)
+ lua=folder/'probe.lua';lua.write_text(instrument(script, neo))
  args=[workspace/'mame'/('neodiag'if neo else'mame'),'asneo'if neo else'asma3k','-rompath',out/'roms'if neo else workspace/'mame/roms','-nvram_directory',folder/'nvram','-cfg_directory',folder/'cfg','-video','none','-sound','none','-nothrottle','-seconds_to_run','56','-autoboot_delay','0','-autoboot_script',lua]
  with(folder/'mame.log').open('w')as log:subprocess.run(list(map(str,args)),cwd=out,env={**os.environ,'SDL_VIDEODRIVER':'dummy'},stdout=log,stderr=subprocess.STDOUT,check=True)
  text=(folder/'mame.log').read_text();assert 'PASS service probe' in text and 'FAIL service'not in text and 'LUA ERROR'not in text,text[-1800:]

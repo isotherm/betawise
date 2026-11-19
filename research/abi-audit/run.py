@@ -5,6 +5,8 @@ import os, subprocess, sys, tempfile, json, hashlib
 here=Path(__file__).resolve().parent
 repo=here.parents[1]
 workspace=repo.parent
+sys.path.insert(0, str(here.parent / 'syscalls/coverage'))
+from syscall_coverage import instrument
 out=Path(tempfile.mkdtemp(prefix='os3k-abi-')) if len(sys.argv)<2 else Path(sys.argv[1]).resolve()
 out.mkdir(parents=True,exist_ok=True)
 flags=['-m68000','-msoft-float','-msep-data','-fomit-frame-pointer','-fshort-enums','-fno-store-merging','-Os','-fno-builtin',f'-I{repo / "os3k"}']
@@ -32,7 +34,11 @@ for filename in ['os3kneorom.os3kos','smallos3kneorom.os3kos']:
 def mame(name,neo,script,marker,seconds=12):
  folder=out/name;folder.mkdir(exist_ok=True)
  exe=workspace/'mame'/('neodiag' if neo else 'mame')
- args=[exe,'asneo' if neo else 'asma3k','-rompath',out/'roms' if neo else workspace/'mame'/'roms','-nvram_directory',folder/'nvram','-cfg_directory',folder/'cfg','-video','none','-sound','none','-nothrottle','-seconds_to_run',str(seconds),'-autoboot_delay','0','-autoboot_script',out/script]
+ observed = folder / 'observed.lua'
+ coverage_first = (120 if neo else 530) if any(
+  part in name for part in ['serial', 'localization', 'battery-dialog']) else 180
+ observed.write_text(instrument((out / script).read_text(), neo, coverage_first))
+ args=[exe,'asneo' if neo else 'asma3k','-rompath',out/'roms' if neo else workspace/'mame'/'roms','-nvram_directory',folder/'nvram','-cfg_directory',folder/'cfg','-video','none','-sound','none','-nothrottle','-seconds_to_run',str(seconds),'-autoboot_delay','0','-autoboot_script',observed]
  with (folder/'mame.log').open('w')as log:cmd(args,cwd=out,env={**os.environ,'SDL_VIDEODRIVER':'dummy'},stdout=log,stderr=subprocess.STDOUT)
  text=(folder/'mame.log').read_text()
  assert marker in text and 'LUA ERROR' not in text and 'FAIL ABI' not in text,name+': inspect '+str(folder/'mame.log')

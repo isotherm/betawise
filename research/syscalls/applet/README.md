@@ -30,7 +30,11 @@ callbacks continue after focus loss or that the firmware cancels them correctly.
 
 ## Tests and reproduction
 
-Shared aggregate/header ABI probes remain under abi-audit. No maintained comprehensive applet lifecycle fixture is supplied; lifecycle observations here are historical.
+The [legacy applet group](../coverage/README.md) now checks identity selection,
+rejection/clear, prefix/ID/name lookup, synthetic message forwarding, and printer
+dialog cancellation on both live ROMs. Shared resource and dispatch-mask checks
+remain in the IrDA integration fixture. These do not certify full installation,
+USB lifecycle, or callback cancellation after focus loss.
 
 The maintained combined runner, executed from the workspace root, is:
 
@@ -54,15 +58,16 @@ by the message. Write zero for ordinary events handled without a special
 reply. The status word can contain a previous value on entry.
 The USB request block and nonzero USB reply codes remain partly unresolved.
 
-< Applet gains focus. param is an opaque launch value, observed as the entry offset. Reply zero for ordinary handling.
+Applet gains focus. param is an opaque launch value, observed as the entry
+offset. Reply zero for ordinary handling.
 
-< USB event. param points to a USB request block. Reply semantics are unresolved.
+USB event. param points to a USB request block. Reply semantics are unresolved.
 
-< USB detach. param points to a USB request block. No reply is read at the traced call site.
+USB detach. param points to a USB request block. No reply is read at the traced call site.
 
-< USB transfer event. Payload and reply details are unresolved.
+USB transfer event. Payload and reply details are unresolved.
 
-< 0x88, three trailing words. Betawise emits 0, 1, 2. Their ROM semantics are unresolved.
+0x88, three trailing words. Betawise emits 0, 1, 2. Their ROM semantics are unresolved.
 
 ## Slots 152–156 and 158–161: masks and resources
 
@@ -90,7 +95,10 @@ raw cases, compiled-C bridge checks, and limits.
 
 ## Native text message handlers
 
-The [text investigation](../text/README.md) shows that slots 176/189 take full applet messages, while 186/191 also use transport prefixes such as 60001 and 60020. Their payload layouts are only partially mapped; no speculative universal USB/print request struct was added.
+The [text investigation](../text/README.md) shows that slots 176/189 take full
+applet messages, while 186/191 also use transport prefixes such as 60001 and
+60020. Their payload layouts are only partially mapped; no speculative universal
+USB/print request struct was added.
 
 ## Installation and registration
 

@@ -11,4 +11,6 @@
 | `0xA1F1` | File Manager |
 | `0xA1FF` | Betawise QEMU test applet |
 
-See the [SmartApplet ID registry](https://github.com/isotherm/betawise/blob/HEAD/applets/REGISTRY.md) to request an ID block.
+See the
+[SmartApplet ID registry](https://github.com/isotherm/betawise/blob/HEAD/applets/REGISTRY.md)
+to request an ID block.

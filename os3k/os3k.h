@@ -1,6 +1,11 @@
 #ifndef _OS3K_H_
 #define _OS3K_H_
 
+/** @file os3k.h
+ * @brief Public OS3K interfaces and selector-based firmware services.
+ * Includes the subsystem headers; applications normally include this header.
+ */
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -74,8 +79,18 @@ typedef enum _SysInt_e {
     SYS_INT_INIT_CONTRAST_BIAS = 0xA000 /**< const uint32_t* input: low byte initializes the flash contrast bias with marker 'Y' only if both stored bytes are erased. Does not apply contrast immediately. Neo only. */
 } SysInt_e;
 
-// If num is 0, strings are compared until a null terminator is reached.
-char StringCompare(const char* str1, const char* str2, int case_sensitive, size_t num);
+/** @brief Compare strings using an optional byte-sized limit and case folding.
+ * Both zero and 255 select comparison through the first NUL; limits 1–254
+ * compare at most that many bytes. Case folding uses the firmware byte encoding.
+ * @param str1 First NUL-terminated string.
+ * @param str2 Second NUL-terminated string.
+ * @param case_sensitive Nonzero compares original bytes; zero folds both bytes.
+ * @param num Byte limit, or zero/255 for an unbounded string comparison.
+ * @return Eight-bit difference between the first unequal bytes, after folding
+ * when requested. Subtraction wraps; its sign is not a general unsigned-byte
+ * ordering guarantee.
+ */
+int8_t StringCompare(const char* str1, const char* str2, uint8_t case_sensitive, uint8_t num);
 
 /** @brief Query or control ROM system services through selector-specific data.
  *
@@ -96,5 +111,14 @@ char StringCompare(const char* str1, const char* str2, int case_sensitive, size_
  * result is a Boolean byte; upper return-register bits are not a status code.
  */
 bool CallSysInt(uint32_t unused_zero, SysInt_e info, void* data);
+
+/** @brief Copy the saved firmware exception record without clearing it.
+ * All outputs are required. For bus/address errors, address is the fault address
+ * and pc is the saved program counter.
+ * @param marker Output for the firmware exception marker.
+ * @param address Output for the saved fault address.
+ * @param pc Output for the saved program counter.
+ */
+void GetExceptionInfo(uint32_t* marker, uint32_t* address, uint32_t* pc);
 
 #endif

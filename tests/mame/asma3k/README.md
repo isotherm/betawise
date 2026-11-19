@@ -1,10 +1,10 @@
 # AS3000 firmware tests
 
-Place the full AS3000 firmware image, `OS3KROM.OS3KOS`, in this
-directory beside `check.sh`. MAME also needs the small boot ROM. Place
-`SMALLOS3KROM.OS3KOS` here or use a MAME build with the file already
-at `roms/asma3k/smallos3krom.os3kos` relative to its executable. The runner also searches that `roms` directory for the KS0066
-LCD character ROM.
+Place the full AS3000 firmware image, `OS3KROM.OS3KOS`, in this directory beside
+`check.sh`. MAME also needs the small boot ROM. Place `SMALLOS3KROM.OS3KOS` here
+or use a MAME build with the file already at `roms/asma3k/smallos3krom.os3kos`
+relative to its executable. The runner also searches that `roms` directory for
+the KS0066 LCD character ROM.
 
 Build Betawise and use a MAME build with the AS3000 SmartApplet image
 slot. The runner defaults to the sibling `../mame/mame` executable and

@@ -4,7 +4,8 @@
 
 Slots 88–92: lowercase bytes, key conversion, matrix layouts, bitmap predicate, and layout dialog.
 
-Caller contracts remain in [`os3k_localization.h`](../../../os3k/os3k_localization.h). This page records
+Caller contracts remain in
+[`os3k_localization.h`](../../../os3k/os3k_localization.h). This page records
 **evidence and confidence**, not a duplicate normative API reference. No new
 reverse-engineering claims are inferred from the documentation reorganization.
 

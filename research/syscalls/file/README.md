@@ -13,22 +13,28 @@ reverse-engineering claims are inferred from the documentation reorganization.
 | Finding | Status and evidence |
 |---|---|
 | 0x48-byte file entry, mirrors, position/length/capacity | ROM traces and historical RAM/file probes. Mirrors are addresses of caller-owned variables, not duplicate inline metadata. |
-| Offset 10 reservation | Allocator minimum-retained length, separate from logical/saved length. Historical lifecycle scripts preserve the original fixtures. |
+| Offset 10 reservation | Allocator minimum-retained length, separate from logical/saved length. The maintained legacy fixture checks saved-length restore and reservation updates. |
 | Offset 1F | **Unresolved reserved byte.** No portable policy established. |
 | Flags 01/04/08 | Mask validation/update mechanics established; broader policy meaning remains **incomplete**. Do not infer read-only/selection/source-file meanings from the names of operations. Bit 02 participates in current-file fallback. |
 | Linked `<FORM>` content | Receive-side conversion creates internal marker sequences; view state was separate from these entry fields in the traced paths. This is not a claim that every clipboard/linked-file interaction is understood. |
 | Clipboard plain versus raw conversion | Marker stripping and byte conversion observed. Plain `ClipboardGet` had a stack-dependent limit concern; do not treat that exploratory result as a fully verified bounded-copy contract. |
-| Password reset / defaults | Historical native-dialog and candidate-password probes are retained. Distinguish accepted master-password paths from unverified policy assumptions. |
+| Password reset / defaults | Earlier native-dialog and candidate-password observations are recorded here. Distinguish accepted master-password paths from unverified policy assumptions. |
 | File IDs and applet ownership | IDs resolve in selected applet tables; do not assume a universal 256-files-per-type scheme from a 16-bit token alone. |
 
-The three file/clipboard pointer-return services still need the bridges listed
-in the shared ABI audit. This reorganization does not silently repair or
-recertify them. Native installation/persistence is distinct from a seeded RAM
-record used to test a resolver or pointer return.
+The three file/clipboard pointer-return services use the production D0-to-A0
+bridges in os3k_abi_bridge.c; QEMU checks argument forwarding and both pointer
+results, while MAME checks the original ROM behavior. Native
+installation/persistence is distinct from a seeded RAM record used to test a
+resolver or pointer return.
 
 ## Tests and reproduction
 
-The maintained ABI runner checks pointer conventions using controlled file records. No maintained full allocator, password-dialog, or linked-text workflow suite is supplied. Earlier observations in this README are not fresh execution claims.
+The [complete suite](../coverage/README.md) now exercises seek/read/write,
+length/reservation changes, flags, password copying and dialog cancellation,
+file creation/deletion, tags, and clipboard transfers on both live ROMs.
+Fixtures seed disposable RAM tables; installation and persistence are separate
+workflows. The text suite tests linked-marker conversion. Full allocator stress,
+password-reset success, and every linked-text UI workflow remain outside coverage.
 
 The maintained combined runner, executed from the workspace root, is:
 
@@ -59,4 +65,7 @@ exact coverage, and remaining transport/UI limits.
 
 ## Native editor and forms follow-up
 
-Slots 175–194 consume file flag 04, maintain a 512-byte encoded gap, and use a separate clipboard file for form control editing. These are new consumer observations, not a complete naming of file flag 04. See [text research](../text/README.md).
+Slots 175–194 consume file flag 04, maintain a 512-byte encoded gap, and use a
+separate clipboard file for form control editing. These are new consumer
+observations, not a complete naming of file flag 04. See
+[text research](../text/README.md).

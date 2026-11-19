@@ -83,6 +83,7 @@ uint16_t AppletGetContextId(void);
 uint32_t AppletFindByName(const char* name, uint32_t start_index);
 
 /** @brief Find an installed applet by its header ID.
+ * Search stops at the first empty descriptor in the installed applet table.
  * @param id 16-bit applet identifier.
  * @return The matching index, or zero for no match or the system applet.
  */

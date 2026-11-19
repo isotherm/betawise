@@ -84,7 +84,7 @@ typedef struct _FileInfo_t {
     uint32_t position_mirror; /**< 0x30, optional RAM address of a position. */
     char name[16]; /**< 0x34, NUL-terminated. */
     uint16_t file_id; /**< 0x44, resolved within the active applet's file table. */
-    uint16_t tag; /**< 0x46, set/read by A1F4 and matched by A1F8. */
+    uint16_t tag; /**< 0x46, set/read by FileAccessTag() and matched by FileFindByTag(). */
 } FileInfo_t;
 
 /** @brief Seek within a file.

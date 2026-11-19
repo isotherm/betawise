@@ -27,7 +27,8 @@ hypothesis must not be presented as a guarantee for every extended function.
 
 ## Tests and reproduction
 
-Shared ABI probes and vendor inventories remain under abi-audit. There is no maintained full-radio integration test or exhaustive CallSysInt policy test.
+Shared ABI probes and vendor inventories remain under abi-audit. There is no
+maintained full-radio integration test or exhaustive CallSysInt policy test.
 
 The maintained combined runner, executed from the workspace root, is:
 
@@ -58,19 +59,36 @@ Boolean values and byte-valued setters. Pointers are written into caller
 pointer storage, not returned as the function result. Byte buffers and the
 firmware version have the sizes stated on their entries.
 
-< data unused. Draw firmware, wireless, network, MAC, and channel diagnostics. Performs radio queries and can wait for transport. The no-radio-response path returned in MAME; successful radio responses remain unverified.
+< data unused. Draw firmware, wireless, network, MAC, and channel diagnostics.
+Performs radio queries and can wait for transport. The no-radio-response path
+returned in MAME; successful radio responses remain unverified.
 
-< const uint8_t[13] input: copy into the ROM block, then attempt wireless command 7 up to 1000 times. Transport completion and field meanings remain unresolved. Neo only.
+< const uint8_t[13] input: copy into the ROM block, then attempt wireless
+command 7 up to 1000 times. Transport completion and field meanings remain
+unresolved. Neo only.
 
-< const uint32_t* input: store its low byte in a shared ROM flag. Vendor Wireless Updater writes 0 on MSG_INIT and 1 after its update path, before queuing the Applets key. The broader system policy remains unresolved. Paired with 0x0E00; Neo only.
+< const uint32_t* input: store its low byte in a shared ROM flag. Vendor
+Wireless Updater writes 0 on MSG_INIT and 1 after its update path, before
+queuing the Applets key. The broader system policy remains unresolved. Paired
+with 0x0E00; Neo only.
 
-< uint32_t* output: zero-extended flag written by 0x0D00. No caller identified in the available vendor applet images. Its relationship to the Wireless Updater use is known, but its broader consumer/policy remains unresolved. Neo only.
+< uint32_t* output: zero-extended flag written by 0x0D00. No caller identified
+in the available vendor applet images. Its relationship to the Wireless Updater
+use is known, but its broader consumer/policy remains unresolved. Neo only.
 
-< uint8_t[13] output: copy the opaque ROM block used by 0x0C00. Exactly 13 bytes; field meanings unresolved. Neo only.
+< uint8_t[13] output: copy the opaque ROM block used by 0x0C00. Exactly 13
+bytes; field meanings unresolved. Neo only.
 
-< void** output: shared, ROM-owned scratch arena (0x5DBE in the tested Neo ROM). MathFacts Offline, Responder, Wireless File Transfer, and KeyWords Wireless pair it with 0x5000 and suballocate consecutive slices. Wireless Updater also uses the buffer directly. This query does not allocate or grant exclusive ownership; do not free the pointer. Neo only.
+< void** output: shared, ROM-owned scratch arena (0x5DBE in the tested Neo ROM).
+MathFacts Offline, Responder, Wireless File Transfer, and KeyWords Wireless pair
+it with 0x5000 and suballocate consecutive slices. Wireless Updater also uses
+the buffer directly. This query does not allocate or grant exclusive ownership;
+do not free the pointer. Neo only.
 
-< uint32_t* output: scratch arena capacity in bytes, 8192 in the tested Neo ROM. Vendor allocators use this as the bound for slices from SYS_INT_GET_SCRATCH_BUFFER_PTR. Executing the MathFacts allocator in MAME filled all 8192 bytes and rejected the next byte. Neo only.
+< uint32_t* output: scratch arena capacity in bytes, 8192 in the tested Neo ROM.
+Vendor allocators use this as the bound for slices from
+SYS_INT_GET_SCRATCH_BUFFER_PTR. Executing the MathFacts allocator in MAME filled
+all 8192 bytes and rejected the next byte. Neo only.
 
 uint32_t* output: unconditional 1 in the tested Neo 3.21 ROM,
 even without wireless detection. Unsupported by the Neo 3.01
@@ -82,9 +100,14 @@ This interpretation follows the ROM-generation comparison; no confirmed
 caller was found in the 54 audited applet images. It does not guarantee
 that every extended slot is populated or behaves identically across ROMs.
 
-< uint32_t* output: 1 iff RAM byte 0x042C equals 1. No caller identified in the available vendor applet images. A 0x9000 argument in CoWriter is an applet ID passed to AppletFindById(), not this selector. Higher-level meaning remains unresolved. Neo only.
+< uint32_t* output: 1 iff RAM byte 0x042C equals 1. No caller identified in the
+available vendor applet images. A 0x9000 argument in CoWriter is an applet ID
+passed to AppletFindById(), not this selector. Higher-level meaning remains
+unresolved. Neo only.
 
-< const uint32_t* input: low byte initializes the flash contrast bias with marker 'Y' only if both stored bytes are erased. Does not apply contrast immediately. Persistence unverified live. Neo only.
+< const uint32_t* input: low byte initializes the flash contrast bias with
+marker 'Y' only if both stored bytes are erased. Does not apply contrast
+immediately. Persistence unverified live. Neo only.
 
 Betawise intercepts row-height and row-count queries when its own Neo font
 is initialized. All other selectors go to the ROM. The ROM output pointers

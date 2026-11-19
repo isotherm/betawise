@@ -18,14 +18,17 @@ reverse-engineering claims are inferred from the documentation reorganization.
 | Cancellation/service stop | Different notification behavior; lifecycle and callback storage must be considered separately. |
 | Focus-loss gating | **Unresolved.** No claim that kill-focus always prevents callbacks, or that callbacks necessarily continue after it. |
 
-The recovered compiled probe uses the older `DelayLoop` name. It is preserved
-as historical evidence, not quietly rewritten into a new passing test. Native
-callback/interrupt scheduling, physical timing, and all firmware versions are
-not certified by the historical examples.
+The maintained fixture uses BusyLoop and tests original timer-service
+notification expiry and cancellation. Physical timing, callback A5 ownership
+after focus changes, and every firmware version remain unqualified.
 
 ## Tests and reproduction
 
-There is no maintained standalone timer suite. The serial integration suite exercises timer-backed waits; it does not establish general callback safety or focus cancellation.
+The [legacy time group](../coverage/README.md) checks busy-loop returns,
+RTC/timer counters, delayed progress, range rejection, expiry flags, and
+cancellation/stale handles, callback event/A5 capture, and absence of cancelled
+callbacks beyond their deadline on AS3000 3.01 and Neo 3.21. The serial integration
+suite additionally exercises timer-backed waits. Neither certifies focus cancellation.
 
 The maintained combined runner, executed from the workspace root, is:
 

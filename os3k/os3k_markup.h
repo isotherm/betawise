@@ -63,7 +63,7 @@ typedef int16_t (*MarkupFilter_t)(const char* path, const char* name, int8_t dep
  * @return Parser status and error offset from begin. Offset is zero on success.
  */
 MarkupResult_t MarkupParse(const char* begin, const char* end, MarkupElement_t* elements,
-                          int8_t capacity, MarkupFilter_t filter);
+                           int8_t capacity, MarkupFilter_t filter);
 
 /** @brief Extract an attribute.
  *
@@ -77,7 +77,7 @@ MarkupResult_t MarkupParse(const char* begin, const char* end, MarkupElement_t* 
  * @return Status and parser offset. An empty attribute span returns MARKUP_EMPTY_SPAN.
  */
 MarkupResult_t MarkupGetAttribute(const MarkupElement_t* element, const char* name,
-                                 char* output, int16_t capacity, int16_t* length);
+                                  char* output, int16_t capacity, int16_t* length);
 
 /** @brief Copy element content and decode entities.
  *
@@ -91,7 +91,7 @@ MarkupResult_t MarkupGetAttribute(const MarkupElement_t* element, const char* na
  * @return Status; on truncation offset is the negative number of input bytes consumed.
  */
 MarkupResult_t MarkupGetText(const MarkupElement_t* element, char* output,
-                            int16_t capacity, int16_t* length);
+                             int16_t capacity, int16_t* length);
 
 /** @brief Find descendant elements by path.
  * @param parent Element whose content span is searched.
@@ -102,7 +102,7 @@ MarkupResult_t MarkupGetText(const MarkupElement_t* element, char* output,
  * @return Status and error offset relative to the parent's content beginning.
  */
 MarkupResult_t MarkupFindElements(const MarkupElement_t* parent, const char* path,
-                                 MarkupElement_t* elements, int8_t capacity, int8_t* count);
+                                  MarkupElement_t* elements, int8_t capacity, int8_t* count);
 
 /** @brief Read the first matching child's attribute.
  *
@@ -116,7 +116,7 @@ MarkupResult_t MarkupFindElements(const MarkupElement_t* parent, const char* pat
  * @return Lookup/extraction result, with success offset normalized to zero.
  */
 MarkupResult_t MarkupGetChildAttribute(const MarkupElement_t* parent, const char* path,
-                                      const char* name, char output[18], int16_t* length);
+                                       const char* name, char output[18], int16_t* length);
 
 /** @brief Read the first matching child's content.
  * @param parent Parent element.
@@ -127,6 +127,6 @@ MarkupResult_t MarkupGetChildAttribute(const MarkupElement_t* parent, const char
  * @return Lookup/extraction result; the MarkupGetText() attribute-span caveat applies.
  */
 MarkupResult_t MarkupGetChildText(const MarkupElement_t* parent, const char* path,
-                                char* output, int16_t capacity, int16_t* length);
+                                  char* output, int16_t capacity, int16_t* length);
 
 #endif

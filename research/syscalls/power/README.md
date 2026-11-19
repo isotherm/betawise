@@ -69,16 +69,22 @@ timeout. Does not itself rearm the RTC alarm. Vendor AlphaQuiz raises short
 intervals to 30 minutes for an operation and then calls RestoreAutoPowerOffMinutes().
 
 Selectors 0–10 read cached fields. They do not refresh measurements. The
-charging counters are described by their observed state-machine updates;
-their physical charge-termination interpretation is not fully established. All results are 32-bit integers,
-including zero-extended word fields. No pointer result or output structure
-is involved. The calibration selector has materially different side effects.
+charging counters are described by their observed state-machine updates; their
+physical charge-termination interpretation is not fully established. All results
+are 32-bit integers, including zero-extended word fields. No pointer result or
+output structure is involved. The calibration selector has materially different
+side effects.
 
-< Cached raw_sample * normalization_constant / calibration_divisor (600 on AS3000 3.01, 2096 on tested Neo).
+< Cached raw_sample * normalization_constant / calibration_divisor (600 on
+AS3000 3.01, 2096 on tested Neo).
 
 < Smallest raw sample tracked during the current charging-monitoring phase.
 
-< Factory A/D calibration: take sixteen measurements, reject samples differing from their mean by more than 20, then replace calibration and attempt to persist it to flash. The vendor Control Panel requires AC power with batteries removed. Returns 1 for unstable samples, otherwise 0; even a stable zero sample is accepted. Zero is not proof of a valid divisor or successful flash persistence.
+< Factory A/D calibration: take sixteen measurements, reject samples differing
+from their mean by more than 20, then replace calibration and attempt to persist
+it to flash. The vendor Control Panel requires AC power with batteries removed.
+Returns 1 for unstable samples, otherwise 0; even a stable zero sample is
+accepted. Zero is not proof of a valid divisor or successful flash persistence.
 
 Syscall 0xA130. AS3000 3.01 constructs a three-bit value from hardware straps;
 the tested Neo initializes the value to 0x10. Battery measurement/display
@@ -86,15 +92,15 @@ paths treat zero as unsupported and nonzero as supported. This is a numeric
 revision code, not a canonical bool or a Neo 2/wireless detector.
 
 Syscall 0xA120. Does nothing when GetHardwareRevision() is zero. Otherwise
-temporarily overrides charging-control state, measures the GPIO transition
-delay and updates raw/normalized samples. Normalization is raw times 600
-(AS3000 3.01) or 2096 (tested Neo), divided by the current calibration divisor. The divisor must be nonzero; the ROM
-does not guard division by zero. This does not return the measurement;
-use GetBatteryDischargePercent(), GetBatteryMillivolts(), or BatteryDiagnostic().
-AS3000 3.01 also samples battery chemistry; Neo's chemistry is detected during
-initialization rather than by this refresh. A missing/immediate hardware
-transition can produce zero. Actual analogue accuracy is not certified by
-emulator register-injection tests.
+temporarily overrides charging-control state, measures the GPIO transition delay
+and updates raw/normalized samples. Normalization is raw times 600 (AS3000 3.01)
+or 2096 (tested Neo), divided by the current calibration divisor. The divisor
+must be nonzero; the ROM does not guard division by zero. This does not return
+the measurement; use GetBatteryDischargePercent(), GetBatteryMillivolts(), or
+BatteryDiagnostic(). AS3000 3.01 also samples battery chemistry; Neo's chemistry
+is detected during initialization rather than by this refresh. A
+missing/immediate hardware transition can produce zero. Actual analogue accuracy
+is not certified by emulator register-injection tests.
 
 Syscall 0xA12C. AS3000 3.01 computes 2322281 / sample + 887; the tested Neo uses
 7881064 / sample + 997. Integer division truncates. No hardware refresh is

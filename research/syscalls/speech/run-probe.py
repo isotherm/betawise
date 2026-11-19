@@ -3,6 +3,8 @@
 from pathlib import Path
 import sys, os, json, hashlib, subprocess
 here=Path(__file__).resolve().parent;repo=here.parents[2];workspace=repo.parent
+sys.path.insert(0, str(here.parent / 'coverage'))
+from syscall_coverage import instrument
 out=Path(sys.argv[1]).resolve();out.mkdir(parents=True,exist_ok=True)
 r=next(r for r in json.loads((repo/'research/abi-audit/rom-inventory.json').read_text())if r['name']=='neo_3_21')
 assert hashlib.sha256((workspace/r['path']).read_bytes()).hexdigest()==r['sha256']
@@ -31,7 +33,7 @@ case=case.replace('@BYTES@',','.join(map(str,blob)))
 for key,value in symbols.items():case=case.replace('@'+key+'@',str(value))
 assert '@'not in case
 script=(here/'probe.lua.in').read_text().replace('@TYPED_CASE@',case)
-(out/'probe.lua').write_text(script)
+(out/'probe.lua').write_text(instrument(script, True))
 args=[workspace/'mame/neodiag','asneo','-rompath',out/'roms','-nvram_directory',out/'nvram','-cfg_directory',out/'cfg','-video','none','-sound','none','-nothrottle','-seconds_to_run','30','-autoboot_delay','0','-autoboot_script',out/'probe.lua']
 with(out/'mame.log').open('w')as log:subprocess.run(list(map(str,args)),cwd=out,env={**os.environ,'SDL_VIDEODRIVER':'dummy'},stdout=log,stderr=subprocess.STDOUT,check=True)
 s=(out/'mame.log').read_text();assert 'PASS extended probe' in s and 'FAIL extended'not in s and 'LUA ERROR'not in s,s[-2500:]

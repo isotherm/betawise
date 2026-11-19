@@ -24,7 +24,11 @@ The #91 bitmap is not active-font coverage; see [localization](../localization/R
 
 ## Tests and reproduction
 
-No maintained comprehensive graphics, packing, or shadow-buffer fixture is supplied. Earlier emulator and display observations retain their stated historical scope.
+The [legacy display group](../coverage/README.md) tests every supported display
+entry on AS3000 3.01 and Neo 3.21. AS assertions read LCD DDRAM; Neo bitmap and
+raster assertions read the emulated ST7565 display RAM, including capture and
+all six drawing operations. Cursor, text shadow, save/restore, and progress
+paths are exercised. This is directed coverage, not every geometry or font.
 
 The maintained combined runner, executed from the workspace root, is:
 
@@ -73,7 +77,10 @@ roll and rejects rectangles extending beyond width 264 or height 66.
 
 ## Native editor rendering follow-up
 
-The [text investigation](../text/README.md) covers native editor/form geometry and the Neo-only font replacement at slot 183. Its 94-byte editor and 44-byte scan structures are separate from the existing two-byte TextPosition_t display coordinate type.
+The [text investigation](../text/README.md) covers native editor/form geometry
+and the Neo-only font replacement at slot 183. Its 94-byte editor and 44-byte
+scan structures are separate from the existing two-byte TextPosition_t display
+coordinate type.
 
 ## Vendor RasterOp callers and applet header flags
 

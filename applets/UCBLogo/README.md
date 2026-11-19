@@ -23,11 +23,12 @@ buffer holds up to 1,023 bytes including newlines. Definitions live in
 memory for the current applet session. Use `erase [square]` or
 `er [square]` to remove a procedure before defining it again.
 
-The profile includes forward, back, left, right, pen up and down, home,
-clear screen, repeat, repcount, print, and show/hide turtle (`ST`/`HT`). The left pane keeps a scrolling transcript of submitted commands
-and output. It shows a visible cursor at the end of the current input. File operations
-and the rest of the upstream primitive set are outside this profile.
-Execution has a step limit so a large loop or move yields back to OS3K.
+The profile includes forward, back, left, right, pen up and down, home, clear
+screen, repeat, repcount, print, and show/hide turtle (`ST`/`HT`). The left pane
+keeps a scrolling transcript of submitted commands and output. It shows a
+visible cursor at the end of the current input. File operations and the rest of
+the upstream primitive set are outside this profile. Execution has a step limit
+so a large loop or move yields back to OS3K.
 
 ## Build
 
@@ -58,18 +59,18 @@ point uses the [OS3K compiler runtime](../../os3k/compiler-rt/README.md).
 
 ## OS3K backend
 
-The applet consumes OS3K message events directly and sends Logo text output
-to its left pane. `term.c` is excluded from the build, so there is no
-termcap dependency and no need for a BetaWise terminal emulator. The
-build embeds the English Messages table and supplies a bounded heap.
-UCBLogo computes turtle motion and calls BetaWise `DrawLine` for each
-pen stroke. `DrawLine` updates the LCD through `DrawPixel` and OS3K
-`RasterOp`. The turtle outline uses pixel inversion so removing it
-restores the pixels underneath. The text pane writes font glyphs directly and stores only eight rows of
-characters for scrolling and focus redraw. When the transcript scrolls,
-the left LCD controller advances its start line by eight pixels and
-reuses the old top row as the new bottom row. The graphics pane clears when
-the applet regains focus, while the text transcript remains available.
+The applet consumes OS3K message events directly and sends Logo text output to
+its left pane. `term.c` is excluded from the build, so there is no termcap
+dependency and no need for a BetaWise terminal emulator. The build embeds the
+English Messages table and supplies a bounded heap. UCBLogo computes turtle
+motion and calls BetaWise `DrawLine` for each pen stroke. `DrawLine` updates the
+LCD through `DrawPixel` and OS3K `RasterOp`. The turtle outline uses pixel
+inversion so removing it restores the pixels underneath. The text pane writes
+font glyphs directly and stores only eight rows of characters for scrolling and
+focus redraw. When the transcript scrolls, the left LCD controller advances its
+start line by eight pixels and reuses the old top row as the new bottom row. The
+graphics pane clears when the applet regains focus, while the text transcript
+remains available.
 
 ## Emulator test and memory
 
@@ -84,13 +85,12 @@ documented MAME command. Use an absolute path for the Lua script.
 -autoboot_delay 0 -autoboot_script /absolute/path/to/applets/UCBLogo/smoke.lua
 ```
 
-The optional script checks the blank prompt, types the square command,
-then types and runs
-`print 42` and `cs` twice without clearing input between commands. It also
-checks hiding, turning, and showing the turtle and defines and calls a
-parameterized square procedure, then erases and redefines it. The verified run showed the expected pixels for
-all four edges, `42` in the output row, and a cleared trail after
-`cs`. Physical NEO hardware has not been tested.
+The optional script checks the blank prompt, types the square command, then
+types and runs `print 42` and `cs` twice without clearing input between
+commands. It also checks hiding, turning, and showing the turtle and defines and
+calls a parameterized square procedure, then erases and redefines it. The
+verified run showed the expected pixels for all four edges, `42` in the output
+row, and a cleared trail after `cs`. Physical NEO hardware has not been tested.
 
 The earlier memory measurement build was 63,480 bytes and requested 65,128
 bytes of applet RAM, excluding the firmware call stack. That includes a

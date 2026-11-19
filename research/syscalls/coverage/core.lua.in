@@ -1,0 +1,376 @@
+-- Original-ROM tests. RAM fixtures provide inputs; syscall bodies are never replaced.
+local machine = manager.machine
+local cpu = machine.devices[':maincpu']
+local m = cpu.spaces.program
+local neo, group = @NEO@, '@GROUP@'
+local code, data, stack = neo and 0x70000 or 0x36000, neo and 0x74000 or 0x38000, neo and 0x7f000 or 0x3f000
+local first = neo and 150 or 540
+local cases = {}
+local function add(slot, args, prep, check, tick, frames, special)
+    cases[#cases + 1] = {slot=slot, args=args, prep=prep, check=check, tick=tick, frames=frames or 6, special=special}
+end
+local function eq(a, b) assert(a == b, string.format('%x ~= %x', a, b)) end
+local function ret(want, mask) return function() eq(cpu.state.D0.value & (mask or 0xffffffff), want & (mask or 0xffffffff)) end end
+local function fill(a, n, v) for i=0,n-1 do m:write_u8(a+i, v or 0) end end
+local function put(a, s) for i=1,#s do m:write_u8(a+i-1,s:byte(i)) end; m:write_u8(a+#s,0) end
+local function bytes(a, n) local t={}; for i=0,n-1 do t[#t+1]=string.char(m:read_u8(a+i)) end; return table.concat(t) end
+local function lcd()
+    local rows={}
+    for _,tag in ipairs({':ks0066_0', ':ks0066_1'}) do
+        local d = emu.item(assert(machine.devices[tag].items['0/m_ddram']))
+        rows[#rows+1]=d:read_block(0,40); rows[#rows+1]=d:read_block(0x40,40)
+    end
+    return table.concat(rows)
+end
+local function key(event)
+    -- Enter through the native QueueKey routine, not a patched keyboard handler.
+    local a=code+0x100
+    local old=cpu.state.SP.value
+    local words={0x40e7,0x48e7,0xfffe,0x2f3c,(event>>16)&65535,event&65535,
+                 0x4eb9,(code+0x140)>>16,(code+0x140)&65535,0x588f,
+                 0x4cdf,0x7fff,0x46df,0x4e75}
+    for i,v in ipairs(words) do m:write_u16(a+2*(i-1),v) end
+    m:write_u16(code+0x140,0xa0a8)
+    m:write_u32(old-4,cpu.state.PC.value)
+    cpu.state.SP.value=old-4;cpu.state.PC.value=a
+end
+local function queueLater(event)
+    return function(t) if t==2 then key(event) end end
+end
+local function escapeLater(t)
+    if t==10 or t==16 then
+        local tag=(neo and ':ROW' or ':COL.')..4
+        for _,field in pairs(machine.ioport.ports[tag].fields) do
+            if field.mask==0x80 then
+                if t==10 then field:set_value(1) else field:clear_value() end
+            end
+        end
+    end
+end
+local entry = neo and 0x10d2 or 0x1042
+local buffer = neo and 0x1509c or 0x4558
+local delta = neo and 0x90 or 0
+local function file(text)
+    fill(entry,0x90); fill(buffer,0x20000); put(buffer,text)
+    m:write_u32(entry,buffer); m:write_u32(entry+4,#text); m:write_u32(entry+8,#text)
+    m:write_u32(entry+12,0x10000); m:write_u32(entry+0x20,6); m:write_u16(entry+0x44,1); put(entry+0x34,'Probe')
+    local clip=entry+0x48
+    m:write_u32(clip,buffer+0x10000); m:write_u32(clip+12,0x10000)
+    m:write_u32(clip+0x20,4); m:write_u16(clip+0x44,0xcb); put(clip+0x34,'Clipboard')
+    m:write_u32(0x3446+delta,clip); m:write_u32(0x344a+delta,clip)
+    m:write_u32(0x3442+delta,entry); m:write_u32(0x354e+delta,buffer+0x20000)
+    m:write_u32(0x355c+delta,0); m:write_u16(0xe02+delta,0)
+    m:write_u32(0xf42+delta,entry); m:write_u8(0xf46+delta,1)
+    m:write_u8(neo and 0x3e82 or 0x3df2,0)
+end
+local function input(s)
+    local a=neo and 0x118ab or 0x447b
+    put(a,s); m:write_u8(a+80,0); m:write_u8(a+81,#s)
+end
+if group == 'display' then
+    add(0,{},nil,function() if not neo then assert(lcd()==string.rep(' ',160)) end end)
+    add(1,{2,3,0x0c})
+    add(2,{data,data+1},nil,function() eq(m:read_u8(data),2); eq(m:read_u8(data+1),3) end)
+    add(4,{65},nil,function() if not neo then eq(lcd():byte(43),65) end end)
+    add(5,{data+0x100},function() put(data+0x100,'XYZ') end,function() if not neo then assert(lcd():find('AXYZ',1,true)) end end)
+    add(6,{0x0f})
+    add(7,{data},function() fill(data,2,0xa5) end,function() eq(m:read_u8(data),0x0f); eq(m:read_u8(data+1),0xa5) end)
+    add(8,{2,3,6},nil,function() if not neo then assert(lcd():sub(43,46)=='    ') end end)
+    add(9,{2,3},nil,function() if not neo then assert(lcd():sub(41,120)==string.rep(' ',80)) end end)
+    add(3,{1,data+0x100},function() put(data+0x100,'Hi') end,function() if not neo then assert(lcd():sub(20,21)=='Hi') end end)
+    add(10,{})
+    add(0,{})
+    add(11,{},nil,function() if not neo then assert(lcd():sub(20,21)=='Hi') end end)
+    add(12,{data+0x100},function() put(data+0x100,'B\nC') end)
+    add(13,{},nil,function() if not neo then eq(m:read_u8(0x423e),0xff) end end)
+    add(1,{1,1,0x0c})
+    add(15,{90},nil,function() eq(m:read_u8(neo and 0x520c or 0x423e),90) end)
+    add(14,{1,data,data+2,data+2},function() m:write_u8(data,1);m:write_u8(data+1,1);m:write_u8(data+2,1);m:write_u8(data+3,1) end,function() if not neo then eq(lcd():byte(1),90) end end)
+    add(32,{4,65536,131072},nil,function() if not neo then assert(lcd():find('50%%')) end end)
+    add(18,{0,0,1,1,data+0x100},function() m:write_u8(data+0x100,1) end)
+    if neo then
+        local function pixel()
+            local ram=emu.item(assert(machine.devices[':lcd0'].items['0/m_ddram']))
+            return ram:read_block(0,1):byte(1)&1
+        end
+        add(0,{})
+        add(18,{0,0,1,1,data+0x100},function() m:write_u8(data+0x100,1) end,function() eq(pixel(),1) end)
+        add(19,{0,0,1,1,data+0x100,1},function() m:write_u8(data+0x100,0xa5) end,function() eq(m:read_u8(data+0x100)&1,1) end)
+        for _,test in ipairs({{5,0},{6,1},{2,0},{3,1},{4,0},{7,1}}) do
+            local op,want=test[1],test[2]
+            add(19,{0,0,1,1,data+0x100,op},function() m:write_u8(data+0x100,1) end,function() eq(pixel(),want) end)
+        end
+    end
+elseif group == 'keyboard' then
+    add(38,{})
+    add(39,{},nil,ret(0,255))
+    add(42,{0x1042})
+    add(39,{},nil,ret(1,255))
+    add(37,{0},nil,ret(0x1042,65535))
+    add(37,{0},nil,ret(255,65535))
+    add(43,{0x1234})
+    add(40,{},nil,ret(0x1234,65535))
+    add(43,{0})
+    add(41,{})
+    add(44,{},nil,ret(0,255))
+    add(45,{0xf0},nil,ret(0,255))
+    local function holdL(held)
+        local tag=(neo and ':ROW' or ':COL.')..2
+        for _,field in pairs(machine.ioport.ports[tag].fields) do
+            if field.mask==4 then
+                if held then field:set_value(1) else field:clear_value() end
+                return
+            end
+        end
+        error('missing physical L field')
+    end
+    add(45,{0x22},function() holdL(true) end,ret(1,255))
+    add(44,{},nil,ret(1,255))
+    add(45,{0x22},function() holdL(false) end,ret(0,255))
+    add(44,{},nil,ret(0,255))
+    add(46,{},nil,function() assert((cpu.state.D0.value&255)<=1) end)
+    add(48,{1})
+    add(47,{},nil,ret(1,255))
+    add(48,{0})
+    add(47,{},nil,ret(0,255))
+    add(49,{},nil,function() assert((cpu.state.D0.value&255)<=1) end)
+    add(50,{},nil,function() assert((cpu.state.D0.value&65535)<1000) end)
+    add(52,{1})
+    add(51,{},nil,ret(1,255))
+    add(52,{0})
+    add(51,{},nil,ret(0,255))
+    add(34,{},nil,ret(0x13,65535),queueLater(0x13),20)
+    add(36,{data},function() put(data,'Message') end,ret(0x13,65535),queueLater(0x13),20)
+    add(33,{data,data+0x100,10,data+0x110,0},function() put(data,'');m:write_u8(data+0x100,0);m:write_u8(data+0x110,0x40);m:write_u8(data+0x111,0xff) end,ret(0x40,255),queueLater(0x40),20)
+    add(60,{1,1,4,40})
+    add(61,{data,3,32,0x12345678,255,0xffffffff},function() put(data,'One') end,ret(0))
+    add(62,{0x40},nil,ret(0))
+    add(63,{1})
+    add(64,{})
+    add(66,{},nil,ret(1,255))
+    add(67,{},nil,ret(0x12345678))
+    add(68,{1},nil,ret(0x12345678))
+    add(68,{2},nil,ret(0))
+    add(65,{},nil,ret(0x40,65535),queueLater(0x40),20)
+elseif group == 'time' then
+    add(54,{0},nil,ret(0))
+    add(54,{100},nil,ret(0))
+    local rtc,ms,cs
+    add(55,{},nil,function() rtc=cpu.state.D0.value;assert(rtc<10000000) end)
+    add(57,{},nil,function() ms=cpu.state.D0.value end)
+    add(56,{},nil,function() cs=cpu.state.D0.value;assert(cs>=math.floor(ms/10)) end)
+    add(53,{1},nil,function() end,nil,12)
+    add(57,{},nil,function() assert(cpu.state.D0.value>ms) end)
+    add(55,{},nil,function() assert(cpu.state.D0.value>=rtc) end)
+    add(58,{10001,data,0,data+2},function() fill(data,4,0xa5) end,function() eq(cpu.state.D0.value,(-302)&0xffffffff);eq(m:read_u16(data+2),0xffff);eq(m:read_u8(data),0xa5) end)
+    local handle
+    add(58,{1000,data,0,data+2},function() fill(data,4,0xa5) end,function() eq(cpu.state.D0.value,0);handle=m:read_u16(data+2);assert(handle~=0xffff);eq(m:read_u8(data),0xa5) end)
+    add(59,function() return {handle} end,nil,function() eq(m:read_u8(data),0xa5) end)
+    add(59,function() return {handle} end,nil,function() eq(m:read_u8(data),0xa5) end)
+    add(58,{3,data,0,data+2},function() m:write_u8(data,0xa5) end,function() eq(cpu.state.D0.value,0);eq(m:read_u8(data),1) end,nil,12)
+    local timerCallback=code+0x200
+    local function callbackFixture()
+        fill(data+0x100,12)
+        local words={0x202f,4,0x23c0,(data+0x104)>>16,(data+0x104)&65535,
+                     0x23cd,(data+0x108)>>16,(data+0x108)&65535,
+                     0x52b9,(data+0x100)>>16,(data+0x100)&65535,0x4e75}
+        for i,v in ipairs(words) do m:write_u16(timerCallback+2*(i-1),v) end
+        cpu.state.A5.value=0x12345678;m:write_u8(data,0xa5)
+    end
+    add(58,{3,data,timerCallback,data+2},callbackFixture,function()
+        eq(cpu.state.D0.value,0);eq(m:read_u8(data),1)
+        eq(m:read_u32(data+0x100),1);eq(m:read_u32(data+0x104)&255,1)
+        eq(m:read_u32(data+0x108),0x12345678)
+    end,nil,12)
+    add(58,{1000,data,timerCallback,data+2},callbackFixture,function()
+        eq(cpu.state.D0.value,0);handle=m:read_u16(data+2)
+    end)
+    add(59,function() return {handle} end,nil,function()
+        eq(m:read_u8(data),0xa5);eq(m:read_u32(data+0x100),0)
+    end,nil,70)
+elseif group == 'file' then
+    add(114,{1,1},function() file('abcdef') end,ret(1))
+    add(100,{1,2,0},nil,ret(2))
+    add(101,{1},nil,ret(2))
+    add(103,{1,data,2},nil,function() eq(cpu.state.D0.value,2);assert(bytes(data,2)=='cd');eq(m:read_u32(entry+20),4) end)
+    add(102,{1,data,2,2},function() put(data,'XY') end,function() eq(cpu.state.D0.value,2);assert(bytes(buffer,8)=='abcdXYef') end)
+    add(106,{},nil,ret(1))
+    add(107,{},nil,function() assert(cpu.state.D0.value>0) end)
+    add(108,{1},nil,function() eq(cpu.state.D0.value,m:read_u32(entry+12)-m:read_u32(entry+4)) end)
+    add(109,{1},nil,ret(8))
+    add(111,{1},nil,function() eq(cpu.state.D0.value,m:read_u32(entry+12)) end)
+    add(110,{-3},nil,function() eq(m:read_u32(entry+8),8) end)
+    add(110,{3},nil,function() eq(m:read_u32(entry+4),3) end)
+    add(110,{-2},nil,function() eq(m:read_u32(entry+4),8) end)
+    add(110,{-5},nil,function() eq(m:read_u32(entry+16),512) end)
+    add(100,{1,2,0},nil,ret(2))
+    add(105,{2},nil,function() eq(cpu.state.D0.value,2);assert(bytes(buffer,6)=='abXYef') end)
+    add(116,{1,1,1},nil,ret(1))
+    add(117,{1,1},nil,ret(1))
+    add(116,{1,1,0},nil,ret(1))
+    add(117,{1,1},nil,ret(0))
+    add(119,{1,data,0},function() put(data,'secret') end,ret(1))
+    add(119,{1,data,1},function() fill(data,8,0xa5) end,function() eq(cpu.state.D0.value,1);assert(bytes(data,7)=='secret\0');eq(m:read_u8(data+7),0xa5) end)
+    add(120,{1,1,1,0,0,data},nil,ret(0,255),escapeLater,60)
+    add(121,{1},nil,ret(1),escapeLater,60)
+    add(125,{1,0x1234,0},nil,ret(0))
+    add(125,{1,0,data},nil,function() eq(cpu.state.D0.value,0);eq(m:read_u16(data),0x1234) end)
+    add(126,{0x1234},nil,ret(1))
+    add(127,{1,0},nil,ret(1))
+    add(115,{})
+    add(106,{},nil,ret(1))
+    add(112,{0,data},nil,ret(0))
+    add(104,{},function() file('abc') end,function() eq(cpu.state.D0.value,1);eq(m:read_u32(entry+4),0);eq(m:read_u32(entry+8),0);eq(m:read_u32(entry+20),0);assert(bytes(buffer,8)==string.rep('\0',8)) end)
+    add(131,{data,3,1},function() file('abcdef');put(data,'XYZ') end,ret(3))
+    add(134,{},nil,ret(1,255))
+    add(135,{1},nil,ret(3))
+    add(137,{},nil,ret(0x10000))
+    add(132,{data,3,1},function() fill(data,4,0xa5) end,function() eq(cpu.state.D0.value,3);assert(bytes(data,4)=='XYZ'..string.char(0xa5)) end)
+    add(100,{1,1,0},nil,ret(1))
+    add(128,{2,2},nil,function() eq(cpu.state.D0.value,2);assert(bytes(m:read_u32(entry+0x48),2)=='bc') end)
+    add(129,{2,1},nil,function() eq(cpu.state.D0.value,2);assert(bytes(buffer,4)=='adef') end)
+    add(130,{2,1},nil,function() eq(cpu.state.D0.value,2);assert(bytes(buffer,6)=='abcdef') end)
+    add(138,{4},nil,function() eq(cpu.state.D0.value,4);eq(m:read_u32(entry+0x48+4),4) end)
+    add(133,{},nil,function() eq(m:read_u32(entry+0x48+4),0) end)
+    add(134,{},nil,ret(0,255))
+    add(135,{1},nil,ret(0))
+    add(118,{},function() file('abc') end,ret(0),escapeLater,60)
+    add(148,{1,0},nil,ret(0,255),escapeLater,60)
+    local created
+    add(122,{0,data,512,512},function() file('abc');put(data,'New') end,function()
+        created=cpu.state.D0.value
+        assert(created>0 and created<65536,'file creation failed')
+        eq(m:read_u8(0xf46+delta),2)
+    end)
+    add(123,function() return {created} end,nil,function()
+        eq(cpu.state.D0.value,0);eq(m:read_u8(0xf46+delta),1)
+    end)
+    add(122,{255,data,0,512},function() put(data,'Invalid group') end,ret(-10))
+    add(123,{0xffff},nil,function() assert((cpu.state.D0.value&0x80000000)~=0) end)
+elseif group == 'applet' then
+    local tableBase=neo and 0xe0a or 0xd82
+    local locks=neo and 0x34de or 0x344e
+    local identity=neo and 0x35f0 or 0x3560
+    local header=data+0x1000
+    local originalSystem=m:read_u32(tableBase)
+    local function applets()
+        fill(header,0x300);m:write_u32(header,0xc0ffeead);m:write_u32(tableBase+4,header);m:write_u32(tableBase,header+0x200);m:write_u32(locks+4,0)
+        m:write_u16(header+0x14,0xbeef);put(header+0x18,'Coverage applet')
+    end
+    add(139,{1},applets,ret(1))
+    add(141,{},nil,ret(0xbeef,65535))
+    add(139,{1},function() m:write_u32(locks+4,1) end,ret(0))
+    add(140,{},nil,function() eq(m:read_u32(identity),0xffffffff) end)
+    add(141,{},nil,ret(0,65535))
+    add(142,{data,0},function() applets();put(data,'Coverage') end,ret(1))
+    add(143,{0xbeef},nil,ret(1))
+    add(144,{1,data},nil,function() eq(cpu.state.D0.value&255,1);assert(bytes(data,16)=='Coverage applet\0') end)
+    add(145,{0,0x21,0x1234,data},nil,ret(0,255))
+    add(145,{1,0x21,0x1234,data},function()
+        m:write_u32(header+0x84,0x100)
+        local words={0x202f,4,0x23c0,(data+0x400)>>16,(data+0x400)&65535,
+                     0x202f,8,0x23c0,(data+0x404)>>16,(data+0x404)&65535,
+                     0x206f,12,0x20bc,0x1234,0x5678,0x4e75}
+        for i,v in ipairs(words) do m:write_u16(header+0x100+2*(i-1),v) end
+    end,function()
+        eq(cpu.state.D0.value&255,1);eq(m:read_u32(data),0x12345678)
+        eq(m:read_u32(data+0x400),0x1000021);eq(m:read_u32(data+0x404),0x1234)
+    end)
+    add(157,{},function() m:write_u32(tableBase,originalSystem) end,function() end,escapeLater,60)
+    add(174,{0,0x1234,data},function() m:write_u32(data,0xa5a5a5a5) end,function() eq(cpu.state.D0.value&255,0);eq(m:read_u32(data),0xa5a5a5a5) end)
+    for _,test in ipairs({{0,neo and 2 or 1},{0x400,neo and 65 or 4},{0x500,neo and 264 or 40}}) do
+        local selector,want=test[1],test[2]
+        add(174,{0,selector,data},function() fill(data,8,0xa5) end,function()
+            eq(cpu.state.D0.value&255,1);eq(m:read_u32(data),want);eq(m:read_u32(data+4),0xa5a5a5a5)
+        end)
+    end
+    add(174,{0,0x8000,data},function() m:write_u32(data,0xa5a5a5a5) end,function()
+        eq(cpu.state.D0.value&255,neo and 1 or 0);eq(m:read_u32(data),neo and 1 or 0xa5a5a5a5)
+    end)
+    if neo then
+        add(174,{0,0x5000,data},nil,function() eq(cpu.state.D0.value&255,1);eq(m:read_u32(data),8192) end)
+    end
+elseif group == 'stdlib' then
+    local a,b,c=data,data+0x100,data+0x200
+    local err=neo and 0x1189e or 0x4550
+    add(27,{a},function() put(a,'abc') end,ret(3))
+    add(31,{-2147483648,10,a},nil,function() assert(bytes(a,12)=='-2147483648\0') end)
+    add(35,{a,b,1,0},function() put(a,'abc');put(b,'abc') end,ret(0,255))
+    add(35,{a,b,1,1},function() put(a,'ax');put(b,'ay') end,ret(0,255))
+    add(35,{a,b,1,0},nil,ret(255,255))
+    add(35,{a,b,1,255},nil,ret(255,255))
+    add(35,{a,b,1,256},nil,ret(255,255))
+    add(35,{a,b,0,0},function() put(a,'Ab');put(b,'aB') end,ret(0,255))
+    add(203,{},function() m:write_u32(err,34) end,ret(34))
+    add(204,{},nil,ret(97),queueLater(0x18),30)
+    add(205,{},nil,ret(97),queueLater(0x18),30)
+    add(207,{a},function() put(a,' -42x') end,ret(-42))
+    add(208,{a},function() put(a,' -1234567') end,ret(-1234567))
+    add(209,{a,b,c},function() put(a,'42');put(b,'%d') end,function() eq(cpu.state.D0.value,1);eq(m:read_u32(c),42) end)
+    add(210,{0},function() input('S') end,ret(83))
+    add(210,{1},nil,ret(-1))
+    add(211,{1,a,17},function() put(a,'%d') end,ret(2))
+    add(212,{84,1},nil,ret(84))
+    add(213,{0,b,c},function() put(b,'%d');input('53\r') end,function() eq(cpu.state.D0.value,1);eq(m:read_u32(c),53) end)
+    add(215,{a,b,3},function() put(a,'abc');put(b,'abd') end,function() assert(cpu.state.D0.value&0x80000000~=0) end)
+    add(219,{a,29},function() put(a,'%d') end,ret(2))
+    add(223,{1})
+    add(220,{},nil,ret(16838))
+    add(221,{b,c},function() put(b,'%d');input('64\r') end,function() eq(cpu.state.D0.value,1);eq(m:read_u32(c),64) end)
+    add(222,{a,b,78},function() put(b,'%d') end,function() eq(cpu.state.D0.value,2);assert(bytes(a,3)=='78\0') end)
+    add(226,{a,b},function() put(a,'abc');put(b,'abc') end,ret(0))
+    add(228,{a},nil,ret(3))
+    add(230,{a,b,2},function() put(a,'abc');put(b,'abd') end,ret(0))
+    add(234,{65},nil,ret(97))
+    add(235,{97},nil,ret(65))
+    add(236,{85,0},function() input('XY');m:write_u8((neo and 0x118ab or 0x447b)+80,1) end,ret(85))
+    -- abort() has a non-returning contract; its observed control transfer is checked.
+    local abortSeen, abortTap
+    add(206,{},function()
+        local target=neo and 0x417914 or 0x4c7b82
+        abortSeen=false
+        abortTap=m:install_read_tap(target,target+1,'abort-control-transfer',function()
+            if cpu.state.SP.value==(neo and 0x7fff0 or 0x3fff0)
+                and cpu.state.A6.value==0
+                and (m:read_u8(neo and 0x35e2 or 0x3552)&0x80)~=0 then
+                abortSeen=true
+            end
+        end)
+    end,function()
+        assert(abortSeen,'abort did not enter firmware control with reset SP/A6 and abort flag')
+        abortTap:remove()
+    end,nil,12,true)
+end
+local index,frame,phase,failed=0,0,-1,false
+emu.register_frame_done(function()
+    frame=frame+1
+    if not neo then
+        if frame==60 then machine.natkeyboard:post('y') end
+        if frame==200 or frame==450 then machine.natkeyboard:post('\r') end
+    end
+    if failed or frame<first then return end
+    local ok,err=pcall(function()
+        if phase==-1 then
+            index=index+1
+            if index>#cases then print('PASS core complete '..group..' '..#cases..' cases');machine:exit();return end
+            local p=cases[index]
+            if p.prep then p.prep() end
+            m:write_u16(code,0xa000+4*p.slot);m:write_u16(code+2,0x60fe);m:write_u32(stack,code+2)
+            for i,v in ipairs(type(p.args)=='function' and p.args() or p.args) do m:write_u32(stack+4*i,v) end
+            cpu.state.SR.value=0x2000;cpu.state.SP.value=stack;cpu.state.PC.value=code;phase=0
+        else
+            phase=phase+1
+            local p=cases[index]
+            if p.tick then p.tick(phase) end
+            if phase==p.frames then
+                if not p.special then
+                    local pc=cpu.state.PC.value
+                    assert(pc==code+2 or pc==code+4,string.format('busy PC=%x',pc));eq(cpu.state.SP.value,stack+4)
+                end
+                if p.check then p.check() end
+                print('PASS core slot '..p.slot..' case '..index);phase=-1
+            end
+        end
+    end)
+    if not ok then failed=true;print(string.format('FAIL core %s case %d slot %d PC=%x SP=%x: %s',group,index,cases[index].slot,cpu.state.PC.value,cpu.state.SP.value,tostring(err)));machine:exit() end
+end)

@@ -54,4 +54,6 @@
 | `0xAF73` | NeoFontVLarge |
 | `0xAF75` | NeoFontMedium |
 
-See the [SmartApplet ID registry](https://github.com/isotherm/betawise/blob/HEAD/applets/REGISTRY.md) to request an ID block.
+See the
+[SmartApplet ID registry](https://github.com/isotherm/betawise/blob/HEAD/applets/REGISTRY.md)
+to request an ID block.

@@ -214,9 +214,9 @@ int32_t TextScanInit(TextEditor_t* editor, TextScan_t* position, TextScanOrigin_
  * @return Emitted/consumed count, or one/zero for search success/failure.
  */
 uint32_t TextScanRead(TextScan_t* position, uint32_t count, uint8_t* output,
-                          bool reverse, TextByteMode_e mode, bool skip_hidden,
-                          bool skip_protected, bool expand_forms, bool case_sensitive,
-                          const char* needle);
+                      bool reverse, TextByteMode_e mode, bool skip_hidden,
+                      bool skip_protected, bool expand_forms, bool case_sensitive,
+                      const char* needle);
 
 /** @brief Delete a forward range from a position.
  * @param position Required scan state; traversal uses a copy of it.
@@ -227,7 +227,7 @@ uint32_t TextScanRead(TextScan_t* position, uint32_t count, uint8_t* output,
  * @return Zero or a TEXT_ERROR_* status; read-only descriptors reject the operation.
  */
 int32_t TextScanDelete(TextScan_t* position, uint32_t count, TextByteMode_e mode,
-                           bool skip_hidden, bool skip_protected);
+                       bool skip_hidden, bool skip_protected);
 
 /** @brief Insert text at a position without advancing that position.
  * @param position Required state; its editable file must be current.
@@ -303,9 +303,9 @@ bool TextEditorTransferHandleMessage(TextTransfer_t* transfer, Message_e message
  * @param form_characters Optional embedded-form character count. Nonnull enables form evaluation.
  */
 void TextGetStatistics(uint16_t file_id, uint32_t start, uint32_t end, uint32_t* characters,
-                        uint32_t* separators, uint32_t* words, uint32_t* paragraphs,
-                        uint32_t* newlines, uint32_t* sentences, double* units_2048,
-                        uint32_t* form_characters);
+                       uint32_t* separators, uint32_t* words, uint32_t* paragraphs,
+                       uint32_t* newlines, uint32_t* sentences, double* units_2048,
+                       uint32_t* form_characters);
 
 /** @brief Parse and optionally reset a native form.
  *

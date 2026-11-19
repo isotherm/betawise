@@ -1,0 +1,24 @@
+-- Record native dispatch-table reads during the probe, without replacing ROM code.
+do
+    local coverage_cpu = manager.machine.devices[':maincpu']
+    local coverage_memory = coverage_cpu.spaces.program
+    local coverage_frame, coverage_active = 0, false
+    local coverage_seen = {}
+    emu.register_frame_done(function()
+        coverage_frame = coverage_frame + 1
+        coverage_active = coverage_frame >= @COVERAGE_FIRST@
+    end)
+    local coverage_tap = coverage_memory:install_read_tap(
+        @COVERAGE_TABLE@, @COVERAGE_END@, 'syscall-coverage',
+        function(address, value, mask)
+            if coverage_active then
+                local slot = math.floor((address - @COVERAGE_TABLE@) / 4)
+                if not coverage_seen[slot] then
+                    coverage_seen[slot] = true
+                    print('COVER_SYSCALL '..slot)
+                end
+            end
+        end)
+    -- Keep the pass-through handler alive for the duration of the machine.
+    emu.register_frame_done(function() assert(coverage_tap) end)
+end
