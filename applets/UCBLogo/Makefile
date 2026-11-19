@@ -1,6 +1,6 @@
 UPSTREAM ?= upstream
 CORE = coms error eval files graphics init intern libloc lists logodata math mem paren parse print wrksp nographics
-PORT_OBJ = applet.o runtime.o softmath.o setjmp.o $(addprefix build/,$(addsuffix .o,$(CORE)))
+PORT_OBJ = applet.o runtime.o softmath.o $(addprefix build/,$(addsuffix .o,$(CORE)))
 
 OBJ = $(PORT_OBJ)
 TARGET = UCBLogo.OS3KApp
@@ -14,18 +14,13 @@ build/prepared: prepare.py port_config.h port_stdio.h $(TOP)/Makefile.common
 	python3 prepare.py "$(UPSTREAM)" build
 	touch $@
 
-build/%.o: build/prepared
+build/%.o: build/prepared $(OS3K_HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -include port_stdio.h -c build/$*.c -o $@
 
 applet.o runtime.o softmath.o: build/prepared
-applet.o: ../NeoFontTerminal/glyphs.h
 
 ../NeoFontTerminal/glyphs.h: ../NeoFontTerminal/fontgen.py ../NeoFontTerminal/glyphs.png
 	+$(MAKE) -C ../NeoFontTerminal glyphs.h
-
-setjmp.o: ../MicroPython/os3k/setjmp.asm
-	$(AS) $(ASFLAGS) $< -o $@
-	$(OBJCOPY) --redefine-sym setjmp=_setjmp $@
 
 $(TARGET): Makefile
 

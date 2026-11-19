@@ -19,7 +19,7 @@ LDFLAGS = -static -T "$(TOP)/os3k/os3k.lds" $(OS3K_LIB)
 LDFLAGS += --gc-sections --emit-relocs
 ARFLAGS = rcs
 OS3K_HEADERS ?= $(addprefix $(TOP)/os3k/,os3k.h os3k_applet.h os3k_dialog.h \
-                os3k_display.h os3k_file.h os3k_irda.h os3k_keyboard.h os3k_localization.h os3k_markup.h os3k_power.h os3k_serial.h os3k_speech.h os3k_wireless.h os3k_stdlib.h os3k_text.h os3k_time.h version.h)
+                os3k_display.h os3k_file.h os3k_irda.h os3k_keyboard.h os3k_localization.h os3k_markup.h os3k_power.h os3k_serial.h os3k_speech.h os3k_wireless.h os3k_stdlib.h os3k_text.h os3k_time.h setjmp.h version.h)
 
 %.o : %.c $(OS3K_HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@

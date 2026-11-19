@@ -1,5 +1,4 @@
 #include "os3k.h"
-#include "../NeoFontTerminal/glyphs.h"
 
 APPLET_HEADER_BEGIN
     APPLET_ID(0xA1CB)
@@ -9,8 +8,9 @@ APPLET_HEADER_BEGIN
     APPLET_LANGUAGE_EN_US
 APPLET_HEADER_END
 
-enum { WIDTH = 264, SPLIT = 132, HEIGHT = 64, COLS = 22, ROWS = HEIGHT / GLYPH_HEIGHT };
-static uint8_t transcript[ROWS][COLS];
+enum { WIDTH = 264, SPLIT = 132, HEIGHT = 64, MAX_COLS = 22, MAX_ROWS = 8 };
+static unsigned font_width = 6, font_height = 8, text_cols = MAX_COLS, text_rows = MAX_ROWS;
+static uint8_t transcript[MAX_ROWS][MAX_COLS];
 static char source[128];
 static char definition_header[sizeof(source)];
 static char definition_body[1024];
@@ -23,33 +23,33 @@ void neo_toggle_turtle(void);
 
 static unsigned lcd_y(unsigned y)
 {
-    return ((top_row + y) % ROWS) * GLYPH_HEIGHT;
+    return ((top_row + y) % text_rows) * font_height;
 }
 
 static void draw_glyph(unsigned y, unsigned x, uint8_t ch)
 {
-    DrawBitmap(x * GLYPH_WIDTH, lcd_y(y), GLYPH_WIDTH,
-               GLYPH_HEIGHT, GLYPHS[ch ? ch : ' ']);
+    SetCursor(lcd_y(y) / font_height + 1, x + 1, CURSOR_MODE_HIDE);
+    putchar(ch ? ch : ' ');
 }
 
 static void redraw_transcript(void)
 {
-    for (unsigned y = 0; y < ROWS; ++y)
-        for (unsigned x = 0; x < COLS; ++x)
+    for (unsigned y = 0; y < text_rows; ++y)
+        for (unsigned x = 0; x < text_cols; ++x)
             draw_glyph(y, x, transcript[y][x]);
 }
 
 static void newline(void)
 {
     column = 0;
-    if (row + 1 < ROWS) {
+    if (row + 1 < text_rows) {
         ++row;
     } else {
-        memmove(transcript[0], transcript[1], (ROWS - 1) * COLS);
-        memset(transcript[row], 0, COLS);
+        memmove(transcript[0], transcript[1], (text_rows - 1) * MAX_COLS);
+        memset(transcript[row], 0, MAX_COLS);
         // Clear the old top page before the controller exposes it at the bottom.
-        RasterOp(0, lcd_y(0), SPLIT, GLYPH_HEIGHT, NULL, ROP_WHITENESS);
-        top_row = (top_row + 1) % ROWS;
+        RasterOp(0, lcd_y(0), SPLIT, font_height, NULL, ROP_WHITENESS);
+        top_row = (top_row + 1) % text_rows;
         LCD_CMD_REG_LEFT = LCD_CMD_START_LINE(lcd_y(0));
     }
 }
@@ -57,15 +57,15 @@ static void newline(void)
 static void redraw(void)
 {
     // Keep the end of a long input visible and leave a cell for the cursor.
-    unsigned visible = COLS - 3;
+    unsigned visible = text_cols - 3;
     unsigned first = length > visible ? length - visible : 0;
     unsigned cursor = 2 + length - first;
     draw_glyph(row, 0, defining ? '>' : '?');
     draw_glyph(row, 1, ' ');
-    for (unsigned x = 2; x < COLS; ++x)
+    for (unsigned x = 2; x < text_cols; ++x)
         draw_glyph(row, x, x < cursor ? source[first + x - 2] : ' ');
-    RasterOp(cursor * GLYPH_WIDTH, lcd_y(row), 1,
-             GLYPH_HEIGHT, NULL, ROP_BLACKNESS);
+    RasterOp(cursor * font_width, lcd_y(row), 1,
+             font_height, NULL, ROP_BLACKNESS);
 }
 
 void neo_cleartext(void)
@@ -127,7 +127,7 @@ void neo_output(int ch)
     if (ch == '\n') {
         newline();
     } else if (ch >= ' ' && ch <= 255) {
-        if (column == COLS)
+        if (column == text_cols)
             newline();
         transcript[row][column] = ch;
         draw_glyph(row, column++, ch);
@@ -186,7 +186,7 @@ static void submit(void)
 static void run(void)
 {
     // Replace the editable row (including its cursor) with the transcript.
-    RasterOp(0, lcd_y(row), SPLIT, GLYPH_HEIGHT, NULL, ROP_WHITENESS);
+    RasterOp(0, lcd_y(row), SPLIT, font_height, NULL, ROP_WHITENESS);
     neo_output(defining ? '>' : '?');
     neo_output(' ');
     for (unsigned i = 0; i < length; ++i)
@@ -205,6 +205,20 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t *status)
     *status = 0;
     if (message == MSG_SETFOCUS) {
         SetCursorMode(CURSOR_MODE_HIDE);
+        FontHeader_t *font = NULL;
+        CallSysInt(0, SYS_INT_GET_SYSTEM_FONT_PTR, &font);
+        uint8_t terminal = AppletFindById(0xA1F0);
+        if (terminal > 0)
+            AppletSendMessage(terminal, 0x1000002, (uint32_t)&font, status);
+        if (font) {
+            font_width = font->max_width;
+            font_height = font->height;
+        }
+        text_cols = SPLIT / font_width;
+        if (text_cols > MAX_COLS) text_cols = MAX_COLS;
+        text_rows = HEIGHT / font_height;
+        if (text_rows > MAX_ROWS) text_rows = MAX_ROWS;
+        if (row >= text_rows) row = text_rows - 1;
         top_row = 0;
         LCD_CMD_REG_LEFT = LCD_CMD_START_LINE(0);
         redraw_transcript();

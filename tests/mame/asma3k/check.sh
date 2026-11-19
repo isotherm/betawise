@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if (( $# > 2 )); then
-    echo "usage: $0 [MAME [hello|memory|invoke|syscall|string|handler|micropython]]" >&2
+    echo "usage: $0 [MAME [hello|memory|invoke|syscall|string|handler|micropython|micropython-minimal|micropython-core|micropython-basic]]" >&2
     exit 2
 fi
 test_dir=$(cd -- "$(dirname -- "$0")" && pwd)
@@ -12,7 +12,7 @@ nm=${CROSS_COMPILE:-m68k-linux-gnu-}nm
 if (( $# == 2 )); then
     cases=("$2")
 else
-    cases=(hello memory invoke syscall string handler micropython)
+    cases=(hello memory invoke syscall string handler micropython-core)
 fi
 
 mame_roms="$(dirname -- "$mame")/roms"
@@ -34,6 +34,7 @@ ln -s "$small_rom" "$roms/asma3k/smallos3krom.os3kos"
 echo "MAME test output: $work"
 failures=0
 for test_case in "${cases[@]}"; do
+    variant=
     case "$test_case" in
         hello) applet=HelloWorld; seconds=12 ;;
         memory) applet=DebugTool; seconds=57 ;;
@@ -41,13 +42,20 @@ for test_case in "${cases[@]}"; do
         syscall) applet=DebugTool; seconds=26 ;;
         string) applet=DebugTool; seconds=46 ;;
         handler) applet=DebugTool; seconds=30 ;;
-        micropython) applet=MicroPython; seconds=100 ;;
+        micropython) applet=MicroPython; seconds=900 ;;
+        micropython-minimal|micropython-core|micropython-basic)
+            applet=MicroPython; seconds=240; variant=${test_case#micropython-} ;;
         *) echo "Unknown case: $test_case" >&2; exit 2 ;;
     esac
 
     artifact="$root/applets/$applet/$applet"
     if [[ $applet == MicroPython ]]; then
-        artifact="$root/applets/MicroPython/os3k/MicroPython"
+        artifact="$root/applets/MicroPython/MicroPython-core"
+    fi
+    script="$applet.lua"
+    if [[ -n $variant ]]; then
+        artifact="$root/applets/MicroPython/build-$variant/MicroPython"
+        script=MicroPythonProfile.lua
     fi
     if [[ ! -f $artifact.OS3KApp || ( $applet == DebugTool && ! -f $artifact.elf ) ]]; then
         echo "Build $applet before running this check (see tests/mame/asma3k/README.md)." >&2
@@ -58,6 +66,7 @@ for test_case in "${cases[@]}"; do
     mkdir "$run"
     {
         printf 'local test_case = "%s"\n' "$test_case"
+        printf 'local variant = "%s"\n' "$variant"
         if [[ $applet == DebugTool ]]; then
             printf 'local symbols = {\n'
             "$nm" -P "$artifact.elf" |
@@ -66,7 +75,7 @@ for test_case in "${cases[@]}"; do
                 }'
             printf '}\n'
         fi
-        cat "$test_dir/asma3k.lua" "$test_dir/$applet.lua"
+        cat "$test_dir/asma3k.lua" "$test_dir/$script"
     } > "$run/check.lua"
 
     echo "RUN  $test_case"

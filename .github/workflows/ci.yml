@@ -30,8 +30,28 @@ jobs:
         echo "$PREFIX/bin" >> $GITHUB_PATH
         make
         os3k/compiler-rt/check.sh
+    - name: Collect published applets.
+      id: applets
+      shell: bash
+      run: |
+        shopt -s nullglob
+        applets=(applets/*/*.OS3KApp)
+        if (( ${#applets[@]} == 0 )); then
+          echo "No published applets found" >&2
+          exit 1
+        fi
+        artifact_dir=$(mktemp -d "$RUNNER_TEMP/betawise-applets.XXXXXX")
+        for applet in "${applets[@]}"; do
+          if [[ -e "$artifact_dir/${applet##*/}" ]]; then
+            echo "Duplicate applet filename: ${applet##*/}" >&2
+            exit 1
+          fi
+          cp -- "$applet" "$artifact_dir/"
+        done
+        echo "path=$artifact_dir" >> "$GITHUB_OUTPUT"
     - name: Upload applets artifact.
       uses: actions/upload-artifact@v6
       with:
         name: betawise-applets-${{ steps.get_tag.outputs.TAG }}
-        path: "applets/**/*.OS3KApp"
+        path: ${{ steps.applets.outputs.path }}
+        if-no-files-found: error

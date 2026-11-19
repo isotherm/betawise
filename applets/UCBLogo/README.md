@@ -66,7 +66,9 @@ English Messages table and supplies a bounded heap. UCBLogo computes turtle
 motion and calls BetaWise `DrawLine` for each pen stroke. `DrawLine` updates the
 LCD through `DrawPixel` and OS3K `RasterOp`. The turtle outline uses pixel
 inversion so removing it restores the pixels underneath. The text pane writes
-font glyphs directly and stores only eight rows of characters for scrolling and
+characters through BetaWise `SetCursor` and `putchar`, using NeoFontTerminal
+when installed and the system font otherwise. It stores up to eight rows
+of characters for scrolling and
 focus redraw. When the transcript scrolls, the left LCD controller advances its
 start line by eight pixels and reuses the old top row as the new bottom row. The
 graphics pane clears when the applet regains focus, while the text transcript

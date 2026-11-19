@@ -84,7 +84,7 @@ neo_files="$workspace/Ghidra/Alphasmart Neo/SmartApplets"
 git -C "$betawise_dir" submodule update --init applets/MicroPython/upstream
 make -C "$betawise_dir/os3k"
 make -C "$betawise_dir/applets/NeoFontTerminal"
-make -C "$betawise_dir/applets/MicroPython/os3k" -j4
+make -C "$betawise_dir/applets/MicroPython" -j4
 
 session=$(mktemp -d)
 cd "$session"
@@ -110,7 +110,7 @@ import sys
 neo_files, betawise = map(Path, sys.argv[1:])
 images = [
     neo_files / "alphawordplus.os3kapp",
-    betawise / "applets/MicroPython/os3k/MicroPython.OS3KApp",
+    betawise / "applets/MicroPython/MicroPython-core.OS3KApp",
     betawise / "applets/NeoFontTerminal/NeoFontTerminal.OS3KApp",
 ]
 flash = bytearray(Path("seed/asneo/flashnv").read_bytes())

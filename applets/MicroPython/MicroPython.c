@@ -1,7 +1,9 @@
 #include "os3k.h"
+#include "py/builtin.h"
 #include "py/cstack.h"
 #include "py/compile.h"
 #include "py/gc.h"
+#include "py/mperrno.h"
 #include "py/repl.h"
 #include "py/runtime.h"
 
@@ -20,6 +22,15 @@ static size_t line_start;
 static bool started;
 static bool at_line_start;
 
+// The io module supplies memory streams, but no OS3K filesystem adapter yet.
+static mp_obj_t os3k_open(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs) {
+    (void)n_args;
+    (void)args;
+    (void)kwargs;
+    mp_raise_OSError(MP_EOPNOTSUPP);
+}
+MP_DEFINE_CONST_FUN_OBJ_KW(mp_builtin_open_obj, 1, os3k_open);
+
 void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
     while (len--) {
         unsigned char c = *str++;
@@ -28,6 +39,15 @@ void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
             at_line_start = c == '\n';
         }
     }
+}
+
+mp_import_stat_t mp_import_stat(const char *path) {
+    return MP_IMPORT_STAT_NO_EXIST;
+}
+
+mp_lexer_t *mp_lexer_new_from_file(qstr filename) {
+    (void)filename;
+    mp_raise_OSError(MP_ENOENT);
 }
 
 static void show_input(void) {
