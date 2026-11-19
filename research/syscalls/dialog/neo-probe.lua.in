@@ -1,0 +1,97 @@
+local machine=manager.machine
+local cpu=machine.devices[':maincpu'];local m=cpu.spaces.program
+local code,data,stack=0x70000,0x72000,0x78000
+local cases={};local function add(slot,args,prep,check,tick)cases[#cases+1]={slot,args,prep,check,tick}end
+local function eq(a,b)assert(a==b,string.format('%x ~= %x',a,b))end
+local function put(a,s)for i=1,#s do m:write_u8(a+i-1,s:byte(i))end;m:write_u8(a+#s,0)end
+local dialog,region
+local counts={[5]=5,[6]=3,[7]=1,[8]=1,[9]=1,[11]=3,[12]=1,[13]=1,[14]=1,[15]=1,[16]=3,[17]=3,[18]=1,[19]=3,[20]=3,[21]=3}
+add(10000+0x433afc,{},nil,function()assert(m:read_u32(0x7e2e)~=0);eq(m:read_u32(0xf412),0)end)
+add(263,{0},function()for i=0,19 do m:write_u16(0x7e92+1504*i,0)end end,function()eq(cpu.state.D0.value,0)end)
+for layout=5,21 do
+ if counts[layout]then
+  add(263,{layout},nil,function()dialog=cpu.state.D0.value;assert(dialog~=0);region=dialog+4;eq(m:read_u16(dialog),counts[layout]);eq(m:read_u8(dialog+3),layout);print(string.format('layout %d pool=%x focus=%d regionflags=%x inputkind=%x',layout,dialog,m:read_u8(dialog+2),m:read_u8(region+0x10d),m:read_u8(region+0xdc)))end)
+  add(262,function()return{dialog}end,nil,function()eq(m:read_u16(dialog),0);eq(m:read_u8(dialog+2),5)end)
+ end
+end
+-- Current dialog, a single region. Firmware owns the pool; callers retain strings.
+add(263,{7},nil,function()dialog=cpu.state.D0.value;region=dialog+4 end)
+add(265,function()return{dialog,0}end,nil,function()eq(m:read_u32(0xf412),dialog);eq(m:read_u32(0xf416),region);eq(m:read_u8(0xf41a),0)end)
+for _,idx in ipairs({0})do for property=0,7 do
+ add(255,function()return{dialog,idx,property,3}end,function()m:write_u8(dialog+4+300*idx+0x10d,0)end,function()eq(m:read_u8(dialog+4+300*idx+0x10d),1<<(7-property))end)
+end end
+add(255,function()return{dialog,0,8,1}end,function()m:write_u8(region+0x10d,0xa5)end,function()eq(m:read_u8(region+0x10d),0xa5)end)
+-- Restore original flags for visible rendering; exercise each content setter.
+add(247,function()return{dialog,0,data+0x800,data+0x820,data+0x840,0,0x1234}end,function()m:write_u8(region+0x10d,0x90);put(data+0x800,'Title');put(data+0x820,'Footer');put(data+0x840,'one\rtwo\rthree')end,function()eq(m:read_u32(region+8),data+0x800);eq(m:read_u32(region+34),data+0x820);eq(m:read_u32(region+260),data+0x840);eq(m:read_u16(0x7e8c),0x1234)end)
+for _,p in ipairs({{248,8},{249,34},{250,260}})do
+ add(p[1],function()return{dialog,0,data+0x880}end,function()put(data+0x880,'new')end,function()eq(m:read_u32(region+p[2]),data+0x880);eq(m:read_u16(0x7e8c),0x37)end)
+end
+add(264,function()return{dialog,0,data+0x900}end,function()for i,v in ipairs({data+0x800,data+0x820,data+0x840,0})do m:write_u32(data+0x8fc+4*i,v)end end,function()eq(m:read_u32(region+8),data+0x800);eq(m:read_u32(region+34),data+0x820);eq(m:read_u32(region+260),data+0x840);eq(m:read_u16(0x7e8c),0)end)
+for style=1,7 do
+ add(252,function()return{dialog,0,style,1}end,nil,function()eq(m:read_u8(region+0x11e),style);eq(m:read_u8(region+0x11f),1);eq(m:read_u32(region+0x120),region+((style>=5 and style<=7)and 26 or 0))end)
+end
+add(253,function()return{dialog,0,2,0,3}end,nil,function()eq(m:read_u8(region+0x11e),2);eq(m:read_u32(region+0x120),region+52+26*3)end)
+add(254,function()return{dialog,0,1,1}end,nil,function()eq(m:read_u8(region+0x112),1);eq(m:read_u32(region+0x114),region+208)end)
+for _,v in ipairs({0,3,255})do
+ add(258,{v},nil,function()eq(m:read_u8(region+0x111),v)end)
+ add(257,{},nil,function()eq(cpu.state.D0.value&255,v)end)
+end
+add(258,{0},nil,function()end)
+add(260,{0x12},function()m:write_u8(region+0x44,0x80)end,function()eq(m:read_u8(region+0x44),0x92)end)
+-- Clear item attributes. Native routine chooses affected visible item span.
+add(259,{0x10},function()m:write_u8(region+0x44,0xff)end,function()eq(m:read_u8(region+0x110),0)end)
+local wrapBefore
+add(267,function()return{dialog,0,data+0x800}end,function()put(data+0x800,'first\rsecond');wrapBefore=m:read_u32(region+60)end,function()print('wrap line count '..(cpu.state.D0.value&65535));eq(cpu.state.D0.value&65535,1);eq(m:read_u32(region+60),wrapBefore)end)
+add(267,function()return{dialog,0,data+0xa00}end,function()put(data+0xa00,string.rep('wide ',50))end,function()assert((cpu.state.D0.value&65535)>1);eq(m:read_u32(region+60),wrapBefore)end)
+add(261,function()return{dialog,0}end,nil,function()end)
+add(268,{255},nil,function()end)
+add(268,{0},nil,function()end)
+add(256,{0},nil,function()end)
+add(270,{data+0x800},function()put(0x12c70,'stored network value');m:write_u8(data+0x7ff,0xa5)end,function()eq(m:read_u8(data+0x7ff),0xa5);eq(m:read_u8(data+0x800),115);eq(m:read_u8(data+0x814),0)end)
+for _,s in ipairs({'abc','/babc','a//b','/x','abc/'})do
+ add(269,{data+0x800,#s},function()put(data+0x800,s)end,function()local f=m:read_u32(m:read_u32(0x7e2e)+4);local sum=0;local i=1;while i<=#s do local c=s:byte(i);if c==47 then i=i+1;c=s:byte(i);if c~=47 then c=nil end end;if c then sum=sum+m:read_u8(f+c)end;i=i+1 end;eq(cpu.state.D0.value&65535,sum)end)
+end
+for _,slot in ipairs({0,1,8,9})do
+ add(277,{slot,data+0x900,0x1234,0x5678},function()for a=0x7e52,0x7e91 do m:write_u8(a,0)end end,function()if slot>=1 and slot<=8 then local a=0x7e52+8*(slot-1);eq(m:read_u16(a),0x34);eq(m:read_u16(a+2),0x78);eq(m:read_u32(a+4),data+0x900)else for a=0x7e52,0x7e91 do eq(m:read_u8(a),0)end end end)
+end
+-- Input is copied; editing and extraction use the active/default region.
+add(265,function()return{dialog,0}end,nil,function()end)
+add(255,function()return{dialog,0,1,1}end,nil,function()end)
+add(251,function()return{dialog,0,data+0x800}end,function()put(data+0x800,'Prompt:')end,function()
+ local e=m:read_u32(region+0xd8);eq(m:read_u16(e),8);eq(m:read_u8(e+85),8);eq(m:read_u8(e+4),80);m:write_u8(data+0x800,88)
+end)
+add(256,{0x61},nil,function()local e=m:read_u32(region+0xd8);eq(m:read_u8(e+12),97);eq(m:read_u8(e+85),9)end)
+add(261,function()return{dialog,0}end,nil,function()end)
+add(266,{0x12345678,data+0x900},function()m:write_u8(data+0x8ff,0xa5);m:write_u8(data+0x902,0xa5)end,function()eq(cpu.state.D0.value&255,0);eq(m:read_u8(data+0x900),97);eq(m:read_u8(data+0x901),0);eq(m:read_u8(data+0x8ff),0xa5);eq(m:read_u8(data+0x902),0xa5);machine.video:snapshot()end)
+for property=0,7 do
+ add(255,function()return{dialog,0,property,0x12345600}end,function()m:write_u8(region+0x10d,255)end,function()eq(m:read_u8(region+0x10d),255&(~(1<<(7-property))))end)
+end
+add(265,function()return{dialog,4}end,nil,function()eq(m:read_u32(0xf416),region)end)
+add(265,{0,0},nil,function()eq(m:read_u32(0xf416),region)end)
+add(262,{0},nil,function()end)
+add(247,{0,0,0,0,0,0,0},nil,function()end)
+add(269,{data+0x800,0},nil,function()eq(cpu.state.D0.value&65535,0)end)
+-- Verify all twenty pool entries are independently available and exhaustion
+-- returns NULL. Never invoke a freed object's active-context operations.
+add(262,function()return{dialog}end,nil,function()end)
+add(263,{7},function()for i=0,19 do m:write_u16(0x7e92+1504*i,0)end end,function()eq(cpu.state.D0.value,0x7e92)end)
+for i=1,19 do add(263,{7},nil,function()eq(cpu.state.D0.value,0x7e92+1504*i)end)end
+add(263,{7},nil,function()eq(cpu.state.D0.value,0)end)
+@TYPED_CASE@
+local index,frame,phase,failed=0,0,-1,false
+emu.register_frame_done(function()
+ if failed then return end;frame=frame+1;if frame<150 then return end
+ local ok,err=pcall(function()
+ if phase==-1 then
+ index=index+1;if index>#cases then print('PASS extended probe '..#cases..' cases');machine:exit();return end
+ phase=0;local p=cases[index];if p[3]then p[3]()end
+ local stop=code+2;if p[1]>10000 then m:write_u16(code,0x4ef9);m:write_u32(code+2,p[1]-10000);stop=code+6 else m:write_u16(code,0xa000+4*p[1])end
+ m:write_u16(stop,0x60fe);m:write_u32(stack,stop);for i,v in ipairs(type(p[2])=="function"and p[2]()or p[2])do m:write_u32(stack+4*i,v)end
+ cpu.state.D0.value=0xa5a5a5a5;cpu.state.SR.value=p[8]and 0x2000 or 0x2700;cpu.state.SP.value=p[7]and stack-12 or stack;cpu.state.PC.value=code
+ else
+ phase=phase+1;local p=cases[index];if p[5]then p[5](phase)end
+ if phase==(p[8]or 12)then local stop=code+(p[1]>10000 and 6 or 2);assert(cpu.state.PC.value==stop or cpu.state.PC.value==stop+2,string.format("busy PC=%x",cpu.state.PC.value));eq(cpu.state.SP.value,stack+4);p[4]();print('PASS slot '..p[1]..' case '..index);phase=-1 end
+ end
+ end)
+ if not ok then for i=0,80,4 do print(string.format('stack +%x %x',i,m:read_u32(cpu.state.SP.value+i)))end;print(string.format('regs PC=%x SP=%x A4=%x A5=%x',cpu.state.PC.value,cpu.state.SP.value,cpu.state.A4.value,cpu.state.A5.value));failed=true;print('FAIL extended case '..index..' '..tostring(err));machine:exit()end
+end)

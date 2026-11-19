@@ -1,4 +1,4 @@
-# AS3000 Manager finalizer and warm applet registration
+# AS3000 3.01 Manager finalizer and warm applet registration
 
 These addresses are for the AS3000 System 3.01 full ROM
 `os3krom.os3kos`, mapped at `0x004c0000` in MAME. Its SHA-256 is
@@ -18,7 +18,7 @@ These addresses are for the AS3000 System 3.01 full ROM
 The finalizer uses state created by the preceding install commands, including
 the staged applet header pointer at guest RAM `0x0452`. It is a branch of the
 Manager packet handler. None of the 256 pointers reachable through the
-AS3000 A-line handler directly targets the packet handler, finalizer, restart
+AS3000 3.01 A-line handler directly targets the packet handler, finalizer, restart
 selector, or warm startup entry. This check leaves open indirect call chains.
 
 ## What the existing clients do
@@ -28,8 +28,8 @@ sends `0x07` and waits for `0x48`. For a device initially in HID mode, the
 cleanup path sends `0x08` to return it to keyboard mode. The applet install
 path contains no file download and reupload sequence. The public
 [Manager transaction analysis](https://github.com/SamDelorean/betawise/blob/os3k/base-analysis/docs/os3k-manager-applet-installation-transaction.md)
-identifies the transaction in AS3000, NEO 2005, and NEO 2013 firmware. The
-file-preserving AS3000 transport path remains to be tested end to end in MAME.
+identifies the transaction in AS3000 3.01, NEO 3.01, and NEO 3.21 firmware. The
+file-preserving AS3000 3.01 transport path remains to be tested end to end in MAME.
 
 The branch review found no public syscall that registers an appended applet
 and reinitializes the directory. A244 (`AppletSendMessage`) requires a

@@ -1,0 +1,113 @@
+local machine=manager.machine
+local cpu=machine.devices[':maincpu'];local m=cpu.spaces.program
+local code,data,stack=0x70000,0x71000,0x78000
+local cases={};local function add(slot,args,prep,check,tick)cases[#cases+1]={slot,args,prep,check,tick}end
+local function eq(a,b)assert(a==b,string.format('%x ~= %x',a,b))end
+local function put(a,s)for i=1,#s do m:write_u8(a+i-1,s:byte(i))end;m:write_u8(a+#s,0)end
+local function ret(v)return function()eq(cpu.state.D0.value&255,v)end end
+for _,op in ipairs({0,1,2,9})do for _,old in ipairs({0,1,0xa4})do
+ add(283,{0x12340000|op},function()m:write_u8(0x42c,old)end,function()
+ eq(cpu.state.D0.value&255,old);eq(m:read_u8(0x42c),op==0 and 1 or op==1 and 0 or op==2 and (old~1)or old)
+ end)
+end end
+for _,op in ipairs({4,5,11,255})do add(283,{op},nil,ret(255))end
+for _,op in ipairs({6,7})do add(283,{op},function()m:write_u8(0x4350,0x5a)end,function()eq(cpu.state.D0.value&255,0x5a);eq(m:read_u8(0x4350),op==6 and 1 or 0)end)end
+for _,p in ipairs({{0,0},{9,9},{0,255},{199,0},{0,56}})do
+ add(283,{10},function()m:write_u8(0x424,p[1]);m:write_u8(0x425,p[2])end,ret(p[1]==p[2]and 1 or 0))
+end
+add(283,{3},function()
+ m:write_u8(0x42c,1);m:write_u8(0x435,0);for a=0x422,0x426 do m:write_u8(a,13)end;m:write_u32(0x428,0x11223344);m:write_u8(0x117ec,3)
+end,function()eq(cpu.state.D0.value&255,1);for a=0x422,0x426 do eq(m:read_u8(a),0)end;eq(m:read_u32(0x428),0);eq(m:read_u8(0x117ec),0)end)
+add(282,{3,data+0x800,0,data+0x900},function()m:write_u8(0x42c,0)end,ret(1))
+for _,p in ipairs({{200,0},{0,56},{255,55}})do add(282,{3,data+0x800,0,0},function()m:write_u8(0x42c,1);m:write_u8(0x424,p[1]);m:write_u8(0x425,p[2])end,ret(2))end
+for _,idx in ipairs({0,1,199})do for _,flags in ipairs({0,1,2,3,0xfe})do
+ add(282,{0x12345600|flags,data+0x800,0x12345678,0x87654320},function()
+ m:write_u8(0x42c,1);m:write_u8(0x423,idx);m:write_u8(0x424,255);m:write_u8(0x425,255);m:write_u8(0x117ec,1);m:write_u8(0x434,1);put(data+0x800,'hello')
+ end,function()
+ eq(cpu.state.D0.value&255,0);local a=0x10c1c+14*idx;eq(m:read_u8(a),idx);eq(m:read_u8(a+1),flags);eq(m:read_u32(a+2),data+0x800);eq(m:read_u32(a+6),0x12345678);eq(m:read_u32(a+10),0x87654320)
+ eq(m:read_u8(0x423),(idx+1)%200);eq(m:read_u8(0x424),0);eq(m:read_u8(0x434),0)
+ end)
+end end
+-- Invoke original queue processor. Overlength transport command is rejected
+-- by its native length guard, so these tests do not need a speech peripheral.
+local callback=data+0xa00
+local function cb()
+ -- Two 32-bit arguments, inherited A5, no applet globals.
+ local bytes={0x23,0xef,0,4,0,7,0x1b,0,0x23,0xef,0,8,0,7,0x1b,4,0x23,0xcd,0,7,0x1b,8,0x4e,0x75}
+ for i,v in ipairs(bytes)do m:write_u8(callback+i-1,v)end
+ for a=data+0xb00,data+0xb0b do m:write_u8(a,0)end
+ cpu.state.A5.value=0x12345678
+end
+for _,flags in ipairs({0,1,2,3,4})do
+ add(10000+0x434ca6,{4,0},function()
+ cb();put(data+0x800,string.rep('x',40));m:write_u8(0x117ec,1);m:write_u8(0x422,0);m:write_u8(0x424,1);m:write_u8(0x425,0)
+ local a=0x10c1c;m:write_u8(a,7);m:write_u8(a+1,flags);m:write_u32(a+2,data+0x800);m:write_u32(a+6,callback);m:write_u32(a+10,0x87654320)
+ end,function()eq(m:read_u8(0x117ec),3);eq(m:read_u32(data+0xb00),flags&1~=0 and 1 or 0);if flags&1~=0 then eq(m:read_u32(data+0xb04),0x87654320);eq(m:read_u32(data+0xb08),0x12345678)end end)
+ add(10000+0x434ca6,{4,0},cb,function()eq(m:read_u8(0x117ec),0);eq(m:read_u32(data+0xb00),flags&2~=0 and 2 or 0);if flags&2~=0 then eq(m:read_u32(data+0xb04),0x87654320)end end)
+end
+for _,v in ipairs({0,0x1234,0xff80,0xffff})do add(284,{},function()m:write_u16(0x43e,v)end,function()eq(cpu.state.D0.value&65535,v);eq(m:read_u16(0x43e),v)end)end
+-- Selected receive-handler continuation, not a real SPI transaction.
+for _,v in ipairs({0,0x12,0xff})do
+ add(10000+0x43f5d4,{},function()
+  cpu.state.A4.value=0x134cc;m:write_u8(0x134d8,v);m:write_u8(0x134d2,2);m:write_u32(0x134cc,0)
+  -- Continuation restores this function's saved registers before RTS.
+  m:write_u32(stack-12,0);m:write_u32(stack-8,0);m:write_u32(stack-4,0)
+ end,function()eq(m:read_u16(0x43e),0xff00|v)end)
+ cases[#cases][7]=true
+ add(284,{},nil,function()eq(cpu.state.D0.value&65535,0xff00|v)end)
+end
+-- Entire native wireless receiver with synthetic GPIO/SPI samples. ROM code
+-- and callbacks remain unchanged; this is a protocol fixture, not a radio link.
+local taps={}
+for _,v in ipairs({0x12,0x80,0xff})do
+ add(10000+0x43f542,{},function()
+  local packet={0xa5,2,0,9,0x80,1,0,v};local sum=0;for _,b in ipairs(packet)do sum=sum+b end;packet[9]=(-sum)&255
+  local pos=0
+  taps[#taps+1]=m:install_read_tap(0xfffff428,0xfffff429,'wireless-ready',function(off,val,mask)
+   local pc=cpu.state.PC.value;return pc>=0x43ebb8 and pc<0x43ebf8 and (val|4)or(val&(~4))
+  end)
+  taps[#taps+1]=m:install_read_tap(0xfffff408,0xfffff409,'wireless-ack',function(off,val,mask)return val&(~0x40)end)
+  taps[#taps+1]=m:install_read_tap(0xfffff706,0xfffff707,'spi-ready',function(off,val,mask)return val|1 end)
+  taps[#taps+1]=m:install_read_tap(0xfffff704,0xfffff705,'spi-idle',function(off,val,mask)return val&(~0x100)end)
+  taps[#taps+1]=m:install_read_tap(0xfffff700,0xfffff701,'spi-packet',function(off,val,mask)
+   local caller=m:read_u32(cpu.state.SP.value+4)
+   if caller==0x43edc6 or caller==0x43ee08 then pos=pos+1;return packet[pos]or 0 end
+   return 0
+  end)
+  m:write_u8(0x134ca,2);m:write_u32(0x134cc,0);m:write_u8(0x134d7,0);m:write_u16(0x43e,0x1234)
+ end,function()
+  for _,t in ipairs(taps)do t:remove()end;taps={}
+  eq(m:read_u16(0x43e),0xff00|v);eq(m:read_u8(0x134d8),v)
+ end)
+ add(284,{},nil,function()eq(cpu.state.D0.value&65535,0xff00|v)end)
+end
+add(10000+0x43f542,{},function()
+ m:write_u8(0x134ca,2);m:write_u16(0x43e,0xff42)
+ taps[#taps+1]=m:install_read_tap(0xfffff428,0xfffff429,'no-radio-data',function(off,val,mask)return val|4 end)
+end,function()for _,t in ipairs(taps)do t:remove()end;taps={};eq(m:read_u16(0x43e),0xff42)end)
+-- Original localized speech-menu labels.
+for _,id in ipairs({0x122,0x123,0x124,0x125,0x126,0x137})do
+ add(10000+0x424212,{id},nil,function()local p=cpu.state.D0.value;local s='';for i=0,120 do local b=m:read_u8(p+i);if b==0 then break end;s=s..string.char(b)end;print(string.format('text %x: %s',id,s))end)
+end
+add(283,{8},function()m:write_u8(0x42c,1);m:write_u8(0x435,0)end,ret(1),function(phase)
+ local port=machine.ioport.ports[':ROW4'];for _,f in pairs(port.fields)do if f.mask==0x80 then if phase==20 then f:set_value(1)elseif phase==26 then f:clear_value()end end end
+end)
+cases[#cases][8]=100
+@TYPED_CASE@
+local index,frame,phase,failed=0,0,-1,false
+emu.register_frame_done(function()
+ if failed then return end;frame=frame+1;if frame<150 then return end
+ local ok,err=pcall(function()
+ if phase==-1 then
+ index=index+1;if index>#cases then print('PASS extended probe '..#cases..' cases');machine:exit();return end
+ phase=0;local p=cases[index];if p[3]then p[3]()end
+ local stop=code+2;if p[1]>10000 then m:write_u16(code,0x4ef9);m:write_u32(code+2,p[1]-10000);stop=code+6 else m:write_u16(code,0xa000+4*p[1])end
+ m:write_u16(stop,0x60fe);m:write_u32(stack,stop);for i,v in ipairs(p[2])do m:write_u32(stack+4*i,v)end
+ cpu.state.D0.value=0xa5a5a5a5;cpu.state.SR.value=p[8]and 0x2000 or 0x2700;cpu.state.SP.value=p[7]and stack-12 or stack;cpu.state.PC.value=code
+ else
+ phase=phase+1;local p=cases[index];if p[5]then p[5](phase)end
+ if phase==(p[8]or 4)then local stop=code+(p[1]>10000 and 6 or 2);assert(cpu.state.PC.value==stop or cpu.state.PC.value==stop+2,string.format("busy PC=%x",cpu.state.PC.value));eq(cpu.state.SP.value,stack+4);p[4]();print('PASS slot '..p[1]..' case '..index);phase=-1 end
+ end
+ end)
+ if not ok then failed=true;print('FAIL extended case '..index..' '..tostring(err));machine:exit()end
+end)

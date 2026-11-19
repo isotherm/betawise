@@ -1,0 +1,140 @@
+local machine=manager.machine
+local cpu=machine.devices[':maincpu'];local m=cpu.spaces.program
+local neo=@NEO@
+local code,data,stack=@CODE@,@DATA@,@STACK@
+local first=@FIRST@
+local layout=neo and 0x5d36 or 0x4354
+local accent=layout+1
+local minutes=neo and 0x7dbe or 0x43ce
+local events={};local function at(f,fn)assert(not events[f]);events[f]=fn end
+local function eq(a,b)assert(a==b,string.format('%x ~= %x',a,b))end
+local function invoke(addr)
+ m:write_u16(data+0x200,0x60fe);m:write_u32(stack,data+0x200)
+ cpu.state.SR.value=0x2700;cpu.state.SP.value=stack;cpu.state.A5.value=@_GLOBAL_OFFSET_TABLE_@;cpu.state.PC.value=addr
+end
+local function done()
+ local pc=cpu.state.PC.value;assert(pc==data+0x200 or pc==data+0x202,string.format('busy %x',pc));eq(cpu.state.SP.value,stack+4)
+end
+local function str(a)local t={};for i=0,100 do local b=m:read_u8(a+i);if b==0 then return table.concat(t)end;t[#t+1]=string.char(b)end;error('unterminated')end
+local function rtc_seconds(value)return ((value>>24)&31)*3600+((value>>16)&63)*60+(value&63)end
+at(first,function()
+ local bytes={@BYTES@};for i,v in ipairs(bytes)do m:write_u8(code+i-1,v)end
+ m:write_u8(accent,0);if neo then m:write_u32(0x35e2,1);m:write_u32(0xe0e,data+0x800);m:write_u16(data+0x814,0xbeef)end
+ invoke(@character_probe@)
+end)
+at(first+4,function()
+ done();eq(m:read_u32(data),0x70617373)
+ local upper={0x8e,0x80,0x81,0x82,0x87,0x88,0x89,0x90,0x91,0x92,0x93,0x98,0x99,0xa6,0xc9,0xcb,0xce,0xc4,0x83,2,6,7}
+ local lower={3,0x84,0x85,0x86,0x8b,0x8c,0x8d,0x94,0x95,0x96,0x97,0x9a,0x9e,0xa7,0xc0,0xcd,0xcf,8,1,0x8e,0x9d,0x9c}
+ if neo then upper[14]=0xa7 end
+ local bitmap={0x2100,0xf002,0xffff,0xffff,0xffff,0xffff,0xffff,0x7fff,0x8009,0x8200,0x4bbe,0xb873,0xffff,0x9f7e,0xffff,0x9ffe}
+ for i=0,255 do
+  local want=i;if i>=65 and i<=90 then want=i+32 else for j,v in ipairs(upper)do if i==v then want=lower[j];break end end end
+  eq(m:read_u8(data+0x400+i),want);eq(m:read_u8(data+0x500+i),(bitmap[(i>>4)+1]>>(i&15))&1)
+ end
+ local expected={0x61,0x41,0x41,0x41,0,0,0,0,0xe1,0,0xc1,0,0xb4,0,0xb4}
+ for i,v in ipairs(expected)do eq(m:read_u8(data+0x2ff+i),v)end
+ print('PASS @NAME@ 256 lowercase bytes, 256 classification bytes, key modifiers and stateful accents')
+end)
+local names={'Dvorak','Left','Right','QWERTY'}
+for l=0,3 do
+ at(first+8+8*l,function()m:write_u8(layout,l);m:write_u8(data+0x100,0xa5);m:write_u8(data+0x102,0xa5);invoke(@layout_probe@)end)
+ at(first+12+8*l,function()
+  done();eq(m:read_u32(data),1);eq(m:read_u32(data+4),1);eq(m:read_u8(data+0x101),l)
+  eq(m:read_u8(data+0x100),0xa5);eq(m:read_u8(data+0x102),0xa5)
+  assert(str(data+0x120)=='Layout: '..names[l+1],str(data+0x120))
+  for i=128,255 do eq(m:read_u8(data+0x600+i),255)end
+  local base=neo and 0x44c37b or 0x4ea49c
+  local map=neo and 0x44c3fb or 0x4ea51c
+  for i=0,127 do
+   local k=m:read_u8(base+i);local expected=k
+   if l~=3 then expected=m:read_u8(map+3*k+l)end
+   eq(m:read_u8(data+0x600+i),expected)
+  end
+  print('PASS @NAME@ layout '..names[l+1]..': typed byte output, description, matrix map and holes')
+ end)
+end
+at(first+42,function()m:write_u8(minutes,4);m:write_u8(minutes+1,17);m:write_u8(minutes+3,1);m:write_u8(minutes+4,1);invoke(@power_probe@)end)
+at(first+46,function()
+ done();local expected={1,0,1,1,0,4,0,59,0xffffffff,59,0xffffffff,59,0,4,17,0x70617373}
+ for i,v in ipairs(expected)do eq(m:read_u32(data+4*(i-1)),v)end
+ eq(m:read_u8(minutes),17);eq(m:read_u8(minutes+1),17);eq(m:read_u16(0xfffffb10),0)
+ print('PASS @NAME@ all seven power entries: flags, timeout bounds, saved preference and signed errors')
+ invoke(@power_enable_probe@)
+end)
+local alarm
+at(first+50,function()
+ done();eq(m:read_u32(data),1);eq(m:read_u16(0xfffffb10),4)
+ alarm=m:read_u32(0xfffffb04)
+ local delta=(rtc_seconds(alarm)-rtc_seconds(m:read_u32(0xfffffb00)))%86400
+ assert(delta>=1019 and delta<=1020,'alarm delta '..delta)
+ print('PASS @NAME@ automatic power-off schedules 17 * 60 seconds')
+ invoke(@power_minutes_probe@)
+end)
+at(first+54,function()
+ done();eq(m:read_u8(minutes),59);eq(m:read_u32(0xfffffb04),alarm)
+ invoke(@power_enable_probe@)
+end)
+at(first+58,function()
+ done();eq(m:read_u32(0xfffffb04),alarm)
+ print('PASS @NAME@ timeout-only change and same-value enable do not rearm RTC alarm')
+ print('PASS @NAME@ localization/power noninteractive probes')
+end)
+-- Native dialog input is posted after the selector has drained old events.
+local function key(row,mask)
+ local tag=neo and (':ROW'..row)or(':COL.'..row)
+ for _,field in pairs(machine.ioport.ports[tag].fields)do if field.mask==mask then return field end end
+ error('missing key '..tag)
+end
+local selections={3,0,2,1}
+local digit_rows={12,11,10,13}
+for choice=1,4 do
+ local start=first+62+(choice-1)*64
+ at(start,function()m:write_u8(layout,3);m:write_u32(data+8,0);invoke(@layout_prompt_probe@);cpu.state.SR.value=0x2000 end)
+ at(start+8,function()key(digit_rows[choice],0x20):set_value(1)end)
+ at(start+14,function()key(digit_rows[choice],0x20):clear_value()end)
+ at(start+26,function()key(9,0x40):set_value(1)end)
+ at(start+32,function()key(9,0x40):clear_value()end)
+ at(start+50,function()
+  done();eq(m:read_u32(data),1);eq(m:read_u8(layout),selections[choice]);eq(m:read_u8(data+0x101),selections[choice])
+  assert(str(data+0x120)=='Layout: '..names[selections[choice]+1],str(data+0x120))
+  print('PASS @NAME@ native layout selection '..choice)
+ end)
+end
+at(first+318,function()m:write_u8(layout,3);invoke(@layout_prompt_probe@);cpu.state.SR.value=0x2000 end)
+at(first+326,function()key(4,0x80):set_value(1)end)
+at(first+332,function()key(4,0x80):clear_value()end)
+at(first+353,function()done();eq(m:read_u8(layout),3);eq(m:read_u32(data),1);print('PASS @NAME@ native layout Escape retains setting')end)
+at(first+363,function()
+ m:write_u8(minutes,17);m:write_u8(minutes+1,17)
+ invoke(neo and 0x426be4 or 0x4d1754);cpu.state.SR.value=0x2000
+end)
+at(first+371,function()key(6,0x80):set_value(1)end)
+at(first+377,function()key(6,0x80):clear_value()end)
+at(first+389,function()key(9,0x40):set_value(1)end)
+at(first+395,function()key(9,0x40):clear_value()end)
+at(first+415,function()
+ done();eq(m:read_u8(minutes),18);eq(m:read_u8(minutes+1),18)
+ print('PASS @NAME@ native timeout dialog updates active and saved preference')
+ print('PASS @NAME@ localization/power native UI probes')
+end)
+for mode=0,2 do
+ local start=first+419+mode*8
+ at(start,function()
+  m:write_u8(accent,0)
+  if neo then m:write_u32(0x35e2,mode==0 and 0xffffffff or 1);m:write_u16(data+0x814,mode==1 and 0xa002 or 0xbeef)end
+  invoke(@accent_context_probe@)
+ end)
+ at(start+4,function()
+  done();eq(m:read_u8(data+0x330),0);eq(m:read_u8(data+0x331),(neo and mode<2)and 0x61 or 0xe1)
+  print('PASS @NAME@ accent applet-context policy '..mode)
+  if mode==2 then print('PASS ABI localization/power probe');machine:exit()end
+ end)
+end
+if not neo then
+ at(60,function()machine.natkeyboard:post('y')end)
+ at(200,function()machine.natkeyboard:post('\r')end)
+ at(450,function()machine.natkeyboard:post('\r')end)
+end
+local frame=0;local failed=false
+emu.register_frame_done(function()frame=frame+1;if not failed and events[frame]then local ok,err=pcall(events[frame]);if not ok then failed=true;print('LUA ERROR',err);machine:exit()end end end)

@@ -1,0 +1,78 @@
+local machine=manager.machine
+local cpu=machine.devices[':maincpu'];local m=cpu.spaces.program
+local code,data,stack=0x70000,0x72000,0x78000
+local cases={};local function add(slot,args,prep,check,tick)cases[#cases+1]={slot,args,prep,check,tick}end
+local function eq(a,b)assert(a==b,string.format('%x ~= %x',a,b))end
+local function put(a,s)for i=1,#s do m:write_u8(a+i-1,s:byte(i))end;m:write_u8(a+#s,0)end
+local function str(a)local s='';for i=0,255 do local b=m:read_u8(a+i);if b==0 then return s end;s=s..string.char(b)end;error('unterminated')end
+local result=data+0xf00
+local function init()
+ cpu.state.A1.value=result;for i=-1,6 do m:write_u8(result+i,0xa5)end
+end
+local function checkstatus(v)
+ eq(m:read_u8(result),v);eq(m:read_u8(result-1),0xa5);eq(m:read_u8(result+6),0xa5);eq(cpu.state.A0.value,result+4)
+end
+local doc='<root a="1"><child name="Joe">A&amp;B</child><child name="Sue">Hi</child></root>'
+local function parseargs(s)return{data+0x800,data+0x800+#s,data,10,data+0xc00}end
+local records
+m:write_u16(data+0xc00,0x7001);m:write_u16(data+0xc02,0x4e75)
+add(271,parseargs(doc),function()init();put(data+0x800,doc);for a=data,data+0x100 do m:write_u8(a,0)end end,function()
+ print('parse status='..m:read_u8(result)..' count='..m:read_u8(0x13f5f)..' offset='..m:read_u32(result+2));checkstatus(0)
+ eq(m:read_u8(0x13f5f),3);records={};for i=0,m:read_u8(0x13f5f)-1 do local a=data+16*i;local r={};for j=0,3 do r[j+1]=m:read_u32(a+4*j)end;records[i+1]=r;print(string.format('element %d %x %x %x %x',i,table.unpack(r)))end
+end)
+local expected={['']=5,plain=2,['<r/>']=0,['<r></r>']=0,['<r><c></c></r>']=0,['<r></x>']=9,['<r>']=5,['<r a="x"></r>']=0,['<r a=x></r>']=2,['<a></a><b></b>']=11}
+for s,want in pairs(expected)do
+ add(271,parseargs(s),function()init();put(data+0x800,s)end,function()checkstatus(want);print('document '..s..' status='..m:read_u8(result)..' count='..m:read_u8(0x13f5f)..' offset='..m:read_u32(result+2))end)
+end
+-- Restore the principal parsed records.
+add(271,parseargs(doc),function()init();put(data+0x800,doc)end,function()checkstatus(0)end)
+for _,name in ipairs({'a','missing'})do
+ add(272,{data,data+0x900,data+0xa00,18,data+0xb00},function()init();put(data+0x900,name);put(data+0xa00,'unchanged');m:write_u16(data+0xb00,0xa5a5)end,function()checkstatus(0);eq(m:read_u16(data+0xb00),name=='a'and 1 or 0);assert(str(data+0xa00)==(name=='a'and '1'or'unchanged'));print('attr '..name..' status='..m:read_u8(result)..' out='..str(data+0xa00)..' len='..m:read_u16(data+0xb00))end)
+end
+for _,capacity in ipairs({2,4,18})do
+ add(273,{data+16,data+0xa00,capacity,data+0xb00},init,function()checkstatus(capacity==2 and 13 or 0);assert(str(data+0xa00)==(capacity==2 and 'A'or'A&B'));eq(m:read_u16(data+0xb00),capacity==2 and 1 or 3);print('text cap='..capacity..' status='..m:read_u8(result)..' out='..str(data+0xa00)..' len='..m:read_u16(data+0xb00))end)
+end
+for _,path in ipairs({'child','/root/child','/child','root/child','/root','missing'})do
+ add(274,{data,data+0x900,data+0x200,4,data+0xb00},function()init();put(data+0x900,path)end,function()checkstatus(0);eq(m:read_u8(data+0xb00),path=='/child'and 2 or 0);print('path '..path..' status='..m:read_u8(result)..' count='..m:read_u8(data+0xb00))end)
+end
+add(275,{data,data+0x900,data+0x920,data+0xa00,99,data+0xb00},function()init();put(data+0x900,'/child');put(data+0x920,'name')end,function()checkstatus(0);assert(str(data+0xa00)=='Joe');eq(m:read_u16(data+0xb00),3);print('child attribute status='..m:read_u8(result)..' out='..str(data+0xa00)..' len='..m:read_u16(data+0xb00))end)
+add(276,{data,data+0x900,data+0xa00,18,data+0xb00},function()init();put(data+0x900,'/child')end,function()checkstatus(0);assert(str(data+0xa00)=='A&B');eq(m:read_u16(data+0xb00),3);print('child text status='..m:read_u8(result)..' out='..str(data+0xa00)..' len='..m:read_u16(data+0xb00))end)
+-- Empty attribute-span behavior differs between the two extractors.
+for _,slot in ipairs({272,273})do
+ add(slot,slot==272 and {data+0x400,data+0x900,data+0xa00,18,data+0xb00}or{data+0x400,data+0xa00,18,data+0xb00},function()
+ init();m:write_u32(data+0x400,data+0x800);m:write_u32(data+0x404,data+0x800);m:write_u32(data+0x408,data+0x800);m:write_u32(data+0x40c,data+0x803);put(data+0x800,'abc');put(data+0xa00,'unchanged');m:write_u16(data+0xb00,0x1234)
+ end,function()checkstatus(12);eq(m:read_u16(data+0xb00),slot==272 and 0x1234 or 0);assert(str(data+0xa00)==(slot==272 and 'unchanged'or''))end)
+end
+local entitycases={{'&amp;&lt;&gt;&apos;&quot;','&<>\'"',0},{'&#65;&#x41;','AA',0},{'&bogus;','',2},{'&#256;','',2}}
+for _,p in ipairs(entitycases)do
+ local text='<r a="0">'..p[1]..'</r>'
+ add(271,parseargs(text),function()init();put(data+0x800,text)end,function()checkstatus(p[3])end)
+ if p[3]==0 then add(273,{data,data+0xa00,64,data+0xb00},init,function()checkstatus(0);assert(str(data+0xa00)==p[2]);eq(m:read_u16(data+0xb00),#p[2])end)end
+end
+local roots='<r a="0"><c a="1"/><c a="2"/></r>'
+for _,capacity in ipairs({1,2,4})do
+ local args=parseargs(roots);args[4]=capacity
+ add(271,args,function()init();put(data+0x800,roots)end,function()checkstatus(capacity<3 and 8 or 0);eq(m:read_u8(0x13f5f),math.min(capacity,3))end)
+end
+add(271,{data+0x800,data+0x800+7,data,4,0},function()init();put(data+0x800,'<r></r>')end,function()checkstatus(0);eq(m:read_u8(0x13f5f),0)end)
+local attrdoc='<r a="A&amp;B"></r>'
+add(271,parseargs(attrdoc),function()init();put(data+0x800,attrdoc)end,function()checkstatus(0)end)
+add(272,{data,data+0x900,data+0xa00,18,data+0xb00},function()init();put(data+0x900,'a');put(data+0xa00,'untouched')end,function()checkstatus(0);assert(str(data+0xa00)=='A&B');eq(m:read_u16(data+0xb00),3)end)
+@TYPED_CASE@
+local index,frame,phase,failed=0,0,-1,false
+emu.register_frame_done(function()
+ if failed then return end;frame=frame+1;if frame<150 then return end
+ local ok,err=pcall(function()
+ if phase==-1 then
+ index=index+1;if index>#cases then print('PASS extended probe '..#cases..' cases');machine:exit();return end
+ phase=0;local p=cases[index];if p[3]then p[3]()end
+ local stop=code+2;if p[1]>10000 then m:write_u16(code,0x4ef9);m:write_u32(code+2,p[1]-10000);stop=code+6 else m:write_u16(code,0xa000+4*p[1])end
+ m:write_u16(stop,0x60fe);m:write_u32(stack,stop);for i,v in ipairs(p[2])do m:write_u32(stack+4*i,v)end
+ cpu.state.D0.value=0xa5a5a5a5;cpu.state.SR.value=p[8]and 0x2000 or 0x2700;cpu.state.SP.value=p[7]and stack-12 or stack;cpu.state.PC.value=code
+ else
+ phase=phase+1;local p=cases[index];if p[5]then p[5](phase)end
+ if phase==(p[8]or 4)then local stop=code+(p[1]>10000 and 6 or 2);assert(cpu.state.PC.value==stop or cpu.state.PC.value==stop+2,string.format("busy PC=%x",cpu.state.PC.value));eq(cpu.state.SP.value,stack+4);p[4]();print('PASS slot '..p[1]..' case '..index);phase=-1 end
+ end
+ end)
+ if not ok then failed=true;print('FAIL extended case '..index..' '..tostring(err));machine:exit()end
+end)

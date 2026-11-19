@@ -1,0 +1,168 @@
+local machine=manager.machine;local cpu=machine.devices[':maincpu'];local m=cpu.spaces.program
+local neo=@NEO@;local code,data,stack=@CODE@,@DATA@,@STACK@;local first=@FIRST@
+local base=neo and 0x7dd4 or 0x43e4
+local speed=neo and 0x4291 or 0x41ff
+local events={};local function at(f,fn)assert(not events[f],'duplicate frame');events[f]=fn end
+local function eq(a,b)assert(a==b,string.format('%x ~= %x',a,b))end
+local function put(a,s)for i=1,#s do m:write_u8(a+i-1,s:byte(i))end;m:write_u8(a+#s,0)end
+local function invoke(addr,interrupts)
+ m:write_u32(data,0);m:write_u16(data+0x200,0x60fe);m:write_u32(stack,data+0x200)
+ cpu.state.SR.value=interrupts and 0x2000 or 0x2700;cpu.state.SP.value=stack;cpu.state.A5.value=@_GLOBAL_OFFSET_TABLE_@;cpu.state.PC.value=addr
+end
+local function done()
+ local pc=cpu.state.PC.value;assert(pc==data+0x200 or pc==data+0x202,string.format('busy %x',pc));eq(cpu.state.SP.value,stack+4)
+end
+local sample_reads=0;local sample_target=neo and 2600 or 700
+local sample_number=0;local unstable=false;local chemistry=1;local flash_valid=false
+local adc_tap,type_tap,flash_tap
+local lcd_before
+local function taps()
+ local addr=neo and 0xfffff448 or 0xfffff430
+ local poll=neo and 0x42729c or 0x4d1e86
+  adc_tap=m:install_read_tap(addr,addr+1,'battery-transition',function(off,v,mask)
+  local pc=cpu.state.PC.value
+  if pc>=poll and pc<=poll+6 then
+   if sample_reads==0 then sample_number=sample_number+1 end
+   sample_reads=sample_reads+1
+   local target=sample_target+((unstable and sample_number==8)and 300 or 0)
+   local bit=neo and 0x20 or 0x10
+   local ready=sample_reads>target;if ready then sample_reads=0 end
+   return (v&(~bit))|(ready and bit or 0)
+  end
+ end)
+ if not neo then type_tap=m:install_read_tap(0xfffff428,0xfffff429,'battery-type',function(off,v,mask)return (v&0xfffe)|chemistry end)end
+ flash_tap=m:install_read_tap(0x4003f0,0x400413,'battery-calibration-read',function(off,v,mask)
+  if not flash_valid then return end
+  local function byte(a)
+   if a>=0x4003f0 and a<0x4003f4 then return (0x12345678>>(8*(0x4003f3-a)))&255 end
+   if a>=0x400400 and a<0x400413 then return ((neo and 'OS 3KNeo Small ROM'or 'OS 3000 Small ROM ')..string.char(0)):byte(a-0x400400+1)or 0 end
+   return nil
+  end
+  local hi,lo=byte(off),byte(off+1)
+  return ((hi or (v>>8))<<8)|(lo or (v&255))
+ end)
+end
+at(first-1,taps)
+at(first,function()
+ local bytes={@BYTES@};for i,v in ipairs(bytes)do m:write_u8(code+i-1,v)end
+ put(data+0x800,'Alpha');put(data+0x820,'Beta123')
+ invoke(@dialog_probe@)
+end)
+at(first+4,function()
+ done();for i,v in ipairs({0,0,data+0x800,3,data+0x820,7,0x70617373})do eq(m:read_u32(data+4*(i-1)),v)end
+ print('PASS @NAME@ dialog item pointer bridge, retained pointer and explicit lengths')
+ m:write_u8(speed-1,2);m:write_u8(speed,3);invoke(@speed_probe@)
+end)
+at(first+8,function()
+ done();local expected={3,0,1,0,2,0,3,0,4,0xffffffff,4,0xffffffff,4,neo and 0 or 0xffffffff,4,0x70617373}
+ for i,v in ipairs(expected)do eq(m:read_u32(data+4*(i-1)),v)end
+ eq(m:read_u8(speed-1),neo and 4 or 2)
+ print('PASS @NAME@ Send speed values, invalid statuses, Neo special default request')
+end)
+local samples=neo and {0,2300,2340,2500,2755,2900,3500}or{0,600,644,700,780,900,1100}
+local function percent(kind,x)
+ if kind>1 then return 0 end
+ local a=neo and(kind==0 and 0x44c6c6 or 0x44c642)or(kind==0 and 0x4ea7f0 or 0x4ea760)
+ if x<m:read_u32(a)then return 0 end
+ local i=0
+ while m:read_u32(a+12*i+4)~=0 do
+  if m:read_u32(a+12*i)<=x and m:read_u32(a+12*(i+1))>x then break end;i=i+1
+ end
+ local k=m:read_u32(a+12*i+4);if k==0 then return 100 end
+ return ((x*k+m:read_u32(a+12*i+8))&0xffffffff)>>(neo and 16 or 10)
+end
+local case=0
+for _,kind in ipairs({0,1,0xffffffff})do for _,sample in ipairs(samples)do
+ local start=first+12+case*4;case=case+1
+ at(start,function()
+  flash_valid=true;m:write_u8(base-1,neo and 16 or 5);m:write_u32(base,kind)
+  m:write_u32(base+4,600);m:write_u32(base+8,777);m:write_u32(base+12,sample)
+  for i=0,7 do m:write_u16(base+0x14+2*i,0xa100+i)end
+  invoke(@battery_probe@)
+ end)
+ at(start+2,function()
+  done();eq(m:read_u32(data),neo and 16 or 5);eq(m:read_u32(data+4),kind)
+  assert(m:read_u32(data+8)==percent(kind,sample),'percentage '..kind..'/'..sample..' got '..m:read_u32(data+8)..' expected '..percent(kind,sample))
+  local mv=sample==0 and 0 or math.floor((neo and 7881064 or 2322281)/sample)+(neo and 997 or 887)
+  eq(m:read_u32(data+12),mv)
+  local fields={0xa107,600,777,sample,0xa100,0xa101,0xa102,0xa103,0xa104,0xa105,0xa106}
+  for i,v in ipairs(fields)do eq(m:read_u32(data+12+4*i),v)end
+  for i=15,17 do eq(m:read_u32(data+4*i),0)end
+  eq(m:read_u32(data+72),0x12345678);eq(m:read_u32(data+76),0x70617373)
+  print('PASS @NAME@ battery cached type/sample '..string.format('%x/%d',kind,sample))
+ end)
+end end
+local next=first+12+case*4
+at(next,function()
+ m:write_u32(base,1);m:write_u32(base+4,600);m:write_u16(base+0x1e,5);m:write_u16(base+0x22,1)
+ sample_number=0;unstable=false;invoke(@refresh_probe@)
+end)
+at(next+4,function()
+ done();eq(m:read_u32(data),sample_target);eq(m:read_u32(data+4),math.floor(sample_target*(neo and 2096 or 600)/600));eq(m:read_u32(data+8),1)
+ eq(m:read_u16(base+0x1e),5);eq(m:read_u16(base+0x22),1)
+ print('PASS @NAME@ controlled GPIO measurement, calibration normalization and state restoration')
+ sample_number=0;invoke(@calibrate_probe@)
+end)
+at(next+84,function()
+ done();eq(m:read_u32(data),0);eq(m:read_u32(data+4),sample_target)
+ print('PASS @NAME@ stable 16-sample factory calibration updates RAM divisor; flash persistence not certified')
+ m:write_u32(base+4,600);sample_number=0;unstable=true;invoke(@calibrate_probe@)
+end)
+at(next+164,function()
+ done();eq(m:read_u32(data),1);eq(m:read_u32(data+4),600);unstable=false
+ print('PASS @NAME@ unstable calibration rejected without changing divisor')
+ m:write_u8(base-1,0);m:write_u32(base+8,1234);m:write_u32(base+12,5678);invoke(@refresh_probe@)
+end)
+at(next+168,function()
+ done();eq(m:read_u32(data),1234);eq(m:read_u32(data+4),5678)
+ print('PASS @NAME@ revision zero skips hardware measurement')
+ m:write_u8(base-1,neo and 16 or 5);m:write_u32(base+4,neo and 2096 or 600);m:write_u32(base,1);sample_target=neo and 2600 or 700
+ m:write_u16(base+0x22,0)
+ if neo then lcd_before=emu.item(machine.devices[':lcd1'].items['0/m_ddram']):read_block(0,1188)end
+ invoke(@display_probe@,true)
+end)
+at(next+188,function()
+ if neo then
+  local now=emu.item(machine.devices[':lcd1'].items['0/m_ddram']):read_block(0,1188)
+  assert(now~=lcd_before,'battery bitmap did not change LCD RAM')
+ else
+  local d=emu.item(machine.devices[':ks0066_0'].items['0/m_ddram'])
+  for i=0,3 do eq(d:read(0x24+i),4+i)end
+  local cg=emu.item(machine.devices[':ks0066_0'].items['0/m_cgram'])
+  assert(cg:read_block(32,32)~=string.rep(string.char(0),32),'battery CGRAM empty')
+ end
+ print('PASS @NAME@ battery graphic changes live LCD character/bitmap RAM')
+end)
+at(next+254,function()
+ done();eq(m:read_u32(data),0x70617373)
+ for i=1,4 do eq(m:read_u32(data+4*i),0)end
+ print('PASS @NAME@ timed battery graphic renders bytes rejected by localization predicate')
+ invoke(@display_modal_probe@,true)
+end)
+for pulse=0,3 do
+ local start=next+320+30*pulse
+ at(start,function()for _,field in pairs(machine.ioport.ports[neo and ':ROW9' or ':COL.9'].fields)do if field.mask==0x40 then field:set_value(1)end end end)
+ at(start+6,function()for _,field in pairs(machine.ioport.ports[neo and ':ROW9' or ':COL.9'].fields)do if field.mask==0x40 then field:clear_value()end end end)
+end
+at(next+438,function()
+ done();eq(m:read_u32(data),0x70617373)
+ print('PASS @NAME@ modal battery report returns on native Return key')
+ print('PASS @NAME@ battery/dialog normal-operation probes')
+end)
+at(next+442,function()
+ sample_target=0;sample_reads=0;sample_number=0;unstable=false;m:write_u32(base+4,neo and 2096 or 600)
+ invoke(@calibrate_probe@)
+end)
+at(next+526,function()
+ done();eq(m:read_u32(data),0);eq(m:read_u32(data+4),0)
+ m:write_u32(base+4,neo and 2096 or 600)
+ print('PASS @NAME@ factory calibration accepts stable zero sample (ROM validity gap)')
+ print('PASS ABI battery/dialog probe');machine:exit()
+end)
+if not neo then
+ at(60,function()machine.natkeyboard:post('y')end)
+ at(200,function()machine.natkeyboard:post('\r')end)
+ at(450,function()machine.natkeyboard:post('\r')end)
+end
+local f=0;local failed=false
+emu.register_frame_done(function()f=f+1;if not failed and events[f]then local ok,err=pcall(events[f]);if not ok then failed=true;print('LUA ERROR',err);machine:exit()end end end)

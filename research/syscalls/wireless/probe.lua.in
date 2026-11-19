@@ -1,0 +1,101 @@
+local machine=manager.machine
+local cpu=machine.devices[':maincpu'];local m=cpu.spaces.program
+local code,data,stack=0x70000,0x72000,0x78000
+local cases={};local function add(slot,args,prep,check,tick)cases[#cases+1]={slot,args,prep,check,tick}end
+local function eq(a,b)assert(a==b,string.format('%x ~= %x',a,b))end
+local function put(a,s)for i=1,#s do m:write_u8(a+i-1,s:byte(i))end;m:write_u8(a+#s,0)end
+local function ret(v,mask)return function()eq(cpu.state.D0.value&(mask or 255),v)end end
+local taps={}
+local function clear()for _,t in ipairs(taps)do t:remove()end;taps={}end
+local function spi(packet,with_ack)
+ clear();local pos=0;local ackpos=0;local ack={0xa5,0,0,6,0,0x55}
+ taps[#taps+1]=m:install_read_tap(0xfffff428,0xfffff429,'radio-ready',function(off,val,mask)
+  local pc=cpu.state.PC.value;return pc>=0x43ebb8 and pc<0x43ebf8 and (val|4)or(val&(~4))
+ end)
+ taps[#taps+1]=m:install_read_tap(0xfffff408,0xfffff409,'radio-ack',function(off,val,mask)return val&(~0x40)end)
+ taps[#taps+1]=m:install_read_tap(0xfffff706,0xfffff707,'spi-ready',function(off,val,mask)return val|1 end)
+ taps[#taps+1]=m:install_read_tap(0xfffff704,0xfffff705,'spi-idle',function(off,val,mask)return val&(~0x100)end)
+ taps[#taps+1]=m:install_read_tap(0xfffff700,0xfffff701,'spi-packet',function(off,val,mask)
+  local caller=m:read_u32(cpu.state.SP.value+4)
+  if with_ack and caller==0x43ec72 then ackpos=1;return ack[1]end
+  if with_ack and caller==0x43eca8 then ackpos=ackpos+1;return ack[ackpos]or 0 end
+  if caller==0x43edc6 or caller==0x43ee08 then pos=pos+1;return packet[pos]or 0 end
+  return 0
+ end)
+end
+for _,v in ipairs({0,1})do
+ add(239,{},function()m:write_u8(0x12c9a,v)end,ret(v))
+end
+for _,v in ipairs({0,1,5,7,255})do add(240,{},function()m:write_u8(0x11944,v)end,ret(v==0 and 0 or 1))end
+for _,v in ipairs({0,1,5,7})do
+ for _,slot in ipairs({241,242})do
+ add(slot,{0x12345678},function()m:write_u8(0x11944,v);m:write_u32(0x1215c,0x87654320);m:write_u8(0x12463,0);m:write_u32(0x12ca0,0)end,function()
+ eq(m:read_u8(0x11944),v==0 and(slot==241 and 5 or 7)or v);eq(m:read_u32(0x1215c),v==0 and 0x12345678 or 0x87654320)
+ end);if slot==242 and v==0 then cases[#cases][8]=150 end
+ end
+end
+for _,flags in ipairs({0,1,3,0xfe})do
+ add(238,{0xabcd8001,data+0x800,3,0x12345600|flags},function()spi({});put(data+0x800,'abc')end,function()
+ eq(cpu.state.D0.value&255,0);eq(m:read_u8(0x12ca4),0xa5);eq(m:read_u8(0x12ca5),flags);eq(m:read_u16(0x12ca6),10);eq(m:read_u16(0x12ca8),0x8001);eq(m:read_u8(0x12caa),97)
+ local sum=0;for i=0,9 do sum=sum+m:read_u8(0x12ca4+i)end;eq(sum&255,0)
+ end)
+end
+for _,bytes in ipairs({{0xa5,2,0,9,0x80,1,0,0x42},{0xa5,0,0,8,0x80,2,0}})do
+ local sum=0;for _,v in ipairs(bytes)do sum=sum+v end;bytes[#bytes+1]=(-sum)&255
+ add(237,{data+0x800},function()spi(bytes);m:write_u16(0x134ae,0x8000)end,function()
+ eq(cpu.state.D0.value&65535,#bytes);for i,v in ipairs(bytes)do eq(m:read_u8(data+0x7ff+i),v)end
+ end)
+end
+add(237,{data+0x800},function()clear();taps[1]=m:install_read_tap(0xfffff428,0xfffff429,'no-packet',function(off,val,mask)return val|4 end);m:write_u8(data+0x800,0x5a)end,function()eq(cpu.state.D0.value&65535,0);eq(m:read_u8(data+0x800),0x5a)end)
+add(238,{0x8001,0,2059,3},function()spi({})end,ret(4));cases[#cases][8]=30
+add(243,{},function()clear();taps[1]=m:install_read_tap(0xfffff428,0xfffff429,'radio-timeout',function(off,val,mask)return val&(~4)end)end,ret(1));cases[#cases][8]=80
+add(244,{data+0x800,7},function()clear();m:write_u8(0x134b0,0)end,ret(8,65535))
+add(244,{data+0x800,2059},function()m:write_u8(0x134b0,1);m:write_u32(0x134b8,0);m:write_u32(0x134c0,3000);m:write_u16(0x134c6,0x8001)end,ret(10,65535))
+add(244,{data+0x800,7},function()spi({});put(data+0x800,'abcdefg');m:write_u8(0x134b0,1);m:write_u32(0x134b8,0);m:write_u32(0x134c0,7);m:write_u16(0x134c6,0x8001)end,function()eq(cpu.state.D0.value&65535,7);eq(m:read_u8(0x134b0),3);eq(m:read_u32(0x134b8),7)end)
+for _,n in ipairs({0,1,3,256})do
+ add(245,{data+0x800},function()clear();m:write_u8(0x134d9,n>>8);m:write_u8(0x134da,n&255);for i=0,n do m:write_u8(0x134db+i,i&255)end;m:write_u8(data+0x800+n,0xa5)end,function()eq(cpu.state.D0.value&65535,n);for i=0,n-1 do eq(m:read_u8(data+0x800+i),i&255)end;eq(m:read_u8(data+0x800+n),0xa5)end)
+end
+add(246,{0x1234,0,0,0},function()m:write_u8(0x134b0,0);m:write_u8(0x134ca,0)end,ret(5))
+add(246,{0x802,0,1,0},function()m:write_u8(0x134b0,1);m:write_u8(0x134ca,1)end,ret(8))
+for _,size in ipairs({0,1,2048,2049,0x123456})do
+ add(246,{0x802,0x12345678,size,0x76543210},function()m:write_u8(0x134b0,0);m:write_u8(0x134ca,0)end,function()
+ eq(cpu.state.D0.value&255,0);eq(m:read_u32(0x134c0),size);eq(m:read_u32(0x134b8),0);eq(m:read_u32(0x134b2),0x76543210);eq(m:read_u8(0x134b7),((size+2047)//2048)&255);eq(m:read_u8(0x134c8),0x78);eq(m:read_u16(0x134c6),0x802);eq(m:read_u8(0x134b0),1)
+ end)
+end
+-- Callback manager completion branches, with a position-independent callback.
+local function cb()
+ local b={0x23,0xef,0,4,0,7,0x2b,0,0x23,0xef,0,8,0,7,0x2b,4,0x23,0xef,0,12,0,7,0x2b,8,0x23,0xcd,0,7,0x2b,12,0x4e,0x75}
+ for i,v in ipairs(b)do m:write_u8(data+0xa00+i-1,v)end
+ m:write_u8(0x12c9a,1);m:write_u32(0x1215c,data+0xa00);cpu.state.A5.value=0x12345678
+end
+for _,state in ipairs({5,6,7})do
+ add(10000+0x43d84c,{},function()cb();m:write_u8(0x11944,state);m:write_u8(0x12463,state==7 and 16 or 4);m:write_u8(0x12c6f,0)end,function()
+ eq(m:read_u32(data+0xb00),state);eq(m:read_u32(data+0xb04),1);eq(m:read_u32(data+0xb08),0x12448);eq(m:read_u32(data+0xb0c),0x12345678);eq(m:read_u8(0x11944),0);eq(m:read_u32(0x1215c),0)
+ end)
+end
+-- Successful exchanges use native ACK parsing as well as data parsing.
+add(243,{},function()spi({0xa5,0,0,8,0x80,1,0,0xd2},true)end,ret(0))
+for _,fresh in ipairs({0,1})do
+ add(246,{0x803,0x5a,fresh,0x12345678},function()spi({},true);m:write_u8(0x134b0,0);m:write_u8(0x134ca,0)end,function()
+ eq(cpu.state.D0.value&255,0);eq(m:read_u32(0x134cc),0x12345678);eq(m:read_u8(0x134ca),2);eq(m:read_u8(0x12ca5),fresh==0 and 1 or 0);eq(m:read_u8(0x12caa),0x5a)
+ end)
+end
+add(237,{data+0x800},function()spi({0xa5,0,0,8,0x80,1,0,0});m:write_u16(0x134ae,0x8000)end,ret(0xfffc,65535));cases[#cases][8]=40
+@TYPED_CASE@
+local index,frame,phase,failed=0,0,-1,false
+emu.register_frame_done(function()
+ if failed then return end;frame=frame+1;if frame<150 then return end
+ local ok,err=pcall(function()
+ if phase==-1 then
+ index=index+1;if index>#cases then print('PASS extended probe '..#cases..' cases');machine:exit();return end
+ phase=0;local p=cases[index];if p[3]then p[3]()end
+ local stop=code+2;if p[1]>10000 then m:write_u16(code,0x4ef9);m:write_u32(code+2,p[1]-10000);stop=code+6 else m:write_u16(code,0xa000+4*p[1])end
+ m:write_u16(stop,0x60fe);m:write_u32(stack,stop);for i,v in ipairs(p[2])do m:write_u32(stack+4*i,v)end
+ cpu.state.D0.value=0xa5a5a5a5;cpu.state.SR.value=p[8]and 0x2000 or 0x2700;cpu.state.SP.value=p[7]and stack-12 or stack;cpu.state.PC.value=code
+ else
+ phase=phase+1;local p=cases[index];if p[5]then p[5](phase)end
+ if phase==(p[8]or 4)then local stop=code+(p[1]>10000 and 6 or 2);assert(cpu.state.PC.value==stop or cpu.state.PC.value==stop+2,string.format("busy PC=%x",cpu.state.PC.value));eq(cpu.state.SP.value,stack+4);p[4]();print('PASS slot '..p[1]..' case '..index);phase=-1 end
+ end
+ end)
+ if not ok then failed=true;print('FAIL extended case '..index..' '..tostring(err));machine:exit()end
+end)

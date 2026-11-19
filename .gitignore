@@ -5,3 +5,7 @@
 *.elf
 *.reloc
 version.h
+
+# Python caches
+__pycache__/
+*.py[cod]

@@ -1,0 +1,345 @@
+Current implementation status — 2026-11-18
+All eighteen D0-only pointer-return services have production bridges in
+os3k/os3k_abi_bridge.c, alongside six markup normalization wrappers.
+The execution records below are historical native-ROM observations. References
+to pending fixes describe their state at the recorded investigation, not the
+current library. Production pointer checks use tests/qemu/abi-bridges.py;
+original-ROM coverage and current reproduction commands are in README.md.
+
+Final ABI audit execution, 2026-11-18
+Compiler: m68k-linux-gnu-gcc (Debian 12.2.0-13) 12.2.0
+Production ABI flags plus -fno-builtin.
+In the original raw probes, a PASS reproduces the audited native behavior;
+these raw calls bypass production fixes.
+
+as3000
+PASS a070 D0=00038101 A0=00038101 saved-registers/SP
+PASS a070 D0=00000000 A0=00000000 saved-registers/SP
+PASS a070 D0=00000000 A0=00000000 saved-registers/SP
+PASS a074 D0=00038101 A0=00038104 saved-registers/SP
+PASS a074 D0=00000000 A0=00038104 saved-registers/SP
+PASS a078 D0=00038101 A0=00038200 saved-registers/SP
+PASS a078 D0=00000000 A0=004cbf9e saved-registers/SP
+PASS a358 D0=00038101 A0=00038105 saved-registers/SP
+PASS a358 D0=00000000 A0=00038105 saved-registers/SP
+PASS a358 D0=00000000 A0=00038100 saved-registers/SP
+PASS a360 D0=00038200 A0=00038105 saved-registers/SP
+PASS a360 D0=00038200 A0=00038100 saved-registers/SP
+PASS a364 D0=00038101 A0=00038101 saved-registers/SP
+PASS a364 D0=00038100 A0=00038104 saved-registers/SP
+PASS a364 D0=00038200 A0=00038200 saved-registers/SP
+PASS a368 D0=00038200 A0=00038203 saved-registers/SP
+PASS a368 D0=00038200 A0=00038200 saved-registers/SP
+PASS a380 D0=00038100 A0=00038203 saved-registers/SP
+PASS a384 D0=00038101 A0=004de7ac saved-registers/SP
+PASS a384 D0=00000000 A0=004de7ac saved-registers/SP
+PASS a384 D0=00038105 A0=004de7ac saved-registers/SP
+PASS a38c D0=00038200 A0=00038106 saved-registers/SP
+PASS a394 D0=00038100 A0=00038201 saved-registers/SP
+PASS a394 D0=00038100 A0=00038200 saved-registers/SP
+PASS a39c D0=00038200 A0=00038104 saved-registers/SP
+PASS a39c D0=00038200 A0=00038100 saved-registers/SP
+PASS a3a0 D0=00038103 A0=00038103 saved-registers/SP
+PASS a3a0 D0=00000000 A0=00000000 saved-registers/SP
+PASS a3a0 D0=00038105 A0=00038105 saved-registers/SP
+PASS a3a4 D0=00038101 A0=00038202 saved-registers/SP
+PASS a3a4 D0=00038100 A0=00038200 saved-registers/SP
+PASS a3a4 D0=00000000 A0=00038200 saved-registers/SP
+PASS a1c4 D0=00038100 A0=0003840c saved-registers/SP
+PASS a1f0 D0=00038334 A0=00038339 saved-registers/SP
+PASS a220 D0=00038100 A0=00038300 saved-registers/SP
+PASS ABI pointer probe 35 cases
+
+as3000-varargs
+FORMAT %d %ld %x PC=38004 D0=1c text=305419896 305419896 12345678 output=a5a5a5a5 a5a5a5a5 a5a5a5a5
+FORMAT %.1f PC=38004 D0=3 text=1.5 output=a5a5a5a5 a5a5a5a5 a5a5a5a5
+FORMAT %lld %x PC=38004 D0=b text=ld 11223344 output=a5a5a5a5 a5a5a5a5 a5a5a5a5
+FORMAT %f PC=38004 D0=1 text=1.5 output=3fc00000 a5a5a5a5 a5a5a5a5
+FORMAT %lf PC=38004 D0=1 text=1.5 output=3ff80000 00000000 a5a5a5a5
+FORMAT %lld PC=38004 D0=0 text=1234567890123 output=a5a5a5a5 a5a5a5a5 a5a5a5a5
+DONE variadic characterization
+
+neo_3_21
+PASS a070 D0=00038101 A0=00038101 saved-registers/SP
+PASS a070 D0=00000000 A0=00000000 saved-registers/SP
+PASS a070 D0=00000000 A0=00000000 saved-registers/SP
+PASS a074 D0=00038101 A0=00038104 saved-registers/SP
+PASS a074 D0=00000000 A0=00038104 saved-registers/SP
+PASS a078 D0=00038101 A0=00038200 saved-registers/SP
+PASS a078 D0=00000000 A0=0041c516 saved-registers/SP
+PASS a358 D0=00038101 A0=00038105 saved-registers/SP
+PASS a358 D0=00000000 A0=00038105 saved-registers/SP
+PASS a358 D0=00000000 A0=00038100 saved-registers/SP
+PASS a360 D0=00038200 A0=00038105 saved-registers/SP
+PASS a360 D0=00038200 A0=00038100 saved-registers/SP
+PASS a364 D0=00038101 A0=00038101 saved-registers/SP
+PASS a364 D0=00038100 A0=00038104 saved-registers/SP
+PASS a364 D0=00038200 A0=00038200 saved-registers/SP
+PASS a368 D0=00038200 A0=00038203 saved-registers/SP
+PASS a368 D0=00038200 A0=00038200 saved-registers/SP
+PASS a380 D0=00038100 A0=00038203 saved-registers/SP
+PASS a384 D0=00038101 A0=0043750a saved-registers/SP
+PASS a384 D0=00000000 A0=0043750a saved-registers/SP
+PASS a384 D0=00038105 A0=0043750a saved-registers/SP
+PASS a38c D0=00038200 A0=00038106 saved-registers/SP
+PASS a394 D0=00038100 A0=00038201 saved-registers/SP
+PASS a394 D0=00038100 A0=00038200 saved-registers/SP
+PASS a39c D0=00038200 A0=00038104 saved-registers/SP
+PASS a39c D0=00038200 A0=00038100 saved-registers/SP
+PASS a3a0 D0=00038103 A0=00038103 saved-registers/SP
+PASS a3a0 D0=00000000 A0=00000000 saved-registers/SP
+PASS a3a0 D0=00038105 A0=00038105 saved-registers/SP
+PASS a3a4 D0=00038101 A0=00038202 saved-registers/SP
+PASS a3a4 D0=00038100 A0=00038200 saved-registers/SP
+PASS a3a4 D0=00000000 A0=00038200 saved-registers/SP
+PASS a1c4 D0=00038100 A0=0003840c saved-registers/SP
+PASS a1f0 D0=00038334 A0=00038339 saved-registers/SP
+PASS a220 D0=00038100 A0=00038300 saved-registers/SP
+PASS ABI pointer probe 35 cases
+
+neo_3_21-varargs
+FORMAT %d %ld %x PC=38004 D0=1c text=305419896 305419896 12345678 output=a5a5a5a5 a5a5a5a5 a5a5a5a5
+FORMAT %.1f PC=38004 D0=3 text=1.5 output=a5a5a5a5 a5a5a5a5 a5a5a5a5
+FORMAT %lld %x PC=38004 D0=b text=ld 11223344 output=a5a5a5a5 a5a5a5a5 a5a5a5a5
+FORMAT %f PC=38004 D0=1 text=1.5 output=3fc00000 a5a5a5a5 a5a5a5a5
+FORMAT %lf PC=38004 D0=1 text=1.5 output=3ff80000 00000000 a5a5a5a5
+FORMAT %lld PC=38004 D0=0 text=1234567890123 output=a5a5a5a5 a5a5a5a5 a5a5a5a5
+DONE variadic characterization
+
+neo-typed
+PASS compiled C: raw memchr returns WRONG end pointer; bridge correct; six-byte aggregate via A1 correct
+PASS aggregate: writes six bytes through A1; A0=result+4; boundary sentinel preserved
+
+Serial ABI follow-up — 2026-11-18
+Full runner: /tmp/os3k-clean/abi-serial-followup-final (all seven groups passed)
+
+as-serial
+PASS as compiled serial API, all nine calls
+PASS as typed RX/TX callbacks, final empty RX sample, foreign A5 retained (no applet GOT switch)
+PASS as TX callback not repeated
+PASS as 16-bit timeout slots and 32-bit signed errors
+PASS ABI serial probe
+
+neo-serial
+PASS neo compiled serial API, all nine calls
+PASS neo typed RX/TX callbacks, final empty RX sample, foreign A5 retained (no applet GOT switch)
+PASS neo TX callback not repeated
+PASS neo 16-bit timeout slots and 32-bit signed errors
+PASS ABI serial probe
+
+Compiled C: SerialReset/Configure/SetBaudRate/GetStatus/SetReceiveCallback/
+DisableReceiver/EnableReceiver/Read/Write all used current raw stubs.
+Read: input 41 D3 FF, terminator D3 included, received=2. Write: 41 D3, written=2.
+Status output: TX=E8, RX=00. Invalid baud returned int32_t -502.
+Read/write timeout 10001 returned int32_t -515 with uint32_t counts=0.
+Callback entry A5 deliberately changed to 12345678, retained in both callbacks;
+no applet GOT switch. Typed RX callbacks: ready 20/41, 20/FF, then not-ready 00/00;
+TX callback: E8, called once despite a second handler invocation.
+No syscall return bridge needed. Callbacks using applet globals/GOT need an
+A5-establishing trampoline; no generic production trampoline was added.
+Controlled UART samples and direct original-ROM handler invocation only:
+not a physical-link or asynchronous-preemption test. Neo 3.01 not separately tested.
+
+Outer interrupt-path follow-up — 2026-11-18
+Full runner: /tmp/os3k-clean/abi-serial-vector (all seven groups passed).
+Ghidra inspected complete level-four dispatchers and common UART handlers;
+listings in serial-interrupt-paths.txt. Neither layer writes A5 before callbacks.
+PASS as RAM vector -> IRQ dispatcher -> UART handler -> RX/TX callbacks -> RTE: foreign A5 retained
+PASS neo RAM vector -> IRQ dispatcher -> UART handler -> RX/TX callbacks -> RTE: foreign A5 retained
+The additional test uses the actual RAM[0x110] vector, synthetic six-byte
+exception frame, controlled UART pending bit, original dispatcher and handler,
+and original RTE. It verifies A5=12345678 in both callbacks and after return,
+plus restored PC/SP. Hardware interrupt arrival/preemption remains untested.
+An inherited A5 can already match the owning applet. A trampoline is required
+when that match cannot be guaranteed for code depending on the applet GOT.
+
+Localization/power follow-up — 2026-11-18
+Full runner: /tmp/os3k-clean/abi-localization-final2 (all nine groups passed).
+AS3000 3.01 and Neo 3.21 use original ROM routines, typed C calls and controlled RAM
+fixtures. Layout output size=1 byte with both adjacent sentinels intact.
+No new ABI bridge required for slots 88–99; pending pointer bridges remain 13.
+
+as-localization
+PASS as 256 lowercase bytes, 256 classification bytes, key modifiers and stateful accents
+PASS as layout Dvorak: typed byte output, description, matrix map and holes
+PASS as layout Left: typed byte output, description, matrix map and holes
+PASS as layout Right: typed byte output, description, matrix map and holes
+PASS as layout QWERTY: typed byte output, description, matrix map and holes
+PASS as all seven power entries: flags, timeout bounds, saved preference and signed errors
+PASS as automatic power-off schedules 17 * 60 seconds
+PASS as timeout-only change and same-value enable do not rearm RTC alarm
+PASS as localization/power noninteractive probes
+PASS as native layout selection 1
+PASS as native layout selection 2
+PASS as native layout selection 3
+PASS as native layout selection 4
+PASS as native layout Escape retains setting
+PASS as native timeout dialog updates active and saved preference
+PASS as localization/power native UI probes
+PASS as accent applet-context policy 0
+PASS as accent applet-context policy 1
+PASS as accent applet-context policy 2
+PASS ABI localization/power probe
+
+neo-localization
+PASS neo 256 lowercase bytes, 256 classification bytes, key modifiers and stateful accents
+PASS neo layout Dvorak: typed byte output, description, matrix map and holes
+PASS neo layout Left: typed byte output, description, matrix map and holes
+PASS neo layout Right: typed byte output, description, matrix map and holes
+PASS neo layout QWERTY: typed byte output, description, matrix map and holes
+PASS neo all seven power entries: flags, timeout bounds, saved preference and signed errors
+PASS neo automatic power-off schedules 17 * 60 seconds
+PASS neo timeout-only change and same-value enable do not rearm RTC alarm
+PASS neo localization/power noninteractive probes
+PASS neo native layout selection 1
+PASS neo native layout selection 2
+PASS neo native layout selection 3
+PASS neo native layout selection 4
+PASS neo native layout Escape retains setting
+PASS neo native timeout dialog updates active and saved preference
+PASS neo localization/power native UI probes
+PASS neo accent applet-context policy 0
+PASS neo accent applet-context policy 1
+PASS neo accent applet-context policy 2
+PASS ABI localization/power probe
+
+Character probes include all 256 byte values. AS3000 3.01 maps A6->A7; tested Neo
+leaves A6 and A7 unchanged. Both map 02->8E and 8E->03 (non-idempotent chain).
+Classification bitmap outputs are canonical bool; broader policy unresolved.
+Matrix tests characterize all 256 inputs in four layouts, including the ROM's
+unchecked alternative-map indexing for absent base-map keys.
+Key probes: A/Shift/Caps/Shift+Caps, Ctrl/release/unmapped cases, acute accent
+composition, uppercase composition, repeated accent and unsupported-key result.
+Neo composition policy tested with context -1, controlled header ID A002 and
+controlled header ID BEEF; only BEEF composes. AS3000 3.01 composes in all three.
+Native keyboard matrix fields exercised layout selection 1/2/3/4, Escape, and
+Right/Return in the original power-off setting dialog. Active/saved timeout
+bytes both become 18 after the dialog; temporary setter/restore retain the
+saved preference. Minutes=3/60 return int32_t -1 without changing active state;
+4/59 are accepted. Enabled RTC alarm is current time + 17*60 seconds; changing
+only minutes or writing the same enable flag does not rearm it.
+No physical power-off, persistent settings across power cycle, or Neo 3.01
+execution is claimed. Source trace/caller provenance: localization-power-evidence.txt.
+
+Dialog/Send-speed/battery follow-up — 2026-11-18
+Full runner: /tmp/os3k-clean/abi-battery-dialog-final (all eleven groups passed).
+Production pointer bridge added for slot 69; original thirteen pending bridges
+remain outstanding. Total typed pointer services tracked: eighteen.
+
+as-battery-dialog
+PASS as dialog item pointer bridge, retained pointer and explicit lengths
+PASS as Send speed values, invalid statuses, Neo special default request
+PASS as battery cached type/sample 0/0
+PASS as battery cached type/sample 0/600
+PASS as battery cached type/sample 0/644
+PASS as battery cached type/sample 0/700
+PASS as battery cached type/sample 0/780
+PASS as battery cached type/sample 0/900
+PASS as battery cached type/sample 0/1100
+PASS as battery cached type/sample 1/0
+PASS as battery cached type/sample 1/600
+PASS as battery cached type/sample 1/644
+PASS as battery cached type/sample 1/700
+PASS as battery cached type/sample 1/780
+PASS as battery cached type/sample 1/900
+PASS as battery cached type/sample 1/1100
+PASS as battery cached type/sample ffffffff/0
+PASS as battery cached type/sample ffffffff/600
+PASS as battery cached type/sample ffffffff/644
+PASS as battery cached type/sample ffffffff/700
+PASS as battery cached type/sample ffffffff/780
+PASS as battery cached type/sample ffffffff/900
+PASS as battery cached type/sample ffffffff/1100
+PASS as controlled GPIO measurement, calibration normalization and state restoration
+PASS as stable 16-sample factory calibration updates RAM divisor; flash persistence not certified
+PASS as unstable calibration rejected without changing divisor
+PASS as revision zero skips hardware measurement
+PASS as battery graphic changes live LCD character/bitmap RAM
+PASS as timed battery graphic renders bytes rejected by localization predicate
+PASS as modal battery report returns on native Return key
+PASS as battery/dialog normal-operation probes
+PASS as factory calibration accepts stable zero sample (ROM validity gap)
+PASS ABI battery/dialog probe
+
+neo-battery-dialog
+PASS neo dialog item pointer bridge, retained pointer and explicit lengths
+PASS neo Send speed values, invalid statuses, Neo special default request
+PASS neo battery cached type/sample 0/0
+PASS neo battery cached type/sample 0/2300
+PASS neo battery cached type/sample 0/2340
+PASS neo battery cached type/sample 0/2500
+PASS neo battery cached type/sample 0/2755
+PASS neo battery cached type/sample 0/2900
+PASS neo battery cached type/sample 0/3500
+PASS neo battery cached type/sample 1/0
+PASS neo battery cached type/sample 1/2300
+PASS neo battery cached type/sample 1/2340
+PASS neo battery cached type/sample 1/2500
+PASS neo battery cached type/sample 1/2755
+PASS neo battery cached type/sample 1/2900
+PASS neo battery cached type/sample 1/3500
+PASS neo battery cached type/sample ffffffff/0
+PASS neo battery cached type/sample ffffffff/2300
+PASS neo battery cached type/sample ffffffff/2340
+PASS neo battery cached type/sample ffffffff/2500
+PASS neo battery cached type/sample ffffffff/2755
+PASS neo battery cached type/sample ffffffff/2900
+PASS neo battery cached type/sample ffffffff/3500
+PASS neo controlled GPIO measurement, calibration normalization and state restoration
+PASS neo stable 16-sample factory calibration updates RAM divisor; flash persistence not certified
+PASS neo unstable calibration rejected without changing divisor
+PASS neo revision zero skips hardware measurement
+PASS neo battery graphic changes live LCD character/bitmap RAM
+PASS neo timed battery graphic renders bytes rejected by localization predicate
+PASS neo modal battery report returns on native Return key
+PASS neo battery/dialog normal-operation probes
+PASS neo factory calibration accepts stable zero sample (ROM validity gap)
+PASS ABI battery/dialog probe
+
+Battery GPIO inputs and stored-calibration descriptor reads are controlled
+fixtures; arithmetic, control flow, factory delays, attempted flash-write path,
+and display routines are original ROM code. Stable/unstable/zero calibration
+paths executed. Physical analogue accuracy and persistent flash programming are
+not certified. Diag word/counter physical meanings remain bounded in Doxygen.
+#91 expanded search: 54 unique vendor images, 30 validated stub exports, zero
+resolved reference candidates. Dynamic calls outside recognized patterns remain
+possible. Predicate is not a complete LCD-renderability query: rejected battery
+bytes 91..94 visibly draw while predicate results remain false. Intended text
+policy remains an inference; exact bitmap behavior is unchanged.
+
+#91 font-coverage correlation — 2026-11-18
+AS3000 3.01 bitmap at 4EA60C equals Neo 3.21 bitmap at 44C4EE, all 32 bytes.
+Thus both return false for the identical 73 inputs and true for 183 inputs,
+consistent with the preceding all-256-input compiled MAME probes.
+Default Neo font descriptor 44AF8E: 6x16, 12 bytes/glyph, bitmap 44A38E.
+Among rejected inputs, 72 have ink; 00 is a generic filled block and A0 is blank.
+NeoFontTerminal glyphs.png and glyphs.h match for all 256 glyphs. Its rejected
+inputs have the same blank/fallback counts. Distinct glyph examples DD/DE/FD/FE
+exist in both Neo fonts, while AS3000 3.01 maps those text bytes to FF fallback.
+D0 and D7 are also rejected, despite non-FF AS LCD translations C2 and DB and
+corresponding glyphs in the emulator CGROM asset. The routine is not a complete
+renderability test on either platform. Legacy AS3000 3.01 text-repertoire/export
+compatibility is a hypothesis, not a verified consumer contract.
+Font comparison image: ../syscalls/localization/charset-comparison.png. AS CGROM asset is
+marked NEEDS REDUMP; no physical glyph-shape certification is claimed.
+
+Bridge consolidation validation — 2026-11-18
+Evidence: /tmp/betawise-abi-research-refresh
+PASS 18 production ABI bridges: arguments, NULL and non-NULL D0 results
+PASS as3000
+PASS as3000-varargs
+PASS neo_3_21
+PASS neo_3_21-varargs
+PASS neo-typed
+PASS as-serial
+PASS neo-serial
+PASS as-localization
+PASS neo-localization
+PASS as-battery-dialog
+PASS neo-battery-dialog
+Evidence: /tmp/betawise-markup-research-refresh
+PASS six typed markup wrappers and callback
+PASS extended probe 40 cases
+All eleven maintained ABI MAME groups and the separate markup suite passed.
+QEMU uses D0-only mocks; the MAME groups retain the documented original-ROM
+coverage limits. No additional hardware or Neo 3.01 execution is claimed.

@@ -1,0 +1,286 @@
+slot	opcode	symbol	header_declaration	ABI_review	AS3000_target	Neo_3_01_target	Neo_3_21_target
+0	A000	_OS3K_ClearScreen	no	unprototyped: not ABI certified	004CD55E	005D1060	00421FE0
+1	A004	_OS3K_SetCursor	no	unprototyped: not ABI certified	004CD826	005D11EC	0042216C
+2	A008	GetCursorPos	yes	declared: shared ABI rules reviewed; semantics not rederived	004CD6E4	005D11D6	00422156
+3	A00C	PutStringCentered	yes	declared: shared ABI rules reviewed; semantics not rederived	004CD4CC	005D0EA0	00421E24
+4	A010	PutChar	yes	declared: shared ABI rules reviewed; semantics not rederived	004CD406	005D0ABE	00421792
+5	A014	PutStringRaw	yes	declared: shared ABI rules reviewed; semantics not rederived	004CD4B0	005D0E84	00421E08
+6	A018	SetCursorMode	yes	declared: shared ABI rules reviewed; semantics not rederived	004CD510	005D0EE6	00421E6A
+7	A01C	GetCursorMode	yes	declared: shared ABI rules reviewed; semantics not rederived	004CD548	005D0FD0	00421F50
+8	A020	ClearRowCols	yes	declared: shared ABI rules reviewed; semantics not rederived	004CD61A	005D1174	004220F4
+9	A024	ClearRows	yes	declared: shared ABI rules reviewed; semantics not rederived	004CD652	005D11AA	0042212A
+10	A028	SaveScreen	yes	declared: shared ABI rules reviewed; semantics not rederived	004CDA66	005D1364	004222E4
+11	A02C	RestoreScreen	yes	declared: shared ABI rules reviewed; semantics not rederived	004CDA74	005D1372	004222F2
+12	A030	PutString	yes	declared: shared ABI rules reviewed; semantics not rederived	004CD46A	005D0E3E	00421DB8
+13	A034	InvalidateTextShadow	yes	declared: shared ABI rules reviewed; semantics not rederived	004CD5DE	005D112E	004220AE
+14	A038	DrawTextSpan	yes	declared: shared ABI rules reviewed; semantics not rederived	004CDB1E	005D1380	00422300
+15	A03C	PutCharToShadow	yes	declared: shared ABI rules reviewed; semantics not rederived	004CDC0C	005D146E	004223E4
+16	A040		no	empty slot	00000000	00000000	00000000
+17	A044		no	empty slot	00000000	00000000	00000000
+18	A048	DrawBitmap	yes	declared: shared ABI rules reviewed; semantics not rederived	004CDE1C	005CF96A	004205DE
+19	A04C	RasterOp	yes	declared: shared ABI rules reviewed; semantics not rederived	00000000	00000000	00420C20
+20	A050		no	empty slot	00000000	00000000	00000000
+21	A054		no	empty slot	00000000	00000000	00000000
+22	A058		no	empty slot	00000000	00000000	00000000
+23	A05C		no	empty slot	00000000	00000000	00000000
+24	A060		no	empty slot	00000000	00000000	00000000
+25	A064		no	empty slot	00000000	00000000	00000000
+26	A068		no	empty slot	00000000	00000000	00000000
+27	A06C	_OS3K_strlen	yes	declared: shared ABI rules reviewed; semantics not rederived	004CBF48	005CBAA0	0041C4C0
+28	A070	FindStringChar	yes	pointer already correct in A0 and D0	004CBF80	005CBAD8	0041C4F8
+29	A074	_OS3K_FindByteInRange	no	D0 pointer already adapted by integer-result C wrapper	004CBF5A	005CBAB2	0041C4D2
+30	A078	_OS3K_FindBufferPattern	no	D0 pointer already adapted by integer-result C wrapper	004CBF9E	005CBAF6	0041C516
+31	A07C	_OS3K_FormatInt32	yes	declared: shared ABI rules reviewed; semantics not rederived	004CBEA8	005CBA00	0041C420
+32	A080	ProgressBar	yes	declared: shared ABI rules reviewed; semantics not rederived	004CC04C	005CBBA4	0041C5C4
+33	A084	TextBox	yes	declared: shared ABI rules reviewed; semantics not rederived	004CC17C	005CBCD4	0041C6F4
+34	A088	WaitForKey	yes	declared: shared ABI rules reviewed; semantics not rederived	004CC47C	005CBFD4	0041C9F4
+35	A08C	StringCompare	yes	declared: shared ABI rules reviewed; semantics not rederived	004CC388	005CBEE0	0041C900
+36	A090	DisplayMessage	yes	declared: shared ABI rules reviewed; semantics not rederived	004CC43C	005CBF94	0041C9B4
+37	A094	GetKey	yes	declared: shared ABI rules reviewed; semantics not rederived	004CE094	005D2078	00423068
+38	A098	DrainKeyBuffer	yes	declared: shared ABI rules reviewed; semantics not rederived	004CE070	005D2054	00423044
+39	A09C	IsKeyReady	yes	declared: shared ABI rules reviewed; semantics not rederived	004CE082	005D2066	00423056
+40	A0A0	GetKeyModifiers	yes	declared: shared ABI rules reviewed; semantics not rederived	004CDF5E	005D1F42	00422F32
+41	A0A4	ScanKeyboard	yes	declared: shared ABI rules reviewed; semantics not rederived	004CE472	005D2456	00423446
+42	A0A8	QueueKey	yes	declared: shared ABI rules reviewed; semantics not rederived	004CE122	005D2106	004230F6
+43	A0AC	SetKeyModifiers	yes	declared: shared ABI rules reviewed; semantics not rederived	004CDF66	005D1F4A	00422F3A
+44	A0B0	IsKeyDownNow	yes	declared: shared ABI rules reviewed; semantics not rederived	004CE568	005D25D2	004235C2
+45	A0B4	IsMatrixKeyDown	yes	declared: shared ABI rules reviewed; semantics not rederived	004CE9C8	005D2AC6	00423AB6
+46	A0B8	IsAutoRepeatEnabled	yes	declared: shared ABI rules reviewed; semantics not rederived	004CE00C	005D1FF0	00422FE0
+47	A0BC	IsStickyKeysEnabled	yes	declared: shared ABI rules reviewed; semantics not rederived	004CE04E	005D2032	00423022
+48	A0C0	SetStickyKeysEnabled	yes	declared: shared ABI rules reviewed; semantics not rederived	004CE01C	005D2000	00422FF0
+49	A0C4	IsSlowKeysEnabled	yes	declared: shared ABI rules reviewed; semantics not rederived	004CDFB4	005D1F98	00422F88
+50	A0C8	GetSlowKeyDelay	yes	declared: shared ABI rules reviewed; semantics not rederived	004CDFC4	005D1FA8	00422F98
+51	A0CC	GetKeyReleaseEvents	yes	declared: shared ABI rules reviewed; semantics not rederived	004CE068	005D204C	0042303C
+52	A0D0	SetKeyReleaseEvents	yes	declared: shared ABI rules reviewed; semantics not rederived	004CE05E	005D2042	00423032
+53	A0D4	SleepCentiseconds	yes	declared: shared ABI rules reviewed; semantics not rederived	004CF66C	005D376A	00424780
+54	A0D8	BusyLoop	yes	declared: shared ABI rules reviewed; semantics not rederived	004CF64A	005D3748	0042475E
+55	A0DC	GetUptimeSeconds	yes	declared: shared ABI rules reviewed; semantics not rederived	004CF6B6	005D37B4	004247CA
+56	A0E0	GetUptimeCentiseconds	yes	declared: shared ABI rules reviewed; semantics not rederived	004CF9B2	005D3AB0	00424AC6
+57	A0E4	GetUptimeMilliseconds	yes	declared: shared ABI rules reviewed; semantics not rederived	004CFA08	005D3B06	00424B1C
+58	A0E8	TimerStart	yes	declared: shared ABI rules reviewed; semantics not rederived	004CFA56	005D3B54	00424B6A
+59	A0EC	TimerCancel	yes	declared: shared ABI rules reviewed; semantics not rederived	004CFBA6	005D3CA4	00424CBA
+60	A0F0	DialogInit	yes	declared: shared ABI rules reviewed; semantics not rederived	004CAE1C	005CA974	0041B158
+61	A0F4	DialogAddItem	yes	declared: shared ABI rules reviewed; semantics not rederived	004CB1D4	005CAD2C	0041B516
+62	A0F8	DialogAddExitKey	yes	declared: shared ABI rules reviewed; semantics not rederived	004CB2DA	005CAE32	0041B61C
+63	A0FC	DialogSetChoice	yes	declared: shared ABI rules reviewed; semantics not rederived	004CB300	005CAE58	0041B642
+64	A100	DialogDraw	yes	declared: shared ABI rules reviewed; semantics not rederived	004CAE68	005CA9C0	0041B1AA
+65	A104	DialogRun	yes	declared: shared ABI rules reviewed; semantics not rederived	004CAEE6	005CAA3E	0041B228
+66	A108	DialogGetChoice	yes	declared: shared ABI rules reviewed; semantics not rederived	004CB30A	005CAE62	0041B64C
+67	A10C	DialogGetChoiceId	yes	declared: shared ABI rules reviewed; semantics not rederived	004CB312	005CAE6A	0041B654
+68	A110	DialogGetItemId	yes	declared: shared ABI rules reviewed; semantics not rederived	004CB32A	005CAE82	0041B66C
+69	A114	_OS3K_DialogGetItemText	no	slots69-78 follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; Neo 3.01 not separately certified; raw integer D0 result bridged to public pointer A0 in os3k_abi_bridge.c	004CB358	005CAEB0	0041B69A
+70	A118	GetSendSpeed	yes	slots69-78 follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; Neo 3.01 not separately certified; byte SendSpeed_e uses -fshort-enums	004CAE14	005CA96C	0041B150
+71	A11C	SetSendSpeed	yes	slots69-78 follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; Neo 3.01 not separately certified; byte SendSpeed_e uses -fshort-enums	004CAAD0	005CA628	0041ADF2
+72	A120	RefreshBatteryMeasurements	yes	slots69-78 follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; Neo 3.01 not separately certified; direct stub	004D1EC4	005D5E7A	004272DA
+73	A124	GetBatteryType	yes	slots69-78 follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; Neo 3.01 not separately certified; enum intentionally full 32 bits	004D1E36	005D5E02	00427262
+74	A128	GetBatteryDischargePercent	yes	slots69-78 follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; Neo 3.01 not separately certified; direct stub	004D1FD4	005D5F96	004273F6
+75	A12C	GetBatteryMillivolts	yes	slots69-78 follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; Neo 3.01 not separately certified; direct stub	004D2008	005D5FCA	0042742A
+76	A130	GetHardwareRevision	yes	slots69-78 follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; Neo 3.01 not separately certified; direct stub	004D1E2C	005D5DF8	00427258
+77	A134	BatteryDiagnostic	yes	slots69-78 follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; Neo 3.01 not separately certified; enum intentionally full 32 bits	004D23AC	005D6410	00427870
+78	A138	DrawBatteryStatus	yes	slots69-78 follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; Neo 3.01 not separately certified; direct stub	004D1A32	005D5A60	00426EC0
+79	A13C	SerialReset	yes	serial follow-up: AS3000 3.01/Neo 3.21 typed MAME calls compatible; no return bridge; Neo 3.01 not separately certified	004CFDB6	005D3EB6	00424ECC
+80	A140	SerialConfigure	yes	serial follow-up: AS3000 3.01/Neo 3.21 typed MAME calls compatible; no return bridge; Neo 3.01 not separately certified	004CFEEE	005D3F94	00424FB0
+81	A144	SerialSetBaudRate	yes	serial follow-up: AS3000 3.01/Neo 3.21 typed MAME calls compatible; no return bridge; Neo 3.01 not separately certified	004D01CE	005D41C0	00425204
+82	A148	SerialGetStatus	yes	serial follow-up: AS3000 3.01/Neo 3.21 typed MAME calls compatible; no return bridge; Neo 3.01 not separately certified	004D02BC	005D42B2	004252F6
+83	A14C	SerialSetReceiveCallback	yes	serial follow-up: AS3000 3.01/Neo 3.21 typed MAME calls compatible; no return bridge; Neo 3.01 not separately certified; callback A5/GOT trampoline needed for applet globals	004CFEA4	005D3F4A	00424F66
+84	A150	SerialDisableReceiver	yes	serial follow-up: AS3000 3.01/Neo 3.21 typed MAME calls compatible; no return bridge; Neo 3.01 not separately certified	004D01C0	005D41B2	004251F6
+85	A154	SerialEnableReceiver	yes	serial follow-up: AS3000 3.01/Neo 3.21 typed MAME calls compatible; no return bridge; Neo 3.01 not separately certified	004D01AE	005D41A0	004251E4
+86	A158	SerialRead	yes	serial follow-up: AS3000 3.01/Neo 3.21 typed MAME calls compatible; no return bridge; Neo 3.01 not separately certified	004D02E2	005D42D8	00425320
+87	A15C	SerialWrite	yes	serial follow-up: AS3000 3.01/Neo 3.21 typed MAME calls compatible; no return bridge; Neo 3.01 not separately certified; callback A5/GOT trampoline needed for applet globals	004D03E8	005D43DE	00425426
+88	A160	ToLowerTextByte	yes	localization/power follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; direct stub; Neo 3.01 not separately certified	004CEB40	005D2C3E	00423C2E
+89	A164	_OS3K_TranslateKeyToChar	yes	localization/power follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; direct stub; Neo 3.01 not separately certified	004CEB8E	005D2C8C	00423C7C
+90	A168	TranslateMatrixKey	yes	localization/power follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; direct stub; Neo 3.01 not separately certified	004CEC66	005D2D64	00423D7A
+91	A16C	IsLocalizationTextByte	yes	localization/power follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; direct stub; Neo 3.01 not separately certified; bitmap policy meaning unresolved	004CEA54	005D2B52	00423B42
+92	A170	ConfigureKeyboardLayout	yes	localization/power follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; direct stub; Neo 3.01 not separately certified; one-byte enum output requires -fshort-enums	004CEE24	005D2F22	00423F38
+93	A174	IsIdleSleepEnabled	yes	localization/power follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; direct stub; Neo 3.01 not separately certified	004D172A	005D575A	00426BBA
+94	A178	SetIdleSleepEnabled	yes	localization/power follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; direct stub; Neo 3.01 not separately certified	004D1720	005D5750	00426BB0
+95	A17C	IsAutoPowerOffEnabled	yes	localization/power follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; direct stub; Neo 3.01 not separately certified	004D174C	005D577C	00426BDC
+96	A180	SetAutoPowerOffEnabled	yes	localization/power follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; direct stub; Neo 3.01 not separately certified	004D1732	005D5762	00426BC2
+97	A184	GetAutoPowerOffMinutes	yes	localization/power follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; direct stub; Neo 3.01 not separately certified	004D195A	005D598A	00426DEA
+98	A188	SetAutoPowerOffMinutes	yes	localization/power follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; direct stub; Neo 3.01 not separately certified	004D1930	005D5960	00426DC0
+99	A18C	RestoreAutoPowerOffMinutes	yes	localization/power follow-up: AS3000 3.01/Neo 3.21 typed MAME verified; direct stub; Neo 3.01 not separately certified	004D194E	005D597E	00426DDE
+100	A190	FileSeek	yes	declared: shared ABI rules reviewed; semantics not rederived	004E10D2	005E3A2E	00439E30
+101	A194	FileTell	yes	declared: shared ABI rules reviewed; semantics not rederived	004E1160	005E3ABC	00439EBE
+102	A198	FileWriteBuffer	yes	declared: shared ABI rules reviewed; semantics not rederived	004E1196	005E3AF2	00439EF4
+103	A19C	FileReadBuffer	yes	declared: shared ABI rules reviewed; semantics not rederived	004E155A	005E3EB6	0043A2B8
+104	A1A0	FileEraseCurrent	yes	declared: shared ABI rules reviewed; semantics not rederived	004E15D6	005E3F32	0043A334
+105	A1A4	FileDeleteAtPosition	yes	declared: shared ABI rules reviewed; semantics not rederived	004E1632	005E3F8E	0043A390
+106	A1A8	FileGetCurrentId	yes	declared: shared ABI rules reviewed; semantics not rederived	004E16A2	005E3FFE	0043A400
+107	A1AC	FileGetFreeSpace	yes	declared: shared ABI rules reviewed; semantics not rederived	004E16D8	005E4034	0043A436
+108	A1B0	FileGetUnusedCapacity	yes	declared: shared ABI rules reviewed; semantics not rederived	004E17A0	005E40FC	0043A4FE
+109	A1B4	FileQuerySize	yes	declared: shared ABI rules reviewed; semantics not rederived	004E17E0	005E413C	0043A53E
+110	A1B8	FileSetCurrentLength	yes	declared: shared ABI rules reviewed; semantics not rederived	004E18E2	005E423E	0043A640
+111	A1BC	FileGetCapacity	yes	declared: shared ABI rules reviewed; semantics not rederived	004E19E4	005E4340	0043A742
+112	A1C0	FileSetFolder	yes	declared: shared ABI rules reviewed; semantics not rederived	004E1A1A	005E4376	0043A778
+113	A1C4	_OS3K_FileBindState	no	D0 pointer result bridged to public A0 result in os3k_abi_bridge.c; compiled QEMU argument/NULL/non-NULL checks	004E1ABE	005E441A	0043A81C
+114	A1C8	FileOpen	yes	declared: shared ABI rules reviewed; semantics not rederived	004E1B18	005E4474	0043A876
+115	A1CC	FileClose	yes	declared: shared ABI rules reviewed; semantics not rederived	004E1C48	005E45A4	0043A9A6
+116	A1D0	FileUpdateFlags	yes	declared: shared ABI rules reviewed; semantics not rederived	004E1C50	005E45AC	0043A9AE
+117	A1D4	FileTestFlags	yes	declared: shared ABI rules reviewed; semantics not rederived	004E1CB8	005E4614	0043AA16
+118	A1D8	FileResetPasswords	yes	declared: shared ABI rules reviewed; semantics not rederived	004E29D2	005E532E	0043B730
+119	A1DC	FileAccessPassword	yes	declared: shared ABI rules reviewed; semantics not rederived	004E2B26	005E5482	0043B884
+120	A1E0	FilePromptPassword	yes	declared: shared ABI rules reviewed; semantics not rederived	004E2BA0	005E54FC	0043B8FE
+121	A1E4	FilePromptChangePassword	yes	declared: shared ABI rules reviewed; semantics not rederived	004E308E	005E59EA	0043BDEC
+122	A1E8	FileCreate	yes	declared: shared ABI rules reviewed; semantics not rederived	004E1FD0	005E492C	0043AD2E
+123	A1EC	FileDelete	yes	declared: shared ABI rules reviewed; semantics not rederived	004E250C	005E4E68	0043B26A
+124	A1F0	_OS3K_FileAccessName	no	D0 pointer result bridged to public A0 result in os3k_abi_bridge.c; compiled QEMU argument/NULL/non-NULL checks	004E26FA	005E5056	0043B458
+125	A1F4	FileAccessTag	yes	declared: shared ABI rules reviewed; semantics not rederived	004E28BE	005E521A	0043B61C
+126	A1F8	FileFindByTag	yes	declared: shared ABI rules reviewed; semantics not rederived	004E2902	005E525E	0043B660
+127	A1FC	FileResolveId	yes	declared: shared ABI rules reviewed; semantics not rederived	004E2992	005E52EE	0043B6F0
+128	A200	ClipboardCopy	yes	declared: shared ABI rules reviewed; semantics not rederived	004E096C	005E32C8	004396C6
+129	A204	ClipboardCut	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0A40	005E339C	0043979A
+130	A208	ClipboardPaste	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0B24	005E3480	0043987E
+131	A20C	ClipboardSet	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0B8A	005E34E6	004398E4
+132	A210	ClipboardGet	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0C38	005E3594	00439992
+133	A214	ClipboardClear	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0CB6	005E3612	00439A14
+134	A218	ClipboardGetFormat	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0CEE	005E364A	00439A4C
+135	A21C	ClipboardGetLength	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0CF6	005E3652	00439A54
+136	A220	_OS3K_ClipboardGetData	no	D0 pointer result bridged to public A0 result in os3k_abi_bridge.c; compiled QEMU argument/NULL/non-NULL checks	004E0D40	005E369C	00439A9E
+137	A224	ClipboardGetCapacity	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0D4A	005E36A6	00439AA8
+138	A228	ClipboardResize	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0D56	005E36B2	00439AB4
+139	A22C	AppletSelectContext	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0DA2	005E36FE	00439B00
+140	A230	AppletClearContext	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0DC8	005E3724	00439B26
+141	A234	AppletGetContextId	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0DD2	005E372E	00439B30
+142	A238	AppletFindByName	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0DFA	005E3756	00439B58
+143	A23C	AppletFindById	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0E5E	005E37BA	00439BBC
+144	A240	AppletGetName	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0E96	005E37F2	00439BF4
+145	A244	AppletSendMessage	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0F02	005E385E	00439C60
+146	A248	FileGetPasswordProtection	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004DFF5A	005E28B6	00438CB4
+147	A24C	FileCheckMasterPassword	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004E04F6	005E2E52	00439250
+148	A250	FilePromptMasterPassword	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004E051C	005E2E78	00439276
+149	A254	FileGetUserName	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004DFEEA	005E2846	00438C44
+150	A258	FileSetPasswordProtection	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004DFF62	005E28BE	00438CBC
+151	A25C	SystemHandleEvents	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004C87B8	005C801E	00418794
+152	A260	AppletGetDisableMask	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004DF664	005E1FC4	004383C2
+153	A264	AppletDisable	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004DF676	005E1FD6	004383D4
+154	A268	AppletClearDisableMask	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004DF68C	005E1FEC	004383EA
+155	A26C	AppletAddContextLock	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004DF69E	005E1FFE	004383FC
+156	A270	AppletRemoveContextLock	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004DF6CA	005E202A	00438428
+157	A274	DialogSelectPrinter	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004C5B58	005C5BCC	00416040
+158	A278	_OS3K_AppletGetResources	no	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; production D0-to-A0 pointer bridge; private raw declaration	004D43C4	005D65C2	00427A22
+159	A27C	AppletReadResource	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004D44AA	005D66A8	00427B08
+160	A280	AppletWriteResource	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004D44F4	005D66F2	00427B52
+161	A284	AppletFindResource	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004D443A	005D6638	00427A98
+162	A288	IrdaGetMaxPayload	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004C4F50	005C4F72	004153E6
+163	A28C	IrdaConfigureService	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004C4F5C	005C4F7E	004153F2
+164	A290	IrdaDiscover	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004C5026	005C5048	004154BC
+165	A294	IrdaConnect	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004C510A	005C512C	004155A0
+166	A298	IrdaOpenChannel	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004C5146	005C5168	004155DC
+167	A29C	IrdaDisconnect	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004C526C	005C528E	00415702
+168	A2A0	IrdaCloseChannel	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004C52AC	005C52CE	00415742
+169	A2A4	IrdaSend	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004C5374	005C5396	0041580A
+170	A2A8	IrdaQueryByte	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004C5780	005C57A2	00415C16
+171	A2AC	IrdaBegin	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004E3F1C	005E6890	0043CCBA
+172	A2B0	IrdaEnd	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004E3F8C	005E68BC	0043CCE6
+173	A2B4	GetExceptionInfo	yes	slots 146–173 follow-up: AS3000 3.01/Neo 3.21 stack/return review and bounded MAME cases; direct stub; see research/syscalls/irda for per-path coverage	004D0ECE	005D4EAC	00425F22
+174	A2B8	_OS3K_CallSysInt	yes	declared: shared ABI rules reviewed; semantics not rederived	004D0EEE	005D4ECC	00425F42
+175	A2BC	TextEditorInit	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004D4548	005D6746	00427E04
+176	A2C0	TextEditorHandleMessage	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004D4E62	005D712C	0042882C
+177	A2C4	TextEditorRefresh	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004D49C0	005D6C8A	00428366
+178	A2C8	TextScanInit	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004D540A	005D76CA	00429102
+179	A2CC	TextScanRead	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004D54A8	005D7786	004291BE
+180	A2D0	TextScanDelete	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004D5A00	005D7CE6	0042971E
+181	A2D4	TextScanInsert	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004D5A9C	005D7D82	004297BA
+182	A2D8	TextEditorSetScanPosition	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004D5AFA	005D7DE0	00429818
+183	A2DC	TextEditorSetFonts	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004D5B90	005D7E76	004298AE
+184	A2E0	TextEditorSavePosition	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004D4972	005D6C3C	0042830E
+185	A2E4	TextEditorTransferInit	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004D4BD8	005D6EA2	00428598
+186	A2E8	TextEditorTransferHandleMessage	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004D4C0E	005D6ED8	004285CE
+187	A2EC	TextGetStatistics	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004D5B98	005D7F06	0042993E
+188	A2F0	TextFormInit	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004D9EA8	005DC5DC	0042ECDC
+189	A2F4	TextFormHandleMessage	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004DA3A2	005DCAE2	0042F200
+190	A2F8	TextFormTransferInit	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004DA728	005DCEAC	0042F6A8
+191	A2FC	TextFormTransferHandleMessage	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004DA7C4	005DCF48	0042F744
+192	A300	TextFormReset	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004DA328	005DCA68	0042F186
+193	A304	TextFormFind	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004DAA18	005DD19C	0042F998
+194	A308	TextEditorClear	yes	slots 175–194 follow-up: AS3000 3.01/Neo 3.21 stack/return and typed MAME checks; direct stub; see research/syscalls/text for per-path limits	004D4A6C	005D6D36	0042842C
+195	A30C		no	empty slot	00000000	00000000	00000000
+196	A310		no	empty slot	00000000	00000000	00000000
+197	A314		no	empty slot	00000000	00000000	00000000
+198	A318		no	empty slot	00000000	00000000	00000000
+199	A31C		no	empty slot	00000000	00000000	00000000
+200	A320		no	empty slot	00000000	00000000	00000000
+201	A324		no	empty slot	00000000	00000000	00000000
+202	A328		no	empty slot	00000000	00000000	00000000
+203	A32C	_OS3K_errno	yes	declared: shared ABI rules reviewed; semantics not rederived	004E06A0	005E2FFC	004393FA
+204	A330	_OS3K_getchar	yes	declared: shared ABI rules reviewed; semantics not rederived	004E06A8	005E3004	00439402
+205	A334	getchar_echo	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0724	005E3080	0043947E
+206	A338	abort	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0746	005E30A2	004394A0
+207	A33C	atoi	yes	declared: shared ABI rules reviewed; semantics not rederived	004DDD5A	005E0478	00436876
+208	A340	atol	yes	declared: shared ABI rules reviewed; semantics not rederived	004E7144	005E948C	00444360
+209	A344	sscanf	yes	declared: shared ABI rules reviewed; semantics not rederived	004E6A1A	005E8D62	00443C36
+210	A348	fgetc	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0896	005E31F2	004395F0
+211	A34C	fprintf	yes	declared: shared ABI rules reviewed; semantics not rederived	004E6992	005E8CDA	00443BAE
+212	A350	_OS3K_fputc	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0756	005E30B2	004394B0
+213	A354	fscanf	yes	declared: shared ABI rules reviewed; semantics not rederived	004E69BA	005E8D02	00443BD6
+214	A358	_OS3K_memchr	no	D0 pointer result bridged to public A0 result in os3k_abi_bridge.c; compiled QEMU argument/NULL/non-NULL checks	004E71D2	005E951A	004443EE
+215	A35C	memcmp	yes	declared: shared ABI rules reviewed; semantics not rederived	004DDB2C	005E024A	00436648
+216	A360	_OS3K_memcpy	no	D0 pointer result bridged to public A0 result in os3k_abi_bridge.c; compiled QEMU argument/NULL/non-NULL checks	004DDB5C	005E027A	00436678
+217	A364	_OS3K_memmove	no	D0 pointer result bridged to public A0 result in os3k_abi_bridge.c; compiled QEMU argument/NULL/non-NULL checks	004DDDE8	005E0748	00436B46
+218	A368	_OS3K_memset	no	D0 pointer result bridged to public A0 result in os3k_abi_bridge.c; compiled QEMU argument/NULL/non-NULL checks	004DDBA6	005E02C4	004366C2
+219	A36C	printf	yes	declared: shared ABI rules reviewed; semantics not rederived	004DD412	005DFB30	00435F2E
+220	A370	rand	yes	declared: shared ABI rules reviewed; semantics not rederived	004E71F8	005E9540	00444414
+221	A374	scanf	yes	declared: shared ABI rules reviewed; semantics not rederived	004E69EA	005E8D32	00443C06
+222	A378	sprintf	yes	declared: shared ABI rules reviewed; semantics not rederived	004DD43A	005DFB58	00435F56
+223	A37C	srand	yes	declared: shared ABI rules reviewed; semantics not rederived	004E7220	005E9568	0044443C
+224	A380	_OS3K_strcat	no	D0 pointer result bridged to public A0 result in os3k_abi_bridge.c; compiled QEMU argument/NULL/non-NULL checks	004DDBCE	005E02EC	004366EA
+225	A384	_OS3K_strchr	no	D0 pointer result bridged to public A0 result in os3k_abi_bridge.c; compiled QEMU argument/NULL/non-NULL checks	004DE7AC	005E110C	0043750A
+226	A388	strcmp	yes	declared: shared ABI rules reviewed; semantics not rederived	004DDBEA	005E0308	00436706
+227	A38C	_OS3K_strcpy	no	D0 pointer result bridged to public A0 result in os3k_abi_bridge.c; compiled QEMU argument/NULL/non-NULL checks	004DDC0E	005E032C	0043672A
+228	A390	strlen	yes	declared: shared ABI rules reviewed; semantics not rederived	004DDE24	005E0784	00436B82
+229	A394	_OS3K_strncat	no	D0 pointer result bridged to public A0 result in os3k_abi_bridge.c; compiled QEMU argument/NULL/non-NULL checks	004DDC24	005E0342	00436740
+230	A398	strncmp	yes	declared: shared ABI rules reviewed; semantics not rederived	004DDE36	005E0796	00436B94
+231	A39C	_OS3K_strncpy	no	D0 pointer result bridged to public A0 result in os3k_abi_bridge.c; compiled QEMU argument/NULL/non-NULL checks	004DDC62	005E0380	0043677E
+232	A3A0	strrchr	yes	pointer already correct in A0 and D0	004E722A	005E9572	00444446
+233	A3A4	_OS3K_strstr	no	D0 pointer result bridged to public A0 result in os3k_abi_bridge.c; compiled QEMU argument/NULL/non-NULL checks	004DDCA0	005E03BE	004367BC
+234	A3A8	tolower	yes	declared: shared ABI rules reviewed; semantics not rederived	004DDD28	005E0446	00436844
+235	A3AC	toupper	yes	declared: shared ABI rules reviewed; semantics not rederived	004DE7D8	005E1138	00437536
+236	A3B0	ungetc	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0932	005E328E	0043968C
+237	A3B4	WirelessReceivePacket	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043ED3E
+238	A3B8	WirelessSendPacket	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043ECEE
+239	A3BC	WirelessIsAvailable	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043DACA
+240	A3C0	WirelessIsOperationPending	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043DAD2
+241	A3C4	WirelessBeginAssociation	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043DAE2
+242	A3C8	WirelessBeginDisassociation	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043DAFC
+243	A3CC	WirelessSynchronizeDeviceInfo	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043EFE8
+244	A3D0	WirelessWriteTransfer	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043F29A
+245	A3D4	WirelessReadTransfer	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043F508
+246	A3D8	WirelessConfigureTransfer	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043F0D8
+247	A3DC	FontDialogUpdate	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	00433C18
+248	A3E0	FontDialogSetTitle	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	00433DE0
+249	A3E4	FontDialogSetRightTitle	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	00433E0A
+250	A3E8	FontDialogSetBody	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	00433E34
+251	A3EC	FontDialogSetInput	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	00433E5E
+252	A3F0	FontDialogSetTitleAnimation	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	00433F60
+253	A3F4	FontDialogSetRowAnimation	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	00433FE2
+254	A3F8	FontDialogSetInputAnimation	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	00434048
+255	A3FC	FontDialogSetProperty	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043409C
+256	A400	FontDialogHandleKey	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	004343A2
+257	A404	FontDialogGetSelection	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	004341FE
+258	A408	FontDialogSetSelection	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043420A
+259	A40C	FontDialogClearItemAttributes	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	00434218
+260	A410	FontDialogSetRowAttributes	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	00434230
+261	A414	FontDialogDrawRegion	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043425C
+262	A418	FontDialogDestroy	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	004342D4
+263	A41C	_OS3K_FontDialogCreate	no	Neo 3.21: pointer return D0; production D0-to-A0 bridge; typed MAME verified	absent	absent	00433B86
+264	A420	FontDialogSetContent	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	00433DAE
+265	A424	FontDialogActivate	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	00434348
+266	A428	FontDialogGetInput	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	004347D0
+267	A42C	FontDialogWrapText	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043430E
+268	A430	FontDialogUpdateAnimations	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043467C
+269	A434	FontDialogTextWidth	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043490C
+270	A438	WirelessCopySelectedNetworkId	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	0043496A
+271	A43C	_OS3K_MarkupParse	no	Neo 3.21: hidden A1 six-byte result; production GCC normalization wrapper; typed MAME verified	absent	absent	00442F86
+272	A440	_OS3K_MarkupGetAttribute	no	Neo 3.21: hidden A1 six-byte result; production GCC normalization wrapper; typed MAME verified	absent	absent	00443052
+273	A444	_OS3K_MarkupGetText	no	Neo 3.21: hidden A1 six-byte result; production GCC normalization wrapper; typed MAME verified	absent	absent	0044313A
+274	A448	_OS3K_MarkupFindElements	no	Neo 3.21: hidden A1 six-byte result; production GCC normalization wrapper; typed MAME verified	absent	absent	00443214
+275	A44C	_OS3K_MarkupGetChildAttribute	no	Neo 3.21: hidden A1 six-byte result; production GCC normalization wrapper; typed MAME verified	absent	absent	004432B0
+276	A450	_OS3K_MarkupGetChildText	no	Neo 3.21: hidden A1 six-byte result; production GCC normalization wrapper; typed MAME verified	absent	absent	0044331C
+277	A454	FontDialogSetBitmap	yes	Neo 3.21: Ghidra contract; directed MAME verified	absent	absent	00434980
+278	A458		no	empty slot	absent	absent	00000000
+279	A45C		no	empty slot	absent	absent	00000000
+280	A460		no	empty slot	absent	absent	00000000
+281	A464		no	empty slot	absent	absent	00000000
+282	A468	SpeechEnqueue	yes	Neo 3.21: Ghidra + typed MAME verified; scalar return	absent	absent	00434B14
+283	A46C	SpeechControl	yes	Neo 3.21: Ghidra + typed MAME verified; scalar return	absent	absent	00435064
+284	A470	WirelessGetLastReceiveStatus	yes	Neo 3.21: Ghidra + typed MAME verified; scalar return	absent	absent	0043F63C

@@ -45,3 +45,6 @@ AS3000 driver and firmware used here.
 The handler check uses a synthetic exception frame. The regular AS3000 driver
 returns open-bus data on unmapped reads, so the check covers handler stack
 cleanup and recovery without testing the CPU's generation of vector 2.
+
+For firmware investigation of native installation and file preservation, see
+[Manager finalization and warm registration](../../../research/applet-installation/README.md).

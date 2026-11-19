@@ -1,0 +1,219 @@
+local machine=manager.machine;local cpu=machine.devices[':maincpu'];local m=cpu.spaces.program
+local neo=@NEO@;local code,data,stack=neo and 0x70000 or 0x38000,neo and 0x71000 or 0x39000,neo and 0x78000 or 0x3d000
+local first=neo and 150 or 540
+local sh=neo and 0x2c or 0
+local locks=neo and 0x34de or 0x344e;local context=neo and 0x35e2 or 0x3552
+local passwd=neo and 0x118a2 or 0x4472;local profiles=neo and 0x3e0a or 0x3d7a
+local function eq(a,b)assert(a==b,string.format('%x ~= %x',a,b))end
+local function put(a,s)for i=1,#s do m:write_u8(a+i-1,s:byte(i))end;m:write_u8(a+#s,0)end
+local function str(a)local t={};for i=0,200 do local b=m:read_u8(a+i);if b==0 then return table.concat(t)end;t[#t+1]=string.char(b)end;error('unterminated')end
+local cases={};local function add(slot,args,prep,check,tick)cases[#cases+1]={slot,args,prep,check,tick}end
+local function ret(v,mask)return function()eq(cpu.state.D0.value&(mask or 0xffffffff),v)end end
+local function byte(a,v)return function()eq(m:read_u8(a),v)end end
+local taps={};local patches={}
+local function hook(a,fn)
+ -- Substitute only a lower transport routine in this disposable emulator.
+ -- Direct writes are necessary: instruction fetch can bypass read-tap values.
+ if neo then fn();return end
+ patches[#patches+1]={a,m:read_direct_u16(a),m:read_direct_u16(a+2)}
+ m:write_direct_u16(a,0x7000);m:write_direct_u16(a+2,0x4e75)
+ eq(m:read_direct_u16(a),0x7000);fn()
+end
+local function clearhooks()
+ for _,t in ipairs(taps)do t:remove()end;taps={}
+ for _,p in ipairs(patches)do m:write_direct_u16(p[1],p[2]);m:write_direct_u16(p[1]+2,p[3])end;patches={}
+end
+add(146,{},function()m:write_u8(passwd,0xa5)end,ret(0xa5,255))
+add(150,{0x12345602},nil,byte(passwd,2))
+add(146,{},nil,ret(2,255))
+for _,s in ipairs({'secret','SECRET','wrong','secretX',''})do
+ add(147,{data+0x800},function()put(passwd+1,'secret');put(data+0x800,s)end,ret((s:lower()=='secret')and 1 or 0,255))
+end
+for _,n in ipairs({0,1,2,4,5})do
+ add(149,{n,data+0x840},function()
+  m:write_u8(profiles+120,1);m:write_u8(profiles+121,0x82)
+  put(profiles,'First');put(profiles+30,'Second');put(profiles+90,'Fourth');put(data+0x840,'untouched')
+ end,function()local want=n==0 and 2 or n;eq(cpu.state.D0.value&255,n==5 and 0 or want);assert(str(data+0x840)==(n==5 and 'untouched' or ({[1]='First',[2]='Second',[4]='Fourth'})[want]))end)
+end
+add(149,{1,0},function()m:write_u8(profiles+120,0)end,ret(0,255))
+add(149,{1,0},function()m:write_u8(profiles+120,1)end,ret(1,255))
+for _,n in ipairs({0,1,31})do
+ add(153,{n},function()m:write_u32(locks+4*n,0x80000080)end,function()eq(m:read_u32(locks+4*n),0x80000081)end)
+ add(152,{n},nil,ret(0x80000081))
+ add(154,{n},nil,function()eq(m:read_u32(locks+4*n),0)end)
+end
+for _,current in ipairs({0,1,7,31})do
+ add(155,{2},function()m:write_u32(context,current);m:write_u32(locks+8,0x80)end,function()eq(m:read_u32(locks+8),0x80|(1<<current))end)
+ add(156,{2},nil,function()eq(m:read_u32(locks+8),0x80&(~(1<<current)))end)
+end
+for _,n in ipairs({0,32,0xffffffff})do
+ add(155,{n},function()m:write_u32(locks+4*(n==0 and 0 or 32),0x5a5aa5a5)end,function()eq(m:read_u32(locks+4*(n==0 and 0 or 32)),0x5a5aa5a5)end)
+end
+-- Applet descriptor and resource stream are controlled RAM records.
+local descriptors=neo and 0xe0a or 0xd82
+for _,idx in ipairs({0,1,31,32})do
+ add(158,{},function()m:write_u32(context,idx);if idx<32 then m:write_u32(descriptors+4*idx,data+0x1000);m:write_u32(data+0x100c,0x120)end end,
+ function()local want=idx>=32 and 0 or (idx==0 and (neo and 0x410000 or 0x4c0000)or data+0x1000)+0x120;eq(cpu.state.D0.value,want);print(string.format('resource pointer D0=%x A0=%x',cpu.state.D0.value,cpu.state.A0.value))end)
+end
+add(158,{},function()m:write_u32(context,1);m:write_u32(data+0x100c,0)end,ret(0))
+local function stream()m:write_u32(data+0x100,data+0x200);m:write_u16(data+0x200,0x1234);m:write_u16(data+0x202,7);m:write_u16(data+0x204,3);put(data+0x206,'abc');m:write_u16(data+0x20a,0x1234);m:write_u16(data+0x20c,8);m:write_u16(data+0x20e,2);put(data+0x210,'de');m:write_u16(data+0x212,0)end
+add(159,{data+0x100,data+0x110,data+0x114,data+0x118,data+0x11c},stream,function()eq(m:read_u16(data+0x110),0x1234);eq(m:read_u16(data+0x114),7);eq(m:read_u16(data+0x118),3);eq(m:read_u32(data+0x11c),data+0x206);eq(m:read_u32(data+0x100),data+0x20a)end)
+add(159,{data+0x100,data+0x110,data+0x114,data+0x118,data+0x11c},function()stream();m:write_u16(data+0x204,0)end,function()eq(m:read_u32(data+0x100),data+0x200);eq(m:read_u32(data+0x11c),data+0x206)end)
+add(160,{data+0x100,0x3456,9,3,data+0x800},function()stream();put(data+0x800,'xyz');m:write_u8(data+0x209,0xa5)end,function()
+ eq(m:read_u16(data+0x200),0x3456);eq(m:read_u16(data+0x202),9);eq(m:read_u16(data+0x204),3)
+ eq(m:read_u8(data+0x206),120);eq(m:read_u8(data+0x208),122);eq(m:read_u8(data+0x209),0xa5);eq(m:read_u32(data+0x100),data+0x20a)
+end)
+for _,id in ipairs({8,99})do
+ add(161,{data+0x100,0x1234,id,data+0x118,data+0x11c},function()stream();m:write_u32(data+0x118,0xa5a5a5a5);m:write_u32(data+0x11c,0xa5a5a5a5)end,function()eq(cpu.state.D0.value,id==8 and 0 or 0xffffffff);eq(m:read_u32(data+0x100),id==8 and data+0x212 or data+0x212);eq(m:read_u32(data+0x11c),id==8 and data+0x210 or 0xa5a5a5a5)end)
+end
+add(161,{data+0x100,0x1234,7,0,0},stream,ret(0))
+add(162,{},function()m:write_u16(0xcee+sh,64)end,ret(58,65535))
+add(163,{data+0x800,data+0x840,0,0},function()put(data+0x800,'Test');put(data+0x840,'Value')end,ret(34,255))
+add(163,{data+0x800,data+0x840,data+0x900,data+0x920},nil,function()eq(cpu.state.D0.value&255,0);eq(m:read_u32(0xd2c+sh),data+0x900);eq(m:read_u32(0xd30+sh),data+0x920);eq(m:read_u8(0xd42+sh),4);assert(str(0xd43+sh)=='Test');eq(m:read_u8(0xd58+sh),5);assert(str(0xd59+sh)=='Value')end)
+local state=0xcf3+sh;local chan=0xd00+sh
+for _,slot in ipairs({164,166,168})do add(slot,{data+0x800,0},function()m:write_u8(state,0)end,ret(21,255))end
+for _,slot in ipairs({166,168,169})do add(slot,slot==169 and {0,5,data+0x800,0}or{5,0},function()m:write_u8(state,3)end,ret(22,255))end
+add(166,{1,0x55},function()m:write_u8(state,3);m:write_u8(chan+8,1)end,ret(23,255))
+add(168,{1},function()m:write_u8(state,3);m:write_u8(chan+8,0)end,ret(25,255))
+add(169,{0,1,data+0x800,59},nil,ret(17,255))
+add(169,{0,1,data+0x800,3},nil,ret(25,255))
+add(170,{data+0x900,data+0x800,3},function()m:write_u8(0xd72+sh,0);m:write_u8(chan+16,0)end,ret(25,255))
+-- Low-level IrDA boundary substitutes: validate public packing/outputs without claiming transport.
+local send=neo and 0x4143c4 or 0x4c3f2e
+add(169,{0,1,data+0x800,3},function()
+ m:write_u8(0xc65+sh,0);m:write_u8(chan+8,1);m:write_u8(chan+9,0x12);m:write_u8(chan+10,0x34);m:write_u8(neo and 0xb59 or 0xb2d,1);put(data+0x800,'xyz');hook(send,function()cpu.state.D0.value=0 end)
+end,function()eq(cpu.state.D0.value&255,0);local tx=neo and 0xc96 or 0xc6a;eq(m:read_u8(tx),0x12);eq(m:read_u8(tx+1),0x34);assert(str(tx+2)=='xyz');end)
+add(169,{0x80,1,data+0x800,0},function()m:write_u8(0xc65+sh,0)end,function()eq(cpu.state.D0.value&255,0);local tx=neo and 0xc96 or 0xc6a;eq(m:read_u8(tx),0x92)end)
+for _,c in ipairs({3,4})do
+ add(169,{0,c,data+0x800,3},function()
+  clearhooks();m:write_u8(state,3);m:write_u8(0xc65+sh,0);m:write_u8(0xa9c+sh,0);m:write_u8(neo and 0xb59 or 0xb2d,1)
+  m:write_u8(chan+8*c,1);m:write_u8(chan+8*c+1,0x12);m:write_u8(chan+8*c+2,0x34);m:write_u16(0xd34+sh,1);put(data+0x800,'xyz');hook(send,function()end)
+ end,function()
+  eq(cpu.state.D0.value&255,0);eq(m:read_u16(0xd34+sh),0);local tx=neo and 0xc96 or 0xc6a
+  eq(m:read_u8(tx+2),1);if c==3 then eq(m:read_u8(tx+3),0)end;eq(m:read_u8(tx+(c==3 and 4 or 3)),120)
+ end)
+ add(169,{0,c,data+0x800,3},function()m:write_u8(0xc65+sh,0)end,ret(33,255))
+end
+add(169,{0,1,data+0x800,3},function()
+ clearhooks();m:write_u8(state,3);m:write_u8(chan+8,1);m:write_u8(neo and 0xb59 or 0xb2d,1);m:write_u8(0xc65+sh,1)
+end,ret(20,255))
+-- Trace-only getters return caller-owned words, not an aggregate result.
+add(173,{data+0x110,data+0x114,data+0x118},function()local a=neo and 0x3dfe or 0x3d6e;for i,v in ipairs({0xdeadbe01,0x11223344,0x55667788})do m:write_u32(a+4*(i-1),v)end end,function()for i,v in ipairs({0xdeadbe01,0x11223344,0x55667788})do eq(m:read_u32(data+0x10c+4*i),v)end end)
+-- Poll system with no enabled events and unknown bits: no subsystem dispatch.
+add(151,{0,0},nil,ret(0));add(151,{0x10,0},nil,ret(0))
+-- ROM-localized text identifies native dialogs without imported API names.
+for _,id in ipairs({7,0x22,0x23,0x24,0x25,0x26,0x27,0x2a,0x2b,0xa6,0xa7,0xc6,0xc8,0xc9,0xca})do
+ add(10000+(neo and 0x424212 or 0x4cf0fe),{id},nil,function()print(string.format('ROM text %x: %s',id,str(cpu.state.D0.value)))end)
+end
+-- Native rejection paths for link connect/disconnect, on both ROMs.
+add(165,{0x11223344},function()clearhooks();m:write_u8(0xc34+sh,0xfe);m:write_u8(0xa96+sh,0);m:write_u8(state,0)end,ret(19,255))
+add(167,{},function()m:write_u8(0xa9c+sh,0);m:write_u8(0xb2c+sh,0);m:write_u8(0xc65+sh,0);m:write_u8(state,1)end,ret(19,255))
+-- AS-only wrapper isolation. Neo NOR has no direct writable mapping; do not
+-- pretend the same substitution is installed there.
+if not neo then
+-- Successful channel-wrapper paths with only the lower transport substituted.
+add(164,{data+0x600,data+0x680},function()
+ clearhooks();m:write_u8(state,1)
+ hook(neo and 0x413ff8 or 0x4c3b62,function()
+  for i=0,35 do m:write_u8(data+0x600+i,0)end
+  for i,v in ipairs({0x11223344,0x11223344,0x55667788})do m:write_u32(data+0x600+6*(i-1),v);m:write_u8(data+0x604+6*(i-1),0x80);m:write_u8(data+0x605+6*(i-1),4)end
+  for i=0,31 do m:write_u8(0xc3f+sh+i,i)end;cpu.state.D0.value=0
+ end)
+end,function()eq(cpu.state.D0.value&255,0);eq(m:read_u32(data+0x600),0x11223344);eq(m:read_u32(data+0x606),0);eq(m:read_u32(data+0x60c),0x55667788);for i=0,31 do eq(m:read_u8(data+0x680+i),i)end end)
+add(165,{0x11223344},function()
+ clearhooks();m:write_u8(state,1)
+ hook(neo and 0x4141c8 or 0x4c3d32,function()m:write_u8(state,3);cpu.state.D0.value=0 end)
+end,ret(0,255))
+add(166,{1,0x44},function()
+ clearhooks();m:write_u8(state,3);m:write_u8(chan+8,0);m:write_u8(0xd3e+sh,0);m:write_u8(0xa9c+sh,0);m:write_u8(neo and 0xb59 or 0xb2d,1)
+ hook(send,function()cpu.state.D0.value=0 end)
+ taps[#taps+1]=m:install_read_tap(chan+8,chan+9,'peer-open-completion',function(off,v,mask)if (v>>8)==2 then m:write_u8(chan+8,1);return 0x100|(v&255)end end)
+end,function()eq(cpu.state.D0.value&255,0);eq(m:read_u8(chan+8),1);eq(m:read_u8(chan+9),0x44)end)
+add(168,{1},function()
+ clearhooks();m:write_u8(state,3);m:write_u8(chan+8,1);m:write_u8(0xc65+sh,0);m:write_u8(neo and 0xb59 or 0xb2d,1);hook(send,function()cpu.state.D0.value=0 end)
+end,function()eq(cpu.state.D0.value&255,0);eq(m:read_u8(chan+8),0)end)
+add(167,{},function()
+ clearhooks();hook(neo and 0x41435a or 0x4c3ec4,function()m:write_u8(state,1);cpu.state.D0.value=0 end)
+end,ret(0,255))
+end
+add(170,{data+0x700,data+0x800,1},function()
+ clearhooks();m:write_u8(0xc65+sh,0);m:write_u8(state,3);m:write_u8(chan+16,1);m:write_u8(chan+17,0x22);m:write_u8(0xd72+sh,0);m:write_u8(neo and 0xb59 or 0xb2d,1);put(data+0x800,string.char(4));hook(send,function()cpu.state.D0.value=0 end)
+ taps[#taps+1]=m:install_read_tap(0xd72+sh,0xd73+sh,'peer-query-completion',function(off,v,mask)
+  if (v>>8)==4 then m:write_u8(data+0x700,0x7b);m:write_u8(0xd72+sh,0);m:write_u8(0xd73+sh,5);return 5 end
+ end)
+end,function()eq(cpu.state.D0.value&255,5);eq(m:read_u8(data+0x700),0x7b)end)
+-- Execute original IAS integer parser: only the low integer byte is retained.
+add(10000+(neo and 0x415b60 or 0x4c56ca),{data+0x800,11},function()
+ clearhooks();m:write_u32(0xd6e+sh,data+0x700);m:write_u8(0xd72+sh,4)
+ local bytes={4,0,0,1,0,1,1,0x12,0x34,0x56,0x78};for i,v in ipairs(bytes)do m:write_u8(data+0x7ff+i,v)end
+end,function()eq(m:read_u8(data+0x700),0x78);eq(m:read_u8(0xd72+sh),0);eq(m:read_u8(0xd73+sh),0)end)
+-- Compiled public API calls, including the D0-to-A0 resource bridge.
+add(10000+@typed_probe@,{},function()
+ clearhooks();cpu.state.A5.value=@_GLOBAL_OFFSET_TABLE_@;local bytes={@TYPED_BYTES@};for i,v in ipairs(bytes)do m:write_u8(@TYPED_CODE@+i-1,v)end
+ m:write_u32(context,1);m:write_u32(descriptors+4,data+0x1000);m:write_u32(data+0x100c,0x120)
+ for i=0,5 do m:write_u32(data+0x500+4*i,0)end
+ m:write_u8(state,3);m:write_u16(0xcee+sh,64);put(passwd+1,'secret');m:write_u8(profiles+120,1);put(profiles,'First')
+end,function()eq(m:read_u32(data),0x70617373);print('PASS typed service APIs and resource pointer bridge')end)
+-- Execute native channel receiver with an inherited, deliberately foreign A5.
+add(10000+(neo and 0x415f2a or 0x4c5a94),{data+0x800,4},function()
+ put(data+0x800,string.char(1)..'abc');cpu.state.A5.value=0x12345678
+end,function()eq(m:read_u32(data+0x500),3);eq(m:read_u32(data+0x504),97);eq(m:read_u32(data+0x508),99);eq(m:read_u32(data+0x50c),1)end)
+add(10000+(neo and 0x415206 or 0x4c4d70),{},nil,function()eq(m:read_u32(data+0x510),35);eq(m:read_u32(data+0x514),1)end)
+-- Native UI and IrDA initialization paths use the original routines.
+add(151,{8,0x1234},function()m:write_u16(neo and 0x3e86 or 0x3df6,0x1234)end,ret(8))
+local saved_system
+local function restore_ui()
+ clearhooks();m:write_u32(descriptors,saved_system);m:write_u32(context,0)
+end
+local function native(slot,args,prep,check,text)
+ add(slot,args,function()restore_ui();if prep then prep()end end,check,function(phase)
+  local map={s={11,4},e={10,8},c={10,0x40},r={13,8},t={13,1},['\r']={9,0x40},['v']={5,2},['\27']={4,0x80}}
+  for i=1,#text do
+   local pos=assert(map[text:sub(i,i)]);local start=10+(i-1)*12
+   if phase==start or phase==start+6 then
+    local tag=(neo and ':ROW' or ':COL.')..pos[1]
+    for _,field in pairs(machine.ioport.ports[tag].fields)do if field.mask==pos[2]then if phase==start then field:set_value(1)else field:clear_value()end end end
+   end
+  end
+ end)
+ cases[#cases][6]=140
+end
+native(148,{2,data+0x800},function()put(passwd+1,'secret');put(data+0x800,'Master password:')end,ret(1,255),'secret\r')
+native(148,{2,0},nil,ret(0,255),'\27')
+native(157,{},nil,function()end,'\27')
+native(157,{},function()m:write_u8(0xd74+sh,0)end,function()eq(m:read_u8(0xd74+sh),1)end,'v\r')
+add(171,{data+0x110},function()
+ restore_ui();m:write_u8(data+0x10f,0xa5);m:write_u8(data+0x110,0xa5);m:write_u8(data+0x111,0xa5)
+ local idle=neo and 0x7dc1 or 0x43d1;m:write_u8(idle,1)
+ if not neo then taps[#taps+1]=m:install_read_tap(0xfffff408,0xfffff409,'irda-present',function(off,v,mask)return v&0xfffd end)end
+end,function()eq(cpu.state.D0.value,0);eq(m:read_u8(data+0x110),1);eq(m:read_u8(data+0x10f),0xa5);eq(m:read_u8(data+0x111),0xa5);eq(m:read_u8(neo and 0x7dc1 or 0x43d1),0)end)
+add(172,{1},nil,function()eq(m:read_u8(neo and 0x7dc1 or 0x43d1),1)end)
+if not neo then
+ add(171,{data+0x110},function()
+ clearhooks();m:write_u8(data+0x110,0xa5);taps[#taps+1]=m:install_read_tap(0xfffff408,0xfffff409,'irda-absent',function(off,v,mask)return v|2 end)
+ end,function()eq(cpu.state.D0.value,0xfffffaea);eq(m:read_u8(data+0x110),0xa5)end)
+end
+local index,frame,failed,phase=0,0,false,-1
+emu.register_frame_done(function()
+ if failed then return end;frame=frame+1;if frame<first then return end
+ local ok,err=pcall(function()
+ if phase==-1 then
+  if not saved_system then saved_system=m:read_u32(descriptors)end
+  index=index+1;if index>#cases then print('PASS service probe '..#cases..' cases');machine:exit();return end
+  phase=0
+  local p=cases[index];if p[3]then p[3]()end
+  local stop=code+2
+  if p[1]>10000 then m:write_u16(code,0x4ef9);m:write_u32(code+2,p[1]-10000);stop=code+6 else m:write_u16(code,0xa000+4*p[1])end
+  m:write_u16(stop,0x60fe);m:write_u32(stack,stop)
+  for i,v in ipairs(p[2])do m:write_u32(stack+4*i,v)end
+  cpu.state.D0.value=0xa5a5a5a5;cpu.state.A0.value=0x77777770;cpu.state.SR.value=p[6]and 0x2000 or 0x2700;cpu.state.SP.value=stack;cpu.state.PC.value=code
+ else
+  phase=phase+1;local p=cases[index]
+  if p[5]then p[5](phase)end
+  if phase==(p[6]or 4)then
+   local stop=code+(p[1]>10000 and 6 or 2);assert(cpu.state.PC.value==stop or cpu.state.PC.value==stop+2,string.format('busy PC=%x',cpu.state.PC.value));eq(cpu.state.SP.value,stack+4);p[4]();print('PASS slot '..p[1]..' case '..index);phase=-1
+  end
+ end
+ end)
+ if not ok then failed=true;print('FAIL service slot '..(cases[index]and cases[index][1]or -1)..' case '..index..' '..tostring(err));machine:exit()end
+end)

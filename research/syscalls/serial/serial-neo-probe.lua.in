@@ -1,0 +1,92 @@
+local machine=manager.machine
+local cpu=machine.devices[':maincpu'];local m=cpu.spaces.program
+local code,stack,data=458752,491520,462848
+local events={};local function at(f,fn)events[f]=fn end
+local function eq(a,b)assert(a==b,string.format('%x ~= %x',a,b))end
+local function call(op,args)
+ m:write_u16(code,op);m:write_u16(code+2,0x60fe);m:write_u32(stack,code+2)
+ for i,v in ipairs(args or {})do m:write_u32(stack+4*i,v)end
+ cpu.state.SR.value=0x2700;cpu.state.SP.value=stack;cpu.state.PC.value=code
+end
+local function done(r)
+ local pc=cpu.state.PC.value;assert(pc==code+2 or pc==code+4,string.format('busy %x',pc))
+ if r then eq(cpu.state.D0.value,r & 0xffffffff)end
+end
+local rx_tap,tx_tap,write_tap
+local rx_queue={};local tx_status=0xe800;local sent={}
+local irq_tap
+local function install_taps()
+irq_tap=m:install_read_tap(0xfffff906,0xfffff907,'irq-tx-status',function()return tx_status end)
+rx_tap=m:install_read_tap(0xfffff904,0xfffff905,'probe-rx',function(off,v,mask)
+ local pc=cpu.state.PC.value;if not ((pc>=4346464 and pc<4346614) or (pc>=4346656 and pc<4346918))then return 0 end;local v=rx_queue[1]or 0
+ if mask&0xff~=0 and #rx_queue>0 then table.remove(rx_queue,1)end
+ return v
+end)
+tx_tap=m:install_read_tap(0xfffff916,0xfffff916+1,'probe-tx',function(off,v,mask)return tx_status end)
+write_tap=m:install_write_tap(0xfffff916,0xfffff916+1,'capture-tx',function(off,v,mask)if mask&0xff~=0 then sent[#sent+1]=v&0xff end end)
+end
+at(119,install_taps)
+at(120,function()
+ local b={@BYTES@}
+ for i,v in ipairs(b)do m:write_u8(code+i-1,v)end
+ rx_queue={0x2041,0x20d3,0x20ff};tx_status=0xe800;sent={}
+ m:write_u16(data+0x180,0x60fe);m:write_u32(stack,data+0x180)
+ cpu.state.SR.value=0x2700;cpu.state.SP.value=stack;cpu.state.A5.value=@GOT@;cpu.state.PC.value=@PROBE@
+end)
+at(124,function()
+ for i,v in ipairs({0,0,0,0,2,0,2,0x70617373})do eq(m:read_u32(data+4*(i-1)),v)end
+ eq(#sent,2);eq(sent[1],65);eq(sent[2],0xd3)
+ eq(m:read_u32(data+14*4),(-502)&0xffffffff);eq(m:read_u8(data+0x114),0xe8);eq(m:read_u8(data+0x115),0)
+ eq(cpu.state.SP.value,stack+4)
+ print('PASS neo compiled serial API, all nine calls')
+ rx_queue={0x2041,0x20ff};tx_status=0xe800
+ m:write_u16(code+0x400,0x4eb9);m:write_u32(code+0x402,4346464);m:write_u16(code+0x406,0x60fe)
+ cpu.state.SP.value=stack;cpu.state.A5.value=0x12345678;cpu.state.PC.value=code+0x400
+end)
+at(128,function()
+ eq(m:read_u32(data+8*4),3);eq(m:read_u32(data+9*4),0);eq(m:read_u32(data+10*4),0)
+ eq(m:read_u32(data+11*4),0x12345678);eq(m:read_u32(data+29*4),0x12345678)
+ for i,v in ipairs({0x20,0x41,0x20,0xff,0,0})do eq(m:read_u32(data+(19+i)*4),v)end
+ eq(m:read_u32(data+12*4),1);eq(m:read_u32(data+13*4),0xe8)
+ print('PASS neo typed RX/TX callbacks, final empty RX sample, foreign A5 retained (no applet GOT switch)')
+ cpu.state.SP.value=stack;cpu.state.A5.value=0x12345678;cpu.state.PC.value=code+0x400
+end)
+at(132,function()
+ eq(m:read_u32(data+12*4),1);print('PASS neo TX callback not repeated')
+ rx_queue={};tx_status=0x0200
+ m:write_u32(stack,data+0x180);cpu.state.SP.value=stack
+ cpu.state.A5.value=@GOT@;cpu.state.PC.value=@TIMEOUT@
+
+end)
+at(136,function()
+ eq(m:read_u32(data+15*4),(-515)&0xffffffff);eq(m:read_u32(data+16*4),0)
+ eq(m:read_u32(data+17*4),(-515)&0xffffffff);eq(m:read_u32(data+18*4),0)
+ eq(m:read_u32(data+19*4),0x70617373);eq(cpu.state.SP.value,stack+4)
+ print('PASS neo 16-bit timeout slots and 32-bit signed errors')
+ print('PASS ABI serial direct-handler probe')
+end)
+-- Enter the live RAM vector with a synthetic 68000 exception frame. Pending
+-- UART status is controlled; the original dispatcher, handler and RTE all run.
+local pending_tap
+at(140,function()
+ eq(m:read_u32(0x110),4326160);eq(m:read_u32(18598),4346464)
+ pending_tap=m:install_read_tap(0xfffff30c,0xfffff30f,'serial-pending',function(off,v,mask)
+  return off==0xfffff30e and 4 or 0
+ end)
+ m:write_u32(data+8*4,0);m:write_u32(data+12*4,0)
+ m:write_u32(23968,@TX_CALLBACK@);m:write_u8(23974,0x80)
+ rx_queue={0x2041,0x20ff};tx_status=0xe800
+ m:write_u16(stack,0x2700);m:write_u32(stack+2,data+0x180)
+ cpu.state.SP.value=stack;cpu.state.A5.value=0x12345678;cpu.state.PC.value=m:read_u32(0x110)
+end)
+at(144,function()
+ eq(m:read_u32(data+8*4),3);eq(m:read_u32(data+12*4),1)
+ eq(m:read_u32(data+11*4),0x12345678);eq(m:read_u32(data+29*4),0x12345678)
+ eq(cpu.state.A5.value,0x12345678);eq(cpu.state.SP.value,stack+6)
+ local pc=cpu.state.PC.value;assert(pc==data+0x180 or pc==data+0x182,'RTE did not return')
+ pending_tap:remove()
+ print('PASS neo RAM vector -> IRQ dispatcher -> UART handler -> RX/TX callbacks -> RTE: foreign A5 retained')
+ print('PASS ABI serial probe');machine:exit()
+end)
+local f=0;local failed=false
+emu.register_frame_done(function()f=f+1;if not failed and events[f]then local ok,err=pcall(events[f]);if not ok then failed=true;print('LUA ERROR',err);machine:exit()end end end)

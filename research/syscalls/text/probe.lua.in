@@ -1,0 +1,160 @@
+local machine=manager.machine;local cpu=machine.devices[':maincpu'];local m=cpu.spaces.program
+local neo=@NEO@;local code,data,stack=neo and 0x70000 or 0x36000,neo and 0x74000 or 0x38000,neo and 0x7f000 or 0x3f000
+local editor,cursor,transfer,form,entry,buffer=data+0x100,data+0x200,data+0x300,data+0x400,neo and 0x10d2 or 0x1042,neo and 0x1509c or 0x4558
+local first=neo and 150 or 540
+local function eq(a,b)assert(a==b,string.format('%x ~= %x',a,b))end
+local function fill(a,n,v)for i=0,n-1 do m:write_u8(a+i,v or 0)end end
+local function put(a,s)for i=1,#s do m:write_u8(a+i-1,s:byte(i))end;m:write_u8(a+#s,0)end
+local function bytes(a,n)local t={};for i=0,n-1 do t[#t+1]=string.char(m:read_u8(a+i))end;return table.concat(t)end
+local function file(text)
+ local clip=entry+0x48;local clipbuffer=buffer+0x10000
+ fill(entry,0x90);fill(buffer,0x20000);put(buffer,text)
+ m:write_u32(entry,buffer);m:write_u32(entry+4,#text);m:write_u32(entry+8,#text);m:write_u32(entry+12,0x10000);m:write_u32(entry+0x20,6);m:write_u16(entry+0x44,1);put(entry+0x34,'Probe')
+ m:write_u32(clip,clipbuffer);m:write_u32(clip+12,0x10000);m:write_u32(clip+0x20,4);m:write_u16(clip+0x44,0xcb);put(clip+0x34,'Clipboard')
+ local delta=neo and 0x90 or 0
+ m:write_u32(0x3446+delta,clip);m:write_u32(0x354e+delta,buffer+0x20000)
+ m:write_u32(0x3442+delta,entry);m:write_u32(0x344a+delta,clip);m:write_u32(0x355c+delta,0);m:write_u16(0xe02+delta,0);m:write_u32(0xf42+delta,entry);m:write_u8(0xf46+delta,1)
+ m:write_u8(neo and 0x3e82 or 0x3df2,0)
+end
+local function state()
+ fill(editor,0x60);m:write_u16(editor,1);m:write_u16(editor+0x12,40);m:write_u16(editor+0x14,4);m:write_u16(editor+0x16,neo and 64 or 4)
+ if neo then local desc=m:read_u32(0x5c68);m:write_u32(editor+0x4e,desc)end
+end
+local function ret(v)return function()eq(cpu.state.D0.value,v)end end
+local cases={};local function add(slot,args,prep,check)cases[#cases+1]={slot,args,prep,check}end
+add(114,{1,0},function()file('abc def.\rSecond line!')end,ret(1))
+add(175,{editor,0xcb,3,100,1,1,10,2},function()file('abc');fill(editor,0x60,0xa5)end,function()
+ eq(cpu.state.D0.value,0);eq(m:read_u16(editor),0xcb);eq(m:read_u32(editor+2),100);eq(m:read_u16(editor+0x4a),1)
+ print('editor rectangle',m:read_u16(editor+14),m:read_u16(editor+16),m:read_u16(editor+18),m:read_u16(editor+20),m:read_u16(editor+22))
+end)
+for mode=0,3 do
+ add(178,{editor,cursor,mode},function()
+  fill(cursor,44,0xa5);m:write_u32(editor+0x18,5);m:write_u16(editor+0x20,0x1111);m:write_u16(editor+0x22,0x2222);m:write_u32(editor+0x24,9);m:write_u16(editor+0x3c,0x3333);m:write_u16(editor+0x3e,0x4444)
+ end,function()eq(cpu.state.D0.value,mode==3 and 0x2000002 or 0);eq(m:read_u32(cursor),editor);if mode<3 then eq(m:read_u32(cursor+4),({0,5,9})[mode+1])end end)
+end
+for _,plain in ipairs({0,1})do
+ add(179,{cursor,4,data+0x800,0,plain,0,0,0,0,0},function()file('abcdef');state();fill(cursor,44);m:write_u32(cursor,editor);if neo then m:write_u32(cursor+0x10,m:read_u32(0x5c68))end;fill(data+0x800,16,0xa5)end,function()eq(cpu.state.D0.value,4);eq(m:read_u32(cursor+4),4);assert(bytes(data+0x800,4)=='abcd');eq(m:read_u8(data+0x804),0xa5)end)
+end
+add(180,{cursor,2,0,0,0},function()m:write_u16(editor+0x4a,1)end,ret(0x2000005))
+add(181,{cursor,data+0x800,3,1},nil,ret(0x2000005))
+add(182,{cursor,1},function()m:write_u32(cursor+4,3)end,function()eq(cpu.state.D0.value,0);eq(m:read_u32(editor+0x24),3)end)
+add(183,{editor,0,0,0,0,0},nil,ret(neo and 0x2000005 or 0x2000003))
+add(184,{editor},nil,ret(0))
+add(185,{editor,transfer},function()fill(transfer,128,0xa5)end,function()eq(m:read_u16(transfer),m:read_u16(editor));eq(m:read_u32(transfer+0x50),editor);eq(m:read_u32(transfer+0x7c),0xa5a5a5a5)end)
+local statistics={
+ {'abc def.\rSecond line!',{21,3,3,2,1,2}}, {'abc',{3,0,0,1,0,0}},
+ {'abc ',{4,1,1,1,0,0}}, {'one two three. ',{15,3,3,1,0,2}},
+ {'one\rtwo\r',{8,2,2,3,2,0}}, {'',{0,0,0,0,0,0}}
+}
+for _,test in ipairs(statistics)do
+ local text,want=test[1],test[2]
+ add(187,{1,0,0xffffffff,data+0x800,data+0x804,data+0x808,data+0x80c,data+0x810,data+0x814,data+0x818,data+0x820},function()file(text);fill(data+0x800,40,0xa5)end,function()
+  for i,v in ipairs(want)do eq(m:read_u32(data+0x7fc+4*i),v)end
+  assert(bytes(data+0x818,8)==string.pack('>d',want[1]/2048));eq(m:read_u32(data+0x820),0);eq(m:read_u32(data+0x824),0xa5a5a5a5)
+ end)
+end
+for _,text in ipairs({'plain','<FORM></FORM>','<FORM><BODY>Hello</BODY></FORM>','<FORM><INPUT TYPE="TEXT" NAME="a" VALUE="hello"></FORM>'})do
+ add(188,{1,form,1},function()file(text);fill(form,76,0xa5)end,function()
+ eq(cpu.state.D0.value,text=='plain'and 0x4000001 or 0)
+ end)
+end
+-- Token region filtering, reverse traversal, and search semantics.
+for _,bit in ipairs({1,2})do for _,skip in ipairs({0,1})do
+ local text='a'..string.char(0xb1,bit,0xb1)..'h'..string.char(0xb2,bit,0xb2)..'b'
+ add(179,{cursor,20,data+0x800,0,1,bit==1 and skip or 0,bit==2 and skip or 0,0,0,0},function()
+  file(text);state();fill(cursor,44);m:write_u32(cursor,editor);if neo then m:write_u32(cursor+16,m:read_u32(0x5c68))end;fill(data+0x800,24,0xa5)
+ end,function()local want=skip==1 and 'ab' or 'ahb';eq(cpu.state.D0.value,#want);assert(bytes(data+0x800,#want)==want)end)
+end end
+add(179,{cursor,3,data+0x800,1,1,0,0,0,0,0},function()
+ file('abcdef');state();fill(cursor,44);m:write_u32(cursor,editor);m:write_u32(cursor+4,6);if neo then m:write_u32(cursor+16,m:read_u32(0x5c68))end
+end,function()eq(cpu.state.D0.value,3);eq(m:read_u32(cursor+4),3);assert(bytes(data+0x800,3)=='fed')end)
+for _,sensitive in ipairs({0,1})do
+ add(179,{cursor,0xffffffff,0,0,1,0,0,0,sensitive,data+0x880},function()
+  file('abc ABC');state();fill(cursor,44);m:write_u32(cursor,editor);if neo then m:write_u32(cursor+16,m:read_u32(0x5c68))end;put(data+0x880,'ABC')
+ end,function()eq(cpu.state.D0.value,1);eq(m:read_u32(cursor+4),sensitive==1 and 4 or 0)end)
+end
+for _,expand in ipairs({0,1})do
+ add(179,{cursor,100,data+0x800,0,1,0,0,expand,0,0},function()
+  file('a'..string.char(0xa8)..'<FORM></FORM>'..string.char(neo and 0x9d or 0xa9)..'b');state();fill(cursor,44);m:write_u32(cursor,editor);if neo then m:write_u32(cursor+16,m:read_u32(0x5c68))end;fill(data+0x800,128,0xa5)
+ end,function()
+  local want=expand==0 and 'ab' or 'ab<FORM></FORM>';eq(cpu.state.D0.value,#want);assert(bytes(data+0x800,#want)==want)
+ end)
+end
+-- Real editable initialization and native redraw/gap management.
+add(175,{editor,1,0,1000,0,0,40,4},function()file('Hello world.\rNext line');fill(editor,96,0xa5)end,function()
+ eq(cpu.state.D0.value,0);eq(m:read_u32(entry+4),534);eq(m:read_u32(editor+0x2c)-m:read_u32(editor+0x28),512)
+end)
+add(176,{editor,0,0,0,data+0x800},nil,function()eq(cpu.state.D0.value,1);eq(m:read_u32(data+0x800),0)end)
+add(176,{editor,0xff,0,0,data+0x800},nil,function()eq(cpu.state.D0.value,0);eq(m:read_u32(data+0x800),0)end)
+add(178,{editor,cursor,0},nil,ret(0))
+add(179,{cursor,5,data+0x800,0,1,0,0,0,0,0},nil,function()eq(cpu.state.D0.value,5);assert(bytes(data+0x800,5)=='Hello')end)
+add(180,{cursor,1,1,0,0},nil,function()eq(cpu.state.D0.value,0)end)
+add(181,{cursor,data+0x880,3,1},function()put(data+0x880,'XYZ')end,function()eq(cpu.state.D0.value,0)end)
+add(182,{cursor,1},nil,function()eq(cpu.state.D0.value,0)end)
+add(184,{editor},function()m:write_u32(entry+0x14,55)end,function()
+ eq(cpu.state.D0.value,0);eq(m:read_u32(entry+4),536);eq(m:read_u32(entry+0x14),m:read_u32(editor+0x18))
+ local text=bytes(buffer,536):gsub(string.char(0xa7),'');assert(text=='HelloXYZworld.\rNext line')
+end)
+add(177,{editor},nil,function()eq(cpu.state.D0.value,0)end)
+add(176,{editor,0x20,33,0,data+0x800},nil,function()eq(cpu.state.D0.value,1);eq(m:read_u32(data+0x800),0)end)
+add(178,{editor,cursor,0},nil,ret(0))
+add(179,{cursor,6,data+0x800,0,1,0,0,0,0,0},nil,function()eq(cpu.state.D0.value,6);assert(bytes(data+0x800,6)=='Hello!')end)
+add(183,{editor,0,0,0,0,0},nil,ret(neo and 0 or 0x2000003))
+add(176,{editor,0x21,0xc4a,0,data+0x800},nil,function()eq(cpu.state.D0.value,1);eq(m:read_u32(data+0x800),0);assert(m:read_u16(editor+0x36)~=0)end)
+add(183,{editor,data+0xa00,data+0xa10,data+0xa20,data+0xa30,1},function()
+ if neo then local font=m:read_u32(editor+0x4e);for j=0,3 do for k=0,15 do m:write_u8(data+0xa00+16*j+k,m:read_u8(font+k))end end end
+end,function()eq(cpu.state.D0.value,neo and 0 or 0x2000003);if neo then for j=0,3 do eq(m:read_u32(editor+0x4e+4*j),data+0xa00+16*j)end end end)
+add(194,{editor},nil,function()eq(cpu.state.D0.value,0);eq(m:read_u32(entry+4),512)end)
+add(178,{editor,cursor,0},nil,ret(0))
+add(179,{cursor,16,data+0x800,0,1,0,0,0,0,0},nil,ret(0))
+-- Canonical form parser and form-message/transfer structures.
+add(188,{1,form,1},function()file('<FORM><INPUT TYPE="TEXT" NAME="a" VALUE="hello"></FORM>');fill(form,76,0xa5)end,function()
+ eq(cpu.state.D0.value,0);eq(m:read_u32(entry+4),96);eq(m:read_u16(form+0x2a),1);eq(m:read_u16(form+0x2c),0)
+ assert(bytes(buffer,96)=='<FORM><INPUT TYPE="TEXT" NAME="a" VALUE="hello"></FORM><FORMDATA>hello               </FORMDATA>')
+end)
+add(189,{form,0xff,0,0,data+0x800},nil,function()eq(cpu.state.D0.value,0);eq(m:read_u32(data+0x800),0)end)
+add(190,{transfer,form},function()fill(transfer,128,0xa5)end,function()eq(m:read_u16(transfer),1);eq(m:read_u8(transfer+2),0);eq(m:read_u32(transfer+0x7c),0xa5a5a5a5)end)
+for _,slot in ipairs({186,191})do
+ add(slot,{transfer,0xff,0,data+0x800},nil,function()eq(cpu.state.D0.value,0);eq(m:read_u32(data+0x800),0)end)
+end
+add(193,{form,0,data+0x880},function()put(data+0x880,'not-present')end,function()eq(cpu.state.D0.value&255,0)end)
+add(189,{form,0x20,81,0,data+0x800},nil,function()eq(cpu.state.D0.value,1);eq(m:read_u32(data+0x800),0);assert(bytes(buffer,96)=='<FORM><INPUT TYPE="TEXT" NAME="a" VALUE="hello"></FORM><FORMDATA>Q                   </FORMDATA>')end)
+add(114,{1,0},nil,ret(1))
+add(192,{form},nil,function()eq(m:read_u32(entry+4),96);assert(bytes(buffer,96)=='<FORM><INPUT TYPE="TEXT" NAME="a" VALUE="hello"></FORM><FORMDATA>hello               </FORMDATA>')end)
+add(193,{form,0,data+0x880},function()put(data+0x880,'HELLO')end,function()eq(cpu.state.D0.value&255,1);eq(m:read_u16(form+0x1a),0)end)
+for _,slot in ipairs({186,191})do
+ add(slot,{transfer,0x60001,data+0x900,data+0x800},function()
+  fill(transfer,124);m:write_u16(transfer,1);if slot==186 then m:write_u32(transfer+0x50,editor)end
+  put(data+0x880,'ProbeName');m:write_u32(data+0x900,9);m:write_u32(data+0x904,data+0x880)
+ end,function()eq(cpu.state.D0.value,1);eq(m:read_u32(data+0x800),slot==186 and 17 or 0);eq(m:read_u8(transfer+2),6);assert(bytes(transfer+0x20,10)=='ProbeName'..string.char(0))end)
+ add(slot,{transfer,0x60020,data+0x900,data+0x800},function()if slot==191 then m:write_u8(transfer+2,7)end;m:write_u16(data+0x880,0x48);m:write_u32(data+0x904,data+0x880)end,function()eq(cpu.state.D0.value,1);eq(m:read_u32(data+0x800),8);eq(m:read_u8(transfer+2),8)end)
+end
+-- Error/output boundaries and state-dependent guards.
+add(175,{editor,0xcb,3,0,0,0,1,1},function()file('abc');m:write_u32(entry+0x48+0x20,0)end,ret(0x2000004))
+add(175,{editor,0xcb,3,0,neo and 264 or 40,0,1,1},function()file('abc')end,ret(0x2000001))
+add(176,{editor,0xff,0,0,data+0x800},function()state();m:write_u16(editor,0)end,function()eq(cpu.state.D0.value,0x2000006);eq(m:read_u32(data+0x800),0)end)
+add(181,{cursor,data+0x880,3,1},function()file('abc');state();fill(cursor,44);m:write_u32(cursor,editor);m:write_u16(editor,2)end,ret(0x2000006))
+add(188,{1,form,1},function()file('<FORM><INPUT TYPE="TEXT" NAME="a" VALUE="hello"></FORM>')end,ret(0))
+add(188,{1,form,0},function()m:write_u16(form+0x1a,3)end,function()eq(cpu.state.D0.value,0);eq(m:read_u16(form+0x1a),3);eq(m:read_u16(form+0x2a),1)end)
+add(187,{1,4,7,data+0x800,0,0,data+0x804,0,0,0,0},function()file('abc def ghi')end,function()eq(m:read_u32(data+0x800),3);eq(m:read_u32(data+0x804),1)end)
+local function typed_setup(text)
+ file(text);cpu.state.A5.value=@_GLOBAL_OFFSET_TABLE_@
+ local blob={@TYPED_BYTES@};for i,v in ipairs(blob)do m:write_u8(@TYPED_CODE@+i-1,v)end
+end
+add(10000+@typed_probe@,{},function()typed_setup('abc')end,function()eq(m:read_u32(data),0x70617373)end)
+add(10000+@typed_form_probe@,{},function()typed_setup('<FORM><INPUT TYPE="TEXT" NAME="a" VALUE="hello"></FORM>')end,function()eq(m:read_u32(data),0x70617373)end)
+local frame,index,phase,failed=0,0,-1,false
+emu.register_frame_done(function()
+ if failed then return end;frame=frame+1;if frame<first then return end
+ local ok,err=pcall(function()
+ if phase==-1 then
+  index=index+1;if index>#cases then print('PASS text probe '..#cases..' cases');machine:exit();return end;phase=0
+  local p=cases[index];if p[3]then p[3]()end
+  local stop=code+2;if p[1]>10000 then m:write_u16(code,0x4ef9);m:write_u32(code+2,p[1]-10000);stop=code+6 else m:write_u16(code,0xa000+4*p[1])end;m:write_u16(stop,0x60fe);m:write_u32(stack,stop);for i,v in ipairs(p[2])do m:write_u32(stack+4*i,v)end
+  cpu.state.D0.value=0xa5a5a5a5;cpu.state.A0.value=0x77777770;cpu.state.SR.value=0x2700;cpu.state.SP.value=stack;cpu.state.PC.value=code
+ else
+  phase=phase+1;if phase==4 then local p=cases[index];local pc=cpu.state.PC.value;local stop=code+(p[1]>10000 and 6 or 2);assert(pc==stop or pc==stop+2,string.format('busy PC=%x',pc));eq(cpu.state.SP.value,stack+4);p[4]();print('PASS slot '..p[1]..' case '..index);phase=-1 end
+ end
+ end)
+ if not ok then failed=true;print('FAIL text slot '..(cases[index]and cases[index][1]or -1)..' case '..index..' '..tostring(err));machine:exit()end
+end)

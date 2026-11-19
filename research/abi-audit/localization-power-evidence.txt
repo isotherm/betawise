@@ -1,0 +1,71 @@
+Localization/power clean-room evidence — 2026-11-18
+
+Manufacturer ROM identity/load bases: rom-inventory.json.
+Ghidra headless Dump.java traces (temporary working evidence):
+  /tmp/os3k-clean/local-as-ghidra.log (all twelve AS3000 3.01 entry bodies)
+  /tmp/os3k-clean/local-neo-ghidra.log (all twelve Neo 3.21 entry bodies)
+  /tmp/os3k-clean/local-power-as.log
+  /tmp/os3k-clean/local-extra-as.log (consumers and composition helpers)
+No prior SDK definitions or reconstructed repository APIs were used as evidence.
+Neo 3.01 addresses remain in slots.tsv; this follow-up does not certify them.
+
+Slot 88: AS3000 3.01 004CEB40 / Neo 3.21 00423C2E.
+  Byte case conversion: ASCII upper-to-lower plus 22 ordered byte pairs.
+  Upper table 004EA72C / 0044C60E; lower 004EA743 / 0044C625.
+  Neo upper-table entry 13 is A7, versus AS3000 3.01 A6; the paired lower is A7.
+  All 256 inputs verified in the typed MAME probe, including this difference.
+
+Slot 89: AS3000 3.01 004CEB8E / Neo 3.21 00423C7C.
+  Word event input, byte output. Five accent descriptors (AS3000 3.01 pointer table
+  004E978A; descriptors 00406345/359/36D/381/398) identify Alt+E/Grave/I/U/N.
+  AS3000 3.01 helper 004CF3B6 retains pending index at 4356 and flag at 4355.
+  Matching letters compose; nonmatches return the accent and enqueue the
+  original event through 004CE122. Native queue behavior is not reimplemented.
+  Neo guard at 00423CAA checks context 35E2; absent context or selected ID A002
+  bypasses composition. Vendor Calculator header supplies that ID.
+
+Slot 90: AS3000 3.01 004CEC66 / Neo 3.21 00423D7A.
+  Matrix byte -> key byte; matrix table 004EA49C / 0044C37B and alternative
+  layouts 004EA51C / 0044C3FB. All 256 inputs characterized for four layouts.
+  A base-map FF is not checked before alternative-map indexing: holes can read
+  other ROM data. Do not claim those results are legitimate physical key codes.
+
+Slot 91: AS3000 3.01 004CEA54 / Neo 3.21 00423B42.
+  Fixed 16-word bitmap at 004EA60C / 0044C4EE; bit indexed by low nibble.
+  Same bitmap on both ROMs; all 256 canonical Boolean outputs verified.
+  No consumer establishing a more specific character-class policy was found.
+
+Slot 92: AS3000 3.01 004CEE24 / Neo 3.21 00423F38.
+  bool prompt, optional byte enum output, optional string output; full result 1.
+  English ROM strings explicitly name QWERTY/Dvorak/Right/Left, with UI choices
+  1/2/3/4 corresponding to stored 3/0/2/1. Native selection and Escape tested.
+  Caller output is copied/formatted; no function pointer return is exposed.
+
+Slots 93–99 are power management, not localization.
+  AS3000 3.01 flags: idle sleep 43D1, automatic power-off 43D2.
+  Active/saved timeout: 43CE/43CF. Neo equivalents: 7DC1/7DC2 and 7DBE/7DBF.
+  AS3000 3.01 idle consumer 004D1572 gates idle CPU suspension on 43D1==1;
+  activity refreshes RTC deadline when 43D2==1. CPU suspend helper 004D12A2
+  ultimately executes STOP #2000, not the power-off operation itself.
+  Re-arm helper 004D1688 adds active_minutes*60 to RTC time and calls 004CF722.
+  Disable helper 004CF7E0 clears RTC interrupt enables and masks its interrupt.
+  Slot 96 invokes re-arm/disable only when its stored flag changes.
+  Slot 98 validates 4..59 then writes only the active byte; slot 99 copies saved
+  to active. Neither re-arms by itself. Original setting dialog at 004D1754 /
+  00426BE4 commits both bytes through 004D190C / 00426D9C and re-arms.
+  ROM English prompt: "turns off (4 to 59 minutes)". Native dialog tested using
+  physical Right then Return, confirming active and saved bytes both become 18.
+
+Manufacturer applet caller leads resolved from original relative call stubs:
+  Control Panel queries slot 92 and temporarily saves/disables/restores slot
+  93/94 around operations; its keyboard settings consume the layout report.
+  Inspiration Outliner calls 89 then 88 for case-insensitive text navigation.
+  KeyWords calls 90 on physical matrix input before character conversion.
+  AlphaWord Plus saves slot 95 and toggles 96 around operations.
+  AlphaQuiz 2012/2028 queries interval and raises it to 30 with slot 98 when
+  shorter; exit paths at 2108/22B8 call slot 99 to restore the saved interval.
+  Other 96 callers include MathFacts, Responder, Wireless File Transfer and
+  Accelerated Reader. These support operation policy, not any new ABI rule.
+
+Reproduction: python3 betawise/research/abi-audit/run.py [temporary-output-dir]
+No physical power-off, flash persistence, or Neo 3.01 execution is certified.

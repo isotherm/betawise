@@ -8,6 +8,7 @@
 | `0xA1CB` | UCBLogo |
 | `0xA1DE` | DebugTool |
 | `0xA1F0` | NeoFontTerminal |
+| `0xA1F1` | File Manager |
 | `0xA1FF` | Betawise QEMU test applet |
 
 See the [SmartApplet ID registry](https://github.com/isotherm/betawise/blob/HEAD/applets/REGISTRY.md) to request an ID block.

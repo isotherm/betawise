@@ -1,0 +1,344 @@
+[
+  {
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/SpellCheck Small USA.OS3KApp",
+    "name": "SpellCheck Small USA",
+    "sha256": "e699076e5d6522f63ab2201e1ac74dcff5ddc3f26beaaf801985c436179394ec",
+    "copies": [
+      "mame/roms/asma3k/spellcheck small usa.os3kapp"
+    ]
+  },
+  {
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/ControlPanel.OS3KApp",
+    "name": "Control Panel",
+    "sha256": "37eb0e316503b1b2071aa5dced1700c69a028a79539f815e1a04c9b4c8fd74c1",
+    "copies": [
+      "mame/roms/asma3k/controlpanel.os3kapp"
+    ]
+  },
+  {
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/NeoFontMedium.OS3KApp",
+    "name": "Neo Font - Medium (5 lines)",
+    "sha256": "e4081207f4b4561f90e845e80a7623b4ae8ce90e88bf8b53bc8fc318819c1b90",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/Thesaurus Large USA.OS3KApp",
+    "name": "Thesaurus Large USA",
+    "sha256": "f99536c33f406ebb28920116740fe4a1ebdef3a54d381e3f6717d29519a0da28",
+    "copies": [
+      "mame/roms/asma3k/thesaurus large usa.os3kapp"
+    ]
+  },
+  {
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/NeoFontXLarge.OS3KApp",
+    "name": "Neo Font - Extra Large (2 lines)",
+    "sha256": "ff5fbe859cf17b9851007981f4722a76a63b6942dedea5c82004cc33f0e29c7c",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/Thesaurus Small USA.OS3KApp",
+    "name": "Thesaurus Small USA",
+    "sha256": "3b33dd1b02cb00b1d1bf4ebb7bb05754f01fea4519e78fe454aa69ed25931cbe",
+    "copies": [
+      "mame/roms/asma3k/thesaurus small usa.os3kapp"
+    ]
+  },
+  {
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/NeoFontSmall.OS3KApp",
+    "name": "Neo Font - Small (6 lines)",
+    "sha256": "dc5c987795574ba11561ca9384b9deb7fb8e02817a81de0b1b0ad6056fb11b77",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/ThesaurusSpanishtoEng.OS3KApp",
+    "name": "Thesaurus Spanish to English",
+    "sha256": "2d05592284470fff8e5e3760fcbfdc45d219d6b73f2351e37bade9c1e6605593",
+    "copies": [
+      "mame/roms/asma3k/thesaurusspanishtoeng.os3kapp"
+    ]
+  },
+  {
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/KeyWords.OS3KApp",
+    "name": "Keywords",
+    "sha256": "a0f9851a5c08c85a4ba3b59686497726a6a4b42b2a60796d268309546ccd61b0",
+    "copies": [
+      "mame/roms/asma3k/keywords.os3kapp"
+    ]
+  },
+  {
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/NeoFontVLarge.OS3KApp",
+    "name": "Neo Font - Very Large (3 lines)",
+    "sha256": "95274568408c85000595f8993920575b19ffd809f6df678dd3e12c14c1adb2b3",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/Beamer.OS3KApp",
+    "name": "Beamer",
+    "sha256": "d89db41bd43e91e49ca81ce31f9676c40e80dc3f2508e37ed50c35430338a36d",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/SpellCheck Large USA.OS3KApp",
+    "name": "SpellCheck Large USA",
+    "sha256": "8f5f13095104df68658ea7d31507455f926f03950c1522dde6b93cd4c79bc3af",
+    "copies": [
+      "mame/roms/asma3k/spellcheck large usa.os3kapp"
+    ]
+  },
+  {
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/Calculator.OS3KApp",
+    "name": "Calculator",
+    "sha256": "c6854215651418b0a25b9cc4903c78d996d15254f0f29f24b4febc6411b1851b",
+    "copies": [
+      "mame/roms/asma3k/calculator.os3kapp"
+    ]
+  },
+  {
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/AlphaWordPlus.OS3KApp",
+    "name": "AlphaWord Plus",
+    "sha256": "22fc6a9b7ab96b332965074d81e88a61574c82bd118cd0a5122ff17eda348515",
+    "copies": [
+      "mame/roms/asma3k/alphawordplus.os3kapp"
+    ]
+  },
+  {
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/SWFont.OS3KApp",
+    "name": "StyleWriterFont",
+    "sha256": "8e3396159b5c15c4aa0e8bcefd3995d08cb743b9d321e377367446a8e0872b33",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/NeoFontLarge.OS3KApp",
+    "name": "Neo Font - Large (4 lines)",
+    "sha256": "f9eccba695628705f99947f5f66e64fdca2ab3795cd741abd9c9742340d160c5",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/NeoFonts/NeoFontSolo.OS3KApp",
+    "name": "Neo Font - Solo (1 line)",
+    "sha256": "579b4974599336abd487f3c2471b5251cef406e949941f6b1cd3b0dd606534a1",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/NeoFonts/NeoFontTech6.OS3KApp",
+    "name": "Neo Font - Tech (6 lines)",
+    "sha256": "045532ae8f597e5c77e5f29bde5fdc1032e586776ba52352295c9126ea9d9b2c",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/NeoFonts/NeoFontNeuropol.OS3KApp",
+    "name": "Neo Font - Neuropol (3 lines)",
+    "sha256": "fb09f4a48179f88ec81eef8aff098125f38a73eb69455b0fa556b071375f0faf",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/NeoFonts/NeoFontTech1.OS3KApp",
+    "name": "Neo Font - Tech (1 line)",
+    "sha256": "1532e57232236a2588301ff9763904dfd7506e7f613d8a85485b29adc76a5d13",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/NeoFonts/NeoFontFemto.OS3KApp",
+    "name": "Neo Font - Femto (9 lines)",
+    "sha256": "aa35d2a567e3aa2172713ae41429f89310110a7a84ebe9df5727a295098508ac",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/NeoFonts/NeoFontKlingon.OS3KApp",
+    "name": "Neo Font - Klingon (2 line)",
+    "sha256": "5c5b78ff8e132b007376711459c1cafb1926553cfdec3407af785775e7adb319",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/NeoFonts/NeoFontAtto.OS3KApp",
+    "name": "Neo Font - Atto (11 lines)",
+    "sha256": "36ed02d2018c725304279d3cff70d2950813447f21dfdbcdab974adf27d0317e",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/NeoFonts/NeoFontMicro.OS3KApp",
+    "name": "Neo Font - Micro (7 lines)",
+    "sha256": "90aca9af77b4130d304416d2d00bf1d7289859868864e4d5f06a497c2fc1c097",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/NeoFonts/NeoFontNano.OS3KApp",
+    "name": "Neo Font - Nano (8 lines)",
+    "sha256": "ab5100bdc2b025c579340118861403252d1cb839d1d0327d1735c6c5476491ef",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/NeoFonts/NeoFontMirror.OS3KApp",
+    "name": "Neo Font - Mirror (6 lines)",
+    "sha256": "8e55026b1a30cd8c85e00a943fccdb2944cdbf73144c5b89799f544f87ebaefa",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/NeoFonts/NeoFontBold.OS3KApp",
+    "name": "Neo Font - Bold (6 lines)",
+    "sha256": "0277a449b9964244358567b4d726b9fce4c1c1b720548181f1c091880ecbe0cb",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/mathfactsinaflash.os3kapp",
+    "name": "MathFacts in a Flash RP",
+    "sha256": "30a8933dd7baaaa896352b46e3491db8016e08399d9425bbb3a1ebd38f4713db",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/mathfactsoffline.os3kapp",
+    "name": "MathFacts in a Flash (offline)",
+    "sha256": "819cd74d451839204d8cfa5a845d72a5a9cdc4912f73ff00cbc56bb5f425564a",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/spellcheck_small_usa.os3kapp",
+    "name": "SpellCheck Small USA",
+    "sha256": "15e86f4f3ae1d68c76b5087c941dd7947128388217eb1a063263d4b2d42ef101",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/neofontxlarge.os3kapp",
+    "name": "Neo Font - Extra Large (2 lines)",
+    "sha256": "bbf8231022e2bc625330312cbe1b1eb9f8ecc37c7fd5e026fd1dbad430d807f3",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/CW_Topics.os3kapp",
+    "name": "CW_Topics",
+    "sha256": "e484c574fa6b5b31bc92f1f986e8f708011b4d49b0cc8d3bab0bbb0f3ae0697d",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/responder.os3kapp",
+    "name": "Responder",
+    "sha256": "3a90184b989e860e14cdb9bc1f8876ce16cba738784007c2351cd52cda2f3385",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/neofontvlarge.os3kapp",
+    "name": "Neo Font - Very Large (3 lines)",
+    "sha256": "2ef76e0e2f6476e26ec514969e6262ddf83ad3afdf8ebeca40ef03d5363970dd",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/CW_MainDictionary.os3kapp",
+    "name": "CW_MainDictionary",
+    "sha256": "a73e7e5b5f062f21da47dfd323e3bf88e69d4a8bd7a2fabead0f5c1b844049a0",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/wirelessfiletransfer.os3kapp",
+    "name": "Wireless File Transfer",
+    "sha256": "b61b8fad98dcc24b5017176dfe1e5e84e816bdabce1d72c00f5b5c0a070906af",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/alphaquiz.os3kapp",
+    "name": "AlphaQuiz",
+    "sha256": "3394331b6ba319ffe8f3de02e88a44e9f3a0998ca737bd93eeb9df784c98252e",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/thesaurus_small_usa.os3kapp",
+    "name": "Thesaurus Small USA",
+    "sha256": "8128f8545e0feecc8974192c9c6103f8e1b0770ef1cf4c830241370411569f8b",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/alphawordplus.os3kapp",
+    "name": "AlphaWord Plus",
+    "sha256": "a8ae516734a0e0b2e19d51ffb7dff3893074ca733fa40207cbff7ead1433f29e",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/thesaurus_large_usa.os3kapp",
+    "name": "Thesaurus Large USA",
+    "sha256": "f91e89496cc2523bcfac57f195e7e277668cef71afd85b8d283f63a4144fa1d0",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/neofontmedium.os3kapp",
+    "name": "Neo Font - Medium (5 lines)",
+    "sha256": "0e4114ab6f2c7925c2bde8c1f77995746ae49e5147037bb3989b3496efa328ea",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/acceleratedreader.os3kapp",
+    "name": "Accelerated Reader",
+    "sha256": "075366f9a098e418db5b8570059b166d6e8711f4ef7dac58b864ca4ffee7fe0f",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/calculator.os3kapp",
+    "name": "Calculator",
+    "sha256": "580b066bb82f55f902313f5363d51ed12bc2497f3c0a8ff8bf650d5b04d89ea4",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/Inspiration(R) Outliner.OS3KApp",
+    "name": "Inspiration(R) Outliner",
+    "sha256": "2c8327b49621726a7fef4029290b7acc7a49d4257d7890eb3d1b6abac902b0b6",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/wirelessupdate.os3kapp",
+    "name": "Wireless Updater",
+    "sha256": "2757f362ce35324217b2f459e120fadc52deb0926859a4b8a7ce0339d8d18f96",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/keywords.os3kapp",
+    "name": "KeyWords",
+    "sha256": "8bb0594035691ae59e3c971e0b558fafeb6cfca60ad68e32d78f1477383b503d",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/beamer.os3kapp",
+    "name": "Beamer",
+    "sha256": "03899b453770f021b07a99fa002f501bc7d97dc1aa8cf32f32c7076680f389ce",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/spellcheck_spanish.os3kapp",
+    "name": "SpellCheck Spanish",
+    "sha256": "cbacbec35d8753dbf6d294737b0a86ee6296256e5b3498dccd32d19798d461f2",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/spellcheck_large_usa.os3kapp",
+    "name": "SpellCheck Large USA",
+    "sha256": "7528be2846076660930980c1d75cdeacc2a4a00d285e3b6dbe4a189ad1db4076",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/text2speechupdate.os3kapp",
+    "name": "Text2Speech Updater",
+    "sha256": "d21188ce3b4a2b7de1347338f4d07163b1a5316964068109ab758fb53db2b769",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/keywordswireless.os3kapp",
+    "name": "KeyWords Wireless",
+    "sha256": "13605aa1d4822f3c6b04f1f0cb3fe21758ac1558d1dabb071bf5358eb9afacae",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/neofontsmall.os3kapp",
+    "name": "Neo Font - Small (6 lines)",
+    "sha256": "c6e8004e245710235a7b99da59c9580f6844fc723e8ede3fd295645aede9de64",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/CoWriter.os3kapp",
+    "name": "CoWriter",
+    "sha256": "e92783202e00fd9bce8003236866b8337b6a5a037726858af165b9b22445225f",
+    "copies": []
+  },
+  {
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/neofontlarge.os3kapp",
+    "name": "Neo Font - Large (4 lines)",
+    "sha256": "7f86f664fe41cfda5057f9fea724e21abdc702c348dcb575b88f07c9fb3df365",
+    "copies": []
+  }
+]
