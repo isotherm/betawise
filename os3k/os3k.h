@@ -235,6 +235,9 @@ uint8_t AppletFindById(uint16_t id);
 int AppletGetName(uint8_t index, char* name);
 int AppletSendMessage(uint8_t index, Message_e message, uint32_t param, uint32_t* status);
 
+// Raw file-password-protection state getter. Only the low byte is contractual.
+uint8_t SYS_A248(void);
+
 // mask=0x8 to process special key. mask=4,2,1 unknown.
 void SYS_A25C(uint8_t mask, KeyMod_e key);
 
