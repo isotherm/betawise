@@ -158,3 +158,19 @@ then press **Enter** when asked to restart. Open SmartApplets with **F9**.
 For Hello World or DebugTool, substitute its built `.OS3KApp` for the
 MicroPython image in the seeding step and use a fresh session. USB applet
 installation is outside this procedure.
+
+## Readline Backspace regression
+
+`MicroPythonBackspace.lua` uses a fresh virtual flash containing AlphaWord,
+UCBLogo, MicroPython EXTRA, and NeoFontTerminal, in that order. Launch it with
+`-autoboot_delay 0 -autoboot_script /absolute/path/MicroPythonBackspace.lua`.
+It opens MicroPython through native keyboard events, types `a=1234`, deletes
+the final digit, and evaluates `a`. Screenshots show `a=123` and the result
+`123`. It also deletes a one-character draft to empty, presses Backspace again,
+and deletes from the middle of an assignment, checking the edited result `124`.
+The empty-input checks require the cursor to remain just after one prompt.
+It also verifies that generic Ctrl+U clears a draft without changing the
+previously evaluated value.
+The probe checks Neo 3.21 cursor-structure coordinates at RAM addresses
+`0x5c72/0x5c74`; those fixed-address reads belong to the test, not the applet.
+The AS3000 `micropython-repl-*` cases also exercise Backspace.

@@ -57,11 +57,38 @@ buffers and views, JSON, hex/Base64, regex, and in-memory JSON streams.
 
 ## Standard MicroPython profiles
 
-Build the isolated images with `make -C applets/MicroPython -j4 minimal core basic`.
+Build the isolated images with `make -C applets/MicroPython -j4 minimal core basic extra`.
 Run `check.sh ../mame/mame micropython-minimal` (or `micropython-core` /
-`micropython-basic`) to test the image in `build-<variant>/` directly. The cases
+`micropython-basic` / `micropython-extra`) to test the image in `build-<variant>/` directly. The cases
 check common arithmetic and allocation stress, absence of optional features in
 minimal, core collection/math support and file-operation failures, and basic's
 Unicode/next-default support. `time` is disabled until its HAL is implemented.
+All profiles also check Tab indentation, Ctrl+C draft cancellation, a caught
+interrupt from an infinite loop, and Ctrl+D clearing interpreter state.
 The default suite uses `micropython-core`. The legacy `micropython` case requires the expanded optional-module configuration;
 use the profile-specific cases for these standard ROM levels.
+
+The extra profile case checks additional data-processing modules, math,
+collections, memoryviews, cooperative scheduler callbacks, console output,
+interrupt configuration and unsupported input errors. It also checks that
+select, asyncio, threading, process and network modules are absent.
+`uctypes` is excluded because REPR_B has only 30 small-int bits.
+
+## Readline REPL checks
+
+Run `check.sh ../mame/mame micropython-repl-minimal` (also `-core`, `-basic`,
+or `-extra`) for focused checks of history, name/attribute completion, cursor
+editing, Tab indentation, allocation stress, Ctrl+C and Ctrl+D, plus raw/paste
+mode entry, execution, cancellation and return to the friendly REPL. These use the
+same upstream event-driven REPL in every build profile.
+
+The AS3000 ROM translates ASCII through a text-to-LCD table at `0x4ea62c`: in
+particular, `g/p/q/y` become controller bytes `00/02/03/01`, and backslash/tilde
+become `DA/D5`. The shared test LCD reader decodes these bytes before comparing
+text. Raw DDRAM is not ASCII; the REPL test checks the full `KeyboardInterrupt`
+message after an uncaught interrupt.
+
+`check.sh ../mame/mame micropython-facilities-extra` is a focused check for
+disabled select/asyncio/thread/process/network modules, retained stdout/stderr
+text and binary streams, memory streams, and the existing `input()`/stdin/open
+unsupported-operation stubs.

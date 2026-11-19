@@ -34,8 +34,14 @@ local function lcd()
     for _, tag in ipairs({":ks0066_0", ":ks0066_1"}) do
         local index = assert(machine.devices[tag].items["0/m_ddram"], "missing LCD DDRAM")
         local ddram = emu.item(index)
-        rows[#rows + 1] = ddram:read_block(0, 40)
-        rows[#rows + 1] = ddram:read_block(0x40, 40)
+        -- AS3000 3.01 translates text through its ROM table at 0x4ea62c.
+        -- These ASCII glyphs do not use their ASCII byte in controller DDRAM.
+        local ascii = {[0]="g", [1]="y", [2]="p", [3]="q", [0xda]="\\", [0xd5]="~"}
+        local function decode(bytes)
+            return (bytes:gsub(".", function(c) return ascii[c:byte()] or c end))
+        end
+        rows[#rows + 1] = decode(ddram:read_block(0, 40))
+        rows[#rows + 1] = decode(ddram:read_block(0x40, 40))
     end
     return table.concat(rows, "\n")
 end

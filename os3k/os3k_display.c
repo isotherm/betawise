@@ -30,6 +30,7 @@ struct Cursor_t {
 
 void _OS3K_ClearScreen(void);
 void _OS3K_SetCursor(uint8_t row, uint8_t col, CursorMode_e cursor_mode);
+void _OS3K_GetCursorPos(uint8_t* row, uint8_t* col);
 
 static void _LCD_SetScreenRoll(uint16_t roll) {
     LCD_CMD_REG_LEFT = LCD_CMD_REG_RIGHT = LCD_CMD_START_LINE(roll);
@@ -45,6 +46,15 @@ void ClearScreen() {
         g_Display.roll = 0;
         _LCD_SetScreenRoll(g_Display.roll);
         SetCursor(1, 1, CURSOR_MODE_HIDE);
+    }
+}
+
+void GetCursorPos(uint8_t* row, uint8_t* col) {
+    if(g_Display.font) {
+        *row = g_Display.row;
+        *col = g_Display.col;
+    } else {
+        _OS3K_GetCursorPos(row, col);
     }
 }
 
@@ -100,6 +110,9 @@ void _DisplayProcessMessage(Message_e message, uint32_t* status) {
             _OS3K_CallSysInt(0, SYS_INT_GET_SYSTEM_FONT_PTR, &g_Display.font);
             _OS3K_CallSysInt(0, SYS_INT_GET_LCD_WIDTH, &scratch);
             g_Display.width = scratch;
+            // Character LCDs report columns; backspace must wrap to column 40.
+            // Neo pixel widths are converted to columns when its font is set.
+            if(!g_Display.font) g_Display.max_col = g_Display.width;
             _OS3K_CallSysInt(0, SYS_INT_GET_LCD_HEIGHT, &scratch);
             g_Display.height = scratch & ~1;
             break;

@@ -9,7 +9,7 @@
 
 DEFINE_SYSCALL(0, _OS3K_ClearScreen);
 DEFINE_SYSCALL(1, _OS3K_SetCursor);
-DEFINE_SYSCALL(2, GetCursorPos);
+DEFINE_SYSCALL(2, _OS3K_GetCursorPos);
 DEFINE_SYSCALL(3, PutStringCentered);
 DEFINE_SYSCALL(4, PutChar);
 DEFINE_SYSCALL(5, PutStringRaw);

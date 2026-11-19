@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if (( $# > 2 )); then
-    echo "usage: $0 [MAME [hello|memory|invoke|syscall|string|handler|micropython|micropython-minimal|micropython-core|micropython-basic]]" >&2
+    echo "usage: $0 [MAME [hello|memory|invoke|syscall|string|handler|micropython|micropython-minimal|micropython-core|micropython-basic|micropython-extra]]" >&2
     exit 2
 fi
 test_dir=$(cd -- "$(dirname -- "$0")" && pwd)
@@ -43,8 +43,13 @@ for test_case in "${cases[@]}"; do
         string) applet=DebugTool; seconds=46 ;;
         handler) applet=DebugTool; seconds=30 ;;
         micropython) applet=MicroPython; seconds=900 ;;
-        micropython-minimal|micropython-core|micropython-basic)
-            applet=MicroPython; seconds=240; variant=${test_case#micropython-} ;;
+        micropython-facilities-extra)
+            applet=MicroPython; seconds=420; variant=extra ;;
+        micropython-repl-minimal|micropython-repl-core|micropython-repl-basic|micropython-repl-extra)
+            applet=MicroPython; seconds=420; variant=${test_case#micropython-repl-} ;;
+        micropython-minimal|micropython-core|micropython-basic|micropython-extra)
+            applet=MicroPython; seconds=600; variant=${test_case#micropython-}
+            if [[ $variant == extra ]]; then seconds=1200; fi ;;
         *) echo "Unknown case: $test_case" >&2; exit 2 ;;
     esac
 
@@ -56,6 +61,8 @@ for test_case in "${cases[@]}"; do
     if [[ -n $variant ]]; then
         artifact="$root/applets/MicroPython/build-$variant/MicroPython"
         script=MicroPythonProfile.lua
+        if [[ $test_case == micropython-repl-* ]]; then script=MicroPythonRepl.lua; fi
+        if [[ $test_case == micropython-facilities-* ]]; then script=MicroPythonFacilities.lua; fi
     fi
     if [[ ! -f $artifact.OS3KApp || ( $applet == DebugTool && ! -f $artifact.elf ) ]]; then
         echo "Build $applet before running this check (see tests/mame/asma3k/README.md)." >&2

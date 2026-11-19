@@ -1,7 +1,7 @@
 slot	opcode	symbol	header_declaration	ABI_review	AS3000_target	Neo_3_01_target	Neo_3_21_target
 0	A000	_OS3K_ClearScreen	no	unprototyped: not ABI certified	004CD55E	005D1060	00421FE0
 1	A004	_OS3K_SetCursor	no	unprototyped: not ABI certified	004CD826	005D11EC	0042216C
-2	A008	GetCursorPos	yes	declared: shared ABI rules reviewed; semantics not rederived	004CD6E4	005D11D6	00422156
+2	A008	_OS3K_GetCursorPos	no	internal: public GetCursorPos wrapper; reviewed pointer ABI retained	004CD6E4	005D11D6	00422156
 3	A00C	PutStringCentered	yes	declared: shared ABI rules reviewed; semantics not rederived	004CD4CC	005D0EA0	00421E24
 4	A010	PutChar	yes	declared: shared ABI rules reviewed; semantics not rederived	004CD406	005D0ABE	00421792
 5	A014	PutStringRaw	yes	declared: shared ABI rules reviewed; semantics not rederived	004CD4B0	005D0E84	00421E08

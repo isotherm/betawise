@@ -61,10 +61,13 @@ void ClearScreen(void);
  */
 void SetCursor(uint8_t row, uint8_t col, CursorMode_e cursor_mode);
 
-/** @brief Read the ROM text position.
- * @param row Output for the one-based ROM row.
- * @param col Output for the one-based ROM column.
- * @note Betawise's custom Neo output keeps its own text position.
+/** @brief Read the active renderer's one-based text position.
+ *
+ * Returns Betawise's logical position when its Neo font renderer is active;
+ * otherwise forwards to the ROM. Coordinates match SetCursor() and console
+ * output, including a column just beyond the right edge before deferred wrap.
+ * @param row Output for the one-based text row.
+ * @param col Output for the one-based text column.
  */
 void GetCursorPos(uint8_t* row, uint8_t* col);
 
