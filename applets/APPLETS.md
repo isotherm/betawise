@@ -1,4 +1,4 @@
-# Applet ID index
+# Applet ID index (0xA1A0..0xA1FF)
 
 | ID | Applet or resource |
 | --- | --- |
