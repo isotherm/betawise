@@ -1,0 +1,12 @@
+ALSA lib seq_hw.c:466:(snd_seq_hw_open) open /dev/snd/seq failed: No such file or directory
+ks0066_f05.bin ROM NEEDS REDUMP
+ks0066_f05.bin ROM NEEDS REDUMP
+WARNING: the machine might not run correctly.
+EVENT 1 candidate PC=004C0086
+FINAL PC=004D12C4 marker=00000000
+SEEN recovery false
+SEEN candidate true
+SEEN scan false
+SEEN original false
+PROBE_COMPLETE
+Average speed: 354.60% (12 seconds)

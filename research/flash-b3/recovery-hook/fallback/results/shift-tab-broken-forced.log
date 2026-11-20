@@ -1,0 +1,9 @@
+ALSA lib seq_hw.c:466:(snd_seq_hw_open) open /dev/snd/seq failed: No such file or directory
+REACHED handoff PC=0040143E
+FINAL PC=0008E698
+SEEN handoff true
+SEEN updater false
+SEEN usb false
+SEEN main false
+FALLBACK_COMPLETE
+Average speed: 238.36% (10 seconds)

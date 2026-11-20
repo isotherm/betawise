@@ -76,3 +76,77 @@ evidence that NEO carries an Intel B3, nor a generic Intel-B3 backend.
 The 2005 NEO main and SmallROM packages contain the old packed Intel/Micron ID
 comparisons; the 2013 NEO packages do not contain those comparison constants.
 These are static findings, not execution or physical chip qualification.
+
+## NEO13 bit-clearing recovery-hook candidate (2026-11-20)
+
+Read-only inspection of the local NEO13 packages found real SmallROM calls to
+trailer entries, resolving the earlier uncertainty about whether the duplicated
+trailers are referenced. SmallROM 40130E calls 46FFA2 after a version check;
+40143E is JSR absolute 46FF98 followed by RTS. Older-layout alternatives call
+5FFFA2 at 401476 and 5FFF98 at 401486. The earlier literal search for the trailer
+base addresses did not cover these interior entry addresses.
+
+At SmallROM file offset 143E, verified bytes are `4E B9 00 46 FF 98`.
+Changing only the final byte from 98h to 18h (clearing bit 7) redirects that
+call from 46FF98 to 46FF18. The latter is inside the manufacturer package's
+confirmed FF run; bytes 46FF18..46FF7F (104 bytes) were checked as FF. A short
+trampoline there could jump to a larger recovery stub elsewhere in the run,
+then invoke the original 46FF98 entry on the normal path. This is a candidate,
+not a validated boot hook or a produced patch. The replacement retains JSR
+and its return-address behavior; register and condition-code effects still need
+preservation. Trace all startup/reset paths before claiming recovery coverage.
+
+The hook byte is at runtime 401443, inside SmallROM, while the new stub is in
+main system firmware. Program and verify the complete stub first, then commit
+the hook last, with no applet relocation begun until the installed hook is
+qualified. A one-bit logical transition does not establish hardware atomicity
+or safe read margins after interrupted programming. Chip protection, repeat
+programming limits, firmware integrity checks, exception behavior and physical
+voltage remain qualification requirements. Firmware updates can overwrite the
+stub or hook; archive migration must then be disabled until recovery is restored.
+No physical flash or firmware file was modified.
+
+## Normal-system-ROM alternative (2026-11-20)
+
+A static bit-clearing search also found a real instruction in normal NEO13
+system firmware, without modifying SmallROM:
+
+* Runtime 450180 / package offset 40180: `61 00 FF 7A`, BSR.W 4500FC.
+* Clear only bit 7 of the byte at 450182: `61 00 7F 7A`.
+* New destination: 450182 + 7F7A = 4580FC, inside the confirmed FF run.
+* First 64 bytes at destination were checked as FF in the package.
+
+A trampoline at 4580FC could preserve the original BSR return address and
+arguments, check a migration transaction, and normally JMP to original 4500FC.
+The original callee is an ASIC register-writing helper; the call is in routine
+450150, so the fact that it is executable code does NOT yet establish it as a
+safe early-boot interception point. Its reachability, invocation frequency,
+register/flags contract, and ordering before applet scanning remain unverified.
+This is a concrete encoding candidate, not a qualified recovery hook.
+
+The earlier absolute JMP/JSR destination search found no matches from normal
+main-segment firmware into the FF run. PC-relative BSR displacement changes
+provide additional candidates, as above; raw encoding matches in data must be
+rejected by disassembly/control-flow analysis. A verified early-boot candidate
+is still required before implementing the scheme.
+
+Prefer a fixed small firmware stub with a versioned recovery descriptor that
+locates a validated executable recovery capsule. The capsule must survive outside
+all sectors the transaction may erase and must be callable without applet
+registration/A5 initialization. Arbitrary scans for FileManager headers are not
+sufficient: incomplete/duplicate images need identity, length, integrity and
+transaction-generation validation. Updates should write/verify a new capsule
+before committing its descriptor and before reclaiming the old capsule.
+Normal-system-ROM patching leaves SmallROM's original recovery implementation
+intact, but program interruption, firmware checksum behavior, chip protection,
+reset-path coverage and firmware-update replacement still require qualification.
+No patch image or physical write was produced.
+
+## Executed hook follow-up
+
+The [cold-boot verification](recovery-hook/README.md) rejects 450180 as a universal
+NEO13 startup hook: stock and patched images reach AlphaWord without it. It
+records successful cold-boot trampolines through the NEO13 SmallROM candidate,
+and normal-firmware entry jumps on AS3000 and NEO05. These are control-flow
+experiments on prepatched disposable images, not physical programming or a
+recovery implementation. Raw traces, hashes and a reproducer are included.

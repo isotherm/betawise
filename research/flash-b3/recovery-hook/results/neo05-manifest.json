@@ -1,0 +1,26 @@
+[
+  {
+    "case": "neo05-stock",
+    "system_sha256": "5f550e48ad36892ee5f5a067e8c1b87f6bf504b6cb2c2dfc4098776fa8831a3d",
+    "small_sha256": "485dac693df00c8149da688bb69c9b51494dacdb512e4cfd9dd9e932498bb81d",
+    "flash_sha256": "0ed7267fbfc5d51abf33d5e48ecbed136b274835764f6dec7092296ba43a1977"
+  },
+  {
+    "case": "neo05-patched",
+    "system_sha256": "5f550e48ad36892ee5f5a067e8c1b87f6bf504b6cb2c2dfc4098776fa8831a3d",
+    "small_sha256": "485dac693df00c8149da688bb69c9b51494dacdb512e4cfd9dd9e932498bb81d",
+    "flash_sha256": "35ab2e3a62ea227fd637bbed446143b0889c7e8b899c1ec0cecf69f5894dbc9d"
+  },
+  {
+    "case": "as3000-stock",
+    "system_sha256": "732dca63399d883071ce41cc07ad352fa19c506b7b8c307ace16d5c53e6f8708",
+    "small_sha256": "479adbe2f873da053046a749f95d2c86eeada23df442237a613b09e9780fd874",
+    "flash_sha256": "13de09edb30e7bcbb3fa125988911dfce28fbc6a261c34d91d2143bd13f68d29"
+  },
+  {
+    "case": "as3000-patched",
+    "system_sha256": "732dca63399d883071ce41cc07ad352fa19c506b7b8c307ace16d5c53e6f8708",
+    "small_sha256": "479adbe2f873da053046a749f95d2c86eeada23df442237a613b09e9780fd874",
+    "flash_sha256": "f35623bb2c427e5772ef8bcdb82481275645f213c47f089b2606c2c78d54347c"
+  }
+]

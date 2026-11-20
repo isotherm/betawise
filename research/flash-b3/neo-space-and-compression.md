@@ -217,3 +217,8 @@ The AS3000 installer constants previously investigated do not establish the
 corresponding NEO patch sites. A builder would need version/hash-specific patches,
 verified readback/backups, recovery qualification and firmware integrity handling.
 No modified firmware image has been produced by this investigation.
+
+Later SmallROM disassembly **does establish trailer use**: calls target interior
+entries 46FFA2 and 46FF98, rather than the previously searched base 46FF80.
+See [recovery-hook candidate](native-services.md#neo13-bit-clearing-recovery-hook-candidate-2026-11-20).
+The duplicated trailer must not be discarded on the assumption that it is unused.

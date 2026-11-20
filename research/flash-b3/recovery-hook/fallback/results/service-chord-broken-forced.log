@@ -1,0 +1,10 @@
+ALSA lib seq_hw.c:466:(snd_seq_hw_open) open /dev/snd/seq failed: No such file or directory
+REACHED password PC=004013C0
+FINAL PC=00401124
+SEEN password true
+SEEN handoff false
+SEEN updater false
+SEEN usb false
+SEEN main false
+FALLBACK_COMPLETE
+Average speed: 53.41% (10 seconds)

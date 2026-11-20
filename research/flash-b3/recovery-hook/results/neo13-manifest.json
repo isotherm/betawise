@@ -1,0 +1,14 @@
+[
+  {
+    "case": "neo13-stock",
+    "system_sha256": "32fe55bb50c1b58326bd303f14973b8402ddf8bf6662b210e4d5e9f931c7e6c0",
+    "small_sha256": "6402c40878ba28747642ce474361b1596555b2a1f137db79c7ea8bb5b35a9523",
+    "flash_sha256": "a14ccd938e1fccb62b839870dbb1942a9bfafb6d51f9dfd42d9ad82399665626"
+  },
+  {
+    "case": "neo13-patched",
+    "system_sha256": "32fe55bb50c1b58326bd303f14973b8402ddf8bf6662b210e4d5e9f931c7e6c0",
+    "small_sha256": "6402c40878ba28747642ce474361b1596555b2a1f137db79c7ea8bb5b35a9523",
+    "flash_sha256": "0a9256db6713e157d73d79e3ca82b7b665213be7964610e88aa1fa7d80051ef2"
+  }
+]

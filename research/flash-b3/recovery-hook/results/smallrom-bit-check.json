@@ -1,0 +1,77 @@
+[
+  {
+    "model": "as3000",
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/SMALLOS3KROM.OS3KOS",
+    "sha256": "479adbe2f873da053046a749f95d2c86eeada23df442237a613b09e9780fd874",
+    "instruction_address": "0x400bd8",
+    "original_target": "0x4fff98",
+    "candidate_target": "0x403f98",
+    "changed_bits": 6,
+    "minimum_tail_bits": 6,
+    "and_mask": "0xFFF03FFF",
+    "zero_to_one_bits": 0,
+    "changed_address_bytes": [
+      1,
+      2
+    ],
+    "changed_16bit_words": [
+      0,
+      1
+    ],
+    "image_end_exclusive": "0x403a96",
+    "next_package_region": "0x404000",
+    "omitted_bytes": 1386,
+    "bytes_from_candidate": 104,
+    "qualification": "Encoding only: tail contents and non-use not established"
+  },
+  {
+    "model": "neo05",
+    "path": "Ghidra/Alphasmart 3000/SmartApplets/SMALLOS3KNeoROM.OS3KOS",
+    "sha256": "485dac693df00c8149da688bb69c9b51494dacdb512e4cfd9dd9e932498bb81d",
+    "instruction_address": "0x401328",
+    "original_target": "0x5fff98",
+    "candidate_target": "0x405f98",
+    "changed_bits": 7,
+    "minimum_tail_bits": 7,
+    "and_mask": "0xFFE05FFF",
+    "zero_to_one_bits": 0,
+    "changed_address_bytes": [
+      1,
+      2
+    ],
+    "changed_16bit_words": [
+      0,
+      1
+    ],
+    "image_end_exclusive": "0x4046a6",
+    "next_package_region": "0x406000",
+    "omitted_bytes": 6490,
+    "bytes_from_candidate": 104,
+    "qualification": "Encoding only: tail contents and non-use not established"
+  },
+  {
+    "model": "neo13",
+    "path": "Ghidra/Alphasmart Neo/SmartApplets/smallos3kneorom.os3kos",
+    "sha256": "6402c40878ba28747642ce474361b1596555b2a1f137db79c7ea8bb5b35a9523",
+    "instruction_address": "0x40143e",
+    "original_target": "0x46ff98",
+    "candidate_target": "0x405f98",
+    "changed_bits": 4,
+    "minimum_tail_bits": 4,
+    "and_mask": "0xFFF95FFF",
+    "zero_to_one_bits": 0,
+    "changed_address_bytes": [
+      1,
+      2
+    ],
+    "changed_16bit_words": [
+      0,
+      1
+    ],
+    "image_end_exclusive": "0x40581a",
+    "next_package_region": "0x406000",
+    "omitted_bytes": 2022,
+    "bytes_from_candidate": 104,
+    "qualification": "Encoding only: tail contents and non-use not established"
+  }
+]

@@ -1,0 +1,10 @@
+ALSA lib seq_hw.c:466:(snd_seq_hw_open) open /dev/snd/seq failed: No such file or directory
+EVENT 1 candidate PC=0040143E
+EVENT 2 scan PC=004130FC
+FINAL PC=00472C2C marker=00000000
+SEEN recovery false
+SEEN candidate true
+SEEN scan true
+SEEN original false
+PROBE_COMPLETE
+Average speed: 82.12% (10 seconds)

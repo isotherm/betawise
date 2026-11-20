@@ -97,3 +97,15 @@ from Intel B3 64-KiB main blocks.
 [Native service candidates](native-services.md) records the existing AS3000
 RAM-copy wrappers and their supported chip dispatch, with remaining qualification
 requirements before reuse.
+
+[Recovery-hook cold-boot tests](recovery-hook/README.md) distinguish the rejected
+NEO13 hardware-path candidate from executed SmallROM and legacy normal-ROM
+trampolines, and document permanent recovery-capsule requirements.
+
+[Self-contained SmallROM placement](smallrom-recovery.md) records bit-clear
+candidate targets for all three available SmallROM images, unconfirmed physical
+tail space, and the firmware-update hazard of a SmallROM-to-full-ROM hook.
+
+[Bus width and USB repair boundaries](usb-repair-and-width.md) distinguishes
+byte/word part capabilities, firmware-mediated segment uploads, SmallROM
+self-update uncertainty and independent manual-updater entry.
