@@ -13,3 +13,9 @@ Investigations, evidence, and reproducible probes for Betawise and AlphaSmart fi
 - [Applet installation and warm registration](applet-installation/README.md):
   AS3000 3.01 Manager finalization, directory registration, and
   file-preservation experiments.
+
+- [MicroPython port](micropython/README.md): build instructions, REPL
+  implementation, profile constraints, firmware tests, and time-porting work.
+
+- [UCBLogo port](ucblogo/README.md): build instructions, OS3K backend, emulator
+  tests, and memory measurements.
