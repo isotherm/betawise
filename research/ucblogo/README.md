@@ -100,3 +100,22 @@ prints the counters to the MAME log.
 ```sh
 make -W runtime.c HEAP_KIB=39
 ```
+
+### Maintained offline text assertions
+
+The Neo extended runner now checks completed Logo transcript text locally:
+
+```sh
+python3 tests/mame/asneo/check-repl.py --case logo
+```
+
+It asserts printed values, the square command transcript, parameterized procedure
+execution, erasure/redefinition, editing, definition prompts/cancellation and
+`ct`/`cleartext` transcript clearing. It reads
+completed left-pane rows, cursor-free prompt cells and cleared text regions,
+excluding the live cursor and graphics pane.
+The older `smoke.lua` remains a screenshot/memory investigation procedure; its
+captures alone are not a graphics regression PASS. Right-pane geometry/reference-image checks are now maintained separately with
+`python3 tests/mame/asneo/check-repl.py --case logo-graphics`. They validate 20
+checkpoints, including hidden-turtle square edges, reversible turtle overlays,
+pen movement, clearing and isolation from text scrolling.
