@@ -60,8 +60,14 @@ typedef enum _ClipboardTextMode_e {
 #define FILE_LENGTH_RESTORE_SAVED (-2)
 /** @brief Record the current logical length as the saved length. */
 #define FILE_LENGTH_SAVE_CURRENT  (-3)
+/** @brief Snapshot all non-clipboard logical lengths as saved lengths when no file is cached open.
+ * With a cached open file, lengths are unchanged.
+ */
+#define FILE_LENGTH_SNAPSHOT_ALL (-4)
 /** @brief Set the reservation to the greater of the current logical length and 512 bytes. */
 #define FILE_LENGTH_RESERVE_CURRENT (-5)
+/** @brief Use min(saved length, current length + 40), capped at capacity. */
+#define FILE_LENGTH_GROW_TOWARD_SAVED (-6)
 
 /** @brief One entry in the firmware RAM file table.
  *
@@ -154,8 +160,10 @@ int32_t FileQuerySize(uint16_t file_id_or_selector);
 
 /** @brief Set the current file length or apply a length selector.
  * Shrinking clamps the current position. Restoring a length exposes retained bytes.
+ * Unrecognized negative values, including -1, clamp to capacity by unsigned comparison.
  * @param length_or_selector Nonnegative length capped at capacity, or a FILE_LENGTH_* selector.
- * @return Resulting length for the documented selectors, or a negative error.
+ * @return Resulting length, or a negative error. FILE_LENGTH_SNAPSHOT_ALL returns
+ * zero after a global snapshot; with a cached open file it returns resolver status.
  */
 int32_t FileSetCurrentLength(int32_t length_or_selector);
 
@@ -186,7 +194,7 @@ void* FileBindState(uint16_t file_id, void** data, uint32_t* length,
 
 /** @brief Select a file as current.
  * @param file_id File ID.
- * @param mode Whether to retain the stored position or rewind.
+ * @param mode Only a low byte of exactly 1 rewinds; other values retain position.
  * @return Resolved file ID or a negative error.
  */
 int32_t FileOpen(uint16_t file_id, FileOpenMode_e mode);
@@ -214,7 +222,8 @@ int32_t FileUpdateFlags(uint16_t file_id, uint32_t mask, uint8_t set);
 int32_t FileTestFlags(uint16_t file_id, uint32_t mask);
 
 /** @brief Prompt for the master password and reset the active table's file passwords.
- * @return Number of entries reset, zero if nothing was reset, or a negative lookup error.
+ * @return Number of entries reset, zero on cancellation or failed authorization,
+ * or a negative initial lookup error.
  */
 int32_t FileResetPasswords(void);
 
@@ -321,7 +330,10 @@ int32_t ClipboardPaste(FileWriteMode_e write_mode, ClipboardTextMode_e text_mode
 int32_t ClipboardSet(const void* source, uint32_t byte_count, uint8_t format);
 
 /** @brief Read clipboard data into a caller buffer.
- * In the firmware, plain-text mode uses a stack-dependent output limit.
+ * AS3000 3.01 and Neo 3.01 plain mode use an uninitialized, stack-dependent
+ * output limit and scan byte_count source bytes. Neo 3.21 instead limits output
+ * to byte_count and scans the clipboard logical length. Use raw mode for bounded
+ * copies on the older ROMs.
  * @param destination Writable destination buffer.
  * @param byte_count Requested byte count.
  * @param mode Raw or plain-text conversion policy.

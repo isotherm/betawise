@@ -9,6 +9,7 @@ local cases = {}
 local function add(slot, args, prep, check, tick, frames, special)
     cases[#cases + 1] = {slot=slot, args=args, prep=prep, check=check, tick=tick, frames=frames or 6, special=special}
 end
+local function seedD0(value) cases[#cases].seedD0=value end
 local function eq(a, b) assert(a == b, string.format('%x ~= %x', a, b)) end
 local function ret(want, mask) return function() eq(cpu.state.D0.value & (mask or 0xffffffff), want & (mask or 0xffffffff)) end end
 local function fill(a, n, v) for i=0,n-1 do m:write_u8(a+i, v or 0) end end
@@ -62,6 +63,7 @@ local function file(text)
     m:write_u32(0x355c+delta,0); m:write_u16(0xe02+delta,0)
     m:write_u32(0xf42+delta,entry); m:write_u8(0xf46+delta,1)
     m:write_u8(neo and 0x3e82 or 0x3df2,0)
+    m:write_u8(neo and 0x3e83 or 0x3df3,0)
 end
 local function input(s)
     local a=neo and 0x118ab or 0x447b
@@ -220,7 +222,7 @@ elseif group == 'file' then
     add(115,{})
     add(106,{},nil,ret(1))
     add(112,{0,data},nil,ret(0))
-    add(104,{},function() file('abc') end,function() eq(cpu.state.D0.value,1);eq(m:read_u32(entry+4),0);eq(m:read_u32(entry+8),0);eq(m:read_u32(entry+20),0);assert(bytes(buffer,8)==string.rep('\0',8)) end)
+    add(104,{},function() file('abc');fill(buffer,0x10000,0xa5) end,function() eq(cpu.state.D0.value,1);eq(m:read_u32(entry+4),0);eq(m:read_u32(entry+8),0);eq(m:read_u32(entry+20),0);assert(bytes(buffer,0x10000)==string.rep('\0',0x10000)) end)
     add(131,{data,3,1},function() file('abcdef');put(data,'XYZ') end,ret(3))
     add(134,{},nil,ret(1,255))
     add(135,{1},nil,ret(3))
@@ -247,6 +249,141 @@ elseif group == 'file' then
     end)
     add(122,{255,data,0,512},function() put(data,'Invalid group') end,ret(-10))
     add(123,{0xffff},nil,function() assert((cpu.state.D0.value&0x80000000)~=0) end)
+    -- Issue #15: distinguish resolver status from the optional token output.
+    local function absent(kind)
+        file('abcdef')
+        m:write_u32(0x3442+delta,0)
+        m:write_u8(0xf47+delta,255);m:write_u16(0xf48+delta,0)
+        m:write_u32(entry+0x20,4)
+        if kind=='empty' then m:write_u8(0xf46+delta,0) end
+    end
+    for _,kind in ipairs({'missing','empty'}) do
+        local want=kind=='empty' and -7 or -1
+        for _,t in ipairs({{104,{}},{105,{2}},{106,{}},{114,{0xffff,1}},
+                          {109,{0}},{109,{0xfc}},{110,{3}},{111,{0}},
+                          {102,{0,data,2,1}},{103,{0,data,2}}}) do
+            add(t[1],t[2],function() absent(kind) end,function()
+                ret(want)();eq(m:read_u32(entry+4),6)
+                eq(m:read_u32(0x3442+delta),0);assert(bytes(buffer,6)=='abcdef')
+            end)
+        end
+    end
+    add(118,{},function() absent('empty') end,ret(-7))
+    add(118,{},function() absent('missing');m:write_u16(entry+0x44,2) end,ret(-1))
+    -- Failed explicit open must preserve an existing cached context.
+    add(114,{0xffff,1},function() file('abcdef');m:write_u32(entry+20,3) end,function()
+        ret(-1)();eq(m:read_u32(0x3442+delta),entry);eq(m:read_u32(entry+20),3)
+    end)
+    for _,mode in ipairs({0,1,2,0x101,0x100}) do
+        add(114,{0xabcd0001,mode},function() file('abcdef');m:write_u32(entry+20,3) end,function()
+            ret(1)();eq(m:read_u32(entry+20),(mode&255)==1 and 0 or 3)
+        end)
+    end
+    add(105,{0},function() file('abcdef');m:write_u32(entry+20,2) end,function()
+        ret(0)();eq(m:read_u32(entry+20),2);eq(m:read_u32(entry+4),6)
+    end)
+    add(105,{99},nil,function() ret(4)();eq(m:read_u32(entry+20),2);eq(m:read_u32(entry+4),2) end)
+    for _,slot in ipairs({104,106,114}) do
+        add(slot,slot==114 and {0x8001,0} or {},function()
+            file('abcdef');m:write_u16(entry+0x44,0x8001);m:write_u8(neo and 0x3e83 or 0x3df3,0x80)
+        end,ret(0x8001))
+    end
+    -- Opposite orderings distinguish max from min in both aggregate loops.
+    local function accounting()
+        file('abcdef');m:write_u32(entry+16,20)
+        local e=entry+0x48;fill(e,0x48);m:write_u32(e,buffer+0x10000)
+        m:write_u32(e+4,30);m:write_u32(e+8,30);m:write_u32(e+12,0x10000);m:write_u32(e+16,10)
+        m:write_u16(e+0x44,2);m:write_u8(0xf46+delta,2)
+        local c=e+0x48;fill(c,0x48);m:write_u32(c,buffer+0x20000);m:write_u32(c+12,512)
+        m:write_u32(0x3446+delta,c);m:write_u32(0x344a+delta,c);m:write_u32(0x354e+delta,buffer+0x20200)
+    end
+    add(109,{0xfd},accounting,ret(36))
+    add(109,{0xfe},accounting,ret(50))
+    add(109,{0xff},accounting,ret(50))
+    -- Submit an empty password, then acknowledge the native result dialog.
+    local function enterReset(t)
+        for _,start in ipairs({10,40}) do
+            if t==start or t==start+6 then
+                local port=machine.ioport.ports[neo and ':ROW9' or ':COL.9']
+                for _,field in pairs(port.fields) do
+                    if field.mask==0x40 then
+                        if t==start then field:set_value(1) else field:clear_value() end
+                    end
+                end
+            end
+        end
+    end
+    for _,authorized in ipairs({false,true}) do
+        add(118,{},function()
+            accounting();put(entry+0x18,'secret');put(entry+0x48+0x18,'other')
+            put(entry+0x90+0x18,'clip');put(neo and 0x118a3 or 0x4473,authorized and '' or 'master')
+        end,function()
+            ret(authorized and 2 or 0)()
+            assert(bytes(entry+0x18,authorized and 6 or 7)==(authorized and 'write\0' or 'secret\0'))
+            assert(bytes(entry+0x48+0x18,6)==(authorized and 'write\0' or 'other\0'))
+            assert(bytes(entry+0x90+0x18,5)=='clip\0')
+        end,enterReset,80)
+    end
+    -- -6 selects MIN(saved,current+40), then clamps at capacity.
+    for _,t in ipairs({{6,100,0x10000,46},{6,20,0x10000,20},{6,46,0x10000,46}}) do
+        add(110,{-6},function()
+            file('abcdef');m:write_u32(entry+4,t[1]);m:write_u32(entry+8,t[2]);m:write_u32(entry+12,t[3])
+        end,function() ret(t[4])();eq(m:read_u32(entry+4),t[4]) end)
+    end
+    for _,selector in ipairs({-1,-7,-2147483648}) do
+        add(110,{selector},function() file('abcdef') end,function() ret(0x10000)();eq(m:read_u32(entry+8),0x10000) end)
+    end
+    add(110,{-4},function() file('abcdef');m:write_u32(entry+8,9) end,function()
+        ret(0)();eq(m:read_u32(entry+4),6);eq(m:read_u32(entry+8),9)
+    end)
+    add(110,{-4},function()
+        file('abcdef');m:write_u32(entry+8,9);m:write_u32(0x3442+delta,0)
+    end,function() ret(0)();eq(m:read_u32(entry+8),6) end)
+    add(110,{-4},function() absent('empty') end,function()
+        ret(0)();eq(m:read_u32(entry+8),6)
+    end)
+    add(110,{-4},function() file('abcdef');m:write_u8(0xf46+delta,0) end,ret(-7))
+    for _,n in ipairs({6,600}) do
+        add(110,{-5},function() file('abcdef');m:write_u32(entry+4,n) end,function()
+            ret(n)();eq(m:read_u32(entry+16),math.max(n,512))
+        end)
+    end
+    add(108,{0xffff},function() file('abcdef') end,ret(0))
+    add(109,{0xfc},function() file('abcdef');m:write_u32(entry+8,9) end,ret(9))
+    add(111,{0xffff},function() file('abcdef') end,ret(-1))
+    add(112,{32,data},function() file('abcdef');fill(data,4,0xa5) end,function()
+        ret(-64)();eq(m:read_u32(data),0);eq(m:read_u32(0x355c+delta),0)
+    end)
+    add(125,{0xffff,0,data},function() file('abcdef');fill(data,4,0xa5) end,function()
+        ret(-1)();eq(m:read_u32(data),0xa5a5a5a5)
+    end)
+    add(119,{0xffff,data,1},function() file('abcdef');fill(data,8,0xa5) end,function()
+        ret(-1)();eq(m:read_u32(data),0xa5a5a5a5)
+    end)
+    -- Additional full-table boundary contracts.
+    add(102,{1,data,1,0},function() file('abcdef') end,ret(-5))
+    add(103,{1,0,1},function() file('abcdef') end,ret(-6))
+    add(116,{1,2,1},function() file('abcdef') end,ret(-14))
+    add(117,{1,2},nil,ret(-14))
+    add(119,{1,data,0},function() put(data,'1234567') end,ret(-8))
+    add(126,{0xffff},function() file('abcdef') end,ret(-11))
+    add(127,{0xff,0xff},nil,ret(-1))
+    add(128,{7,1},function() file('abcdef') end,ret(-128))
+    add(129,{2,0},nil,ret(-129))
+    add(131,{0,1,1},nil,ret(-6))
+    add(131,{data,1,0},nil,ret(-129))
+    add(132,{0,1,1},nil,ret(-6))
+    for _,limit in ipairs({0,2}) do
+        add(132,{data,5,3},function()
+            file('abcdef');put(buffer+0x10000,'XYZpq')
+            m:write_u32(entry+0x48+4,3);m:write_u32(entry+0x48+8,3)
+            fill(data,8,0xa5);m:write_u32(stack-16,limit)
+        end,function()
+            local want=neo and 3 or limit;ret(want)()
+            assert(bytes(data,want)==('XYZ'):sub(1,want));eq(m:read_u8(data+want),0xa5)
+        end)
+    end
+    add(134,{},function() cpu.state.D0.value=0xa5b6c700;m:write_u8(neo and 0x3dfb or 0x3d6b,0x81) end,ret(0xa5b6c781));seedD0(0xa5b6c700)
 elseif group == 'applet' then
     local tableBase=neo and 0xe0a or 0xd82
     local locks=neo and 0x34de or 0x344e
@@ -290,6 +427,25 @@ elseif group == 'applet' then
     if neo then
         add(174,{0,0x5000,data},nil,function() eq(cpu.state.D0.value&255,1);eq(m:read_u32(data),8192) end)
     end
+    add(142,{data,0},function() applets();m:write_u32(tableBase+8,0);put(data,'Missing') end,ret(0))
+    add(143,{0xffff},nil,ret(0))
+    add(144,{32,data},function() fill(data,4,0xa5) end,function() ret(0,255)();eq(m:read_u32(data),0xa5a5a5a5) end)
+    add(145,{32,0x21,0,data},nil,ret(0,255))
+    -- Issue #15: poison upper D0 bits to expose byte/word result contracts.
+    add(140,{},nil,ret(-1))
+    add(141,{},function() cpu.state.D0.value=0xa5b6c7d8 end,ret(0xa5b60000));seedD0(0xa5b6c7d8)
+    add(141,{},function() applets();m:write_u32(identity,1);cpu.state.D0.value=0xa5b6c7d8 end,ret(0xa5b6beef));seedD0(0xa5b6c7d8)
+    add(144,{0,data},function() cpu.state.D0.value=0xa5b6c7d8;fill(data,41,0xa5) end,function()
+        ret(0xa5b6c700)();eq(m:read_u8(data),0xa5)
+    end);seedD0(0xa5b6c7d8)
+    add(145,{0,0x21,0,data},function() cpu.state.D0.value=0xa5b6c7d8 end,ret(0xa5b6c700));seedD0(0xa5b6c7d8)
+    -- The source boundary limits names to 36 characters plus a terminator.
+    add(144,{1,data},function()
+        applets();put(header+0x18,string.rep('N',36));fill(data,42,0xa5)
+    end,function() ret(1,255)();eq(m:read_u8(data+36),0);eq(m:read_u8(data+37),0xa5) end)
+    add(144,{1,data},function()
+        applets();fill(header+0x18,41,78);fill(data,42,0xa5)
+    end,function() ret(1,255)();assert(bytes(data,36)==string.rep('N',36));eq(m:read_u8(data+36),0);eq(m:read_u8(data+37),0xa5) end)
 elseif group == 'stdlib' then
     local a,b,c=data,data+0x100,data+0x200
     local err=neo and 0x1189e or 0x4550
@@ -341,6 +497,14 @@ elseif group == 'stdlib' then
         abortTap:remove()
     end,nil,12,true)
 end
+local function evidence(index, suffix)
+    if group~='file' and group~='applet' then return end
+    local f=assert(io.open(string.format('case-%03d-%s.ram',index,suffix),'wb'))
+    f:write(bytes(entry,0x90),bytes(data,0x100),bytes(0x3442+delta,0x124));f:close()
+    print(string.format('STATE case %d %s PC=%08x SP=%08x D0=%08x A0=%08x A5=%08x',
+        index,suffix,cpu.state.PC.value,cpu.state.SP.value,cpu.state.D0.value & 0xffffffff,
+        cpu.state.A0.value,cpu.state.A5.value))
+end
 local index,frame,phase,failed=0,0,-1,false
 emu.register_frame_done(function()
     frame=frame+1
@@ -357,18 +521,27 @@ emu.register_frame_done(function()
             if p.prep then p.prep() end
             m:write_u16(code,0xa000+4*p.slot);m:write_u16(code+2,0x60fe);m:write_u32(stack,code+2)
             for i,v in ipairs(type(p.args)=='function' and p.args() or p.args) do m:write_u32(stack+4*i,v) end
-            cpu.state.SR.value=0x2000;cpu.state.SP.value=stack;cpu.state.PC.value=code;phase=0
+            cpu.state.SR.value=0x2000;cpu.state.SP.value=stack;cpu.state.PC.value=code
+            if p.target then cpu.state.PC.value=p.target end
+            if p.seedD0 then
+                -- Direct original-ROM entry isolates callee width from dispatch's D0 scratch use.
+                local targets=neo and {[134]=0x439a4c,[141]=0x439b30,[144]=0x439bf4,[145]=0x439c60}
+                    or {[134]=0x4e0cee,[141]=0x4e0dd2,[144]=0x4e0e96,[145]=0x4e0f02}
+                cpu.state.D0.value=p.seedD0;cpu.state.PC.value=assert(targets[p.slot])
+            end
+            evidence(index,'before');phase=0
         else
             phase=phase+1
             local p=cases[index]
             if p.tick then p.tick(phase) end
             if phase==p.frames then
+                evidence(index,'after')
                 if not p.special then
                     local pc=cpu.state.PC.value
                     assert(pc==code+2 or pc==code+4,string.format('busy PC=%x',pc));eq(cpu.state.SP.value,stack+4)
                 end
                 if p.check then p.check() end
-                print('PASS core slot '..p.slot..' case '..index);phase=-1
+                print(string.format('PASS core slot %d case %d D0=%08x',p.slot,index,cpu.state.D0.value & 0xffffffff));phase=-1
             end
         end
     end)
