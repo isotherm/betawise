@@ -1,4 +1,4 @@
-#include "os3k.h"
+#include "os3k_display_internal.h"
 
 APPLET_HEADER_BEGIN
     APPLET_ID(0xA1CB)
@@ -8,8 +8,8 @@ APPLET_HEADER_BEGIN
     APPLET_LANGUAGE_EN_US
 APPLET_HEADER_END
 
-enum { WIDTH = 264, SPLIT = 132, HEIGHT = 64, MAX_COLS = 22, MAX_ROWS = 8 };
-static unsigned font_width = 6, font_height = 8, text_cols = MAX_COLS, text_rows = MAX_ROWS;
+enum { WIDTH = 264, SPLIT = 132, HEIGHT = 64, MAX_COLS = 33, MAX_ROWS = 10 };
+static unsigned font_width = 6, font_height = 8, text_cols = 22, text_rows = 8;
 static uint8_t transcript[MAX_ROWS][MAX_COLS];
 static char source[128];
 static char definition_header[sizeof(source)];
@@ -47,6 +47,11 @@ static void newline(void)
     } else {
         memmove(transcript[0], transcript[1], (text_rows - 1) * MAX_COLS);
         memset(transcript[row], 0, MAX_COLS);
+        if (text_rows * font_height != HEIGHT) {
+            // A partial row at the bottom prevents row-aligned hardware roll.
+            redraw_transcript();
+            return;
+        }
         // Clear the old top page before the controller exposes it at the bottom.
         RasterOp(0, lcd_y(0), SPLIT, font_height, NULL, ROP_WHITENESS);
         top_row = (top_row + 1) % text_rows;
@@ -204,6 +209,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t *status)
 {
     *status = 0;
     if (message == MSG_SETFOCUS) {
+        _DisplayUseUnpaddedOrigin();
         SetCursorMode(CURSOR_MODE_HIDE);
         FontHeader_t *font = NULL;
         CallSysInt(0, SYS_INT_GET_SYSTEM_FONT_PTR, &font);

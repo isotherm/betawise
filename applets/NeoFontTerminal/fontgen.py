@@ -1,30 +1,34 @@
 #!/usr/bin/env python3
 
 import sys
+from pathlib import Path
 
 from PIL import Image
 
 
-im = Image.open(sys.argv[1])
+im = Image.open(sys.argv[1]).convert('L')
 glyph_count = 256
 img_width, glyph_height = im.size
+if img_width % glyph_count:
+    raise ValueError('glyph strip must contain 256 equal-width cells')
 glyph_width = img_width // glyph_count
-glyph_bytes = glyph_width * int((glyph_height + 7) // 8)
+glyph_bytes = glyph_width * ((glyph_height + 7) // 8)
 
 glyphs = []
 for i in range(glyph_count):
     bitmap = []
-    for j in range(glyph_width):
-        x = i*glyph_width + j
-        val = 0
-        for y in range(glyph_height):
-            if im.getpixel((x, y)) < 128:
-                val |= 1 << y
-        bitmap.append('0x%02X' % (val))
+    for band in range(0, glyph_height, 8):
+        for j in range(glyph_width):
+            x = i*glyph_width + j
+            val = 0
+            for y in range(band, min(band + 8, glyph_height)):
+                if im.getpixel((x, y)) < 128:
+                    val |= 1 << (y - band)
+            bitmap.append('0x%02X' % (val))
     glyphs.append(bitmap)
 
 f = open(sys.argv[2], 'w')
-guard = '_%s_' % sys.argv[2].upper().replace('.', '_')
+guard = '%s_INCLUDED' % Path(sys.argv[2]).name.upper().replace('.', '_').replace('-', '_')
 f.write('#ifndef %s\n' % guard)
 f.write('#define %s\n' % guard)
 f.write('\n')

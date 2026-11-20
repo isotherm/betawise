@@ -1,13 +1,28 @@
-#include "os3k.h"
+#include "os3k_display_internal.h"
 
 // We intermix stdio and dialog calls. Need to plan how to resovle this.
 extern void _OS3K_SetCursor(uint8_t row, uint8_t col, CursorMode_e cursor_mode);
+extern void _OS3K_GetCursorPos(uint8_t* row, uint8_t* col);
 
 enum { SCRATCH_SIZE = 256 };
 enum { BUFFER_COUNT = 7 };
 enum { BUFFER_INPUT = 13 };
 enum { BUFFER_SIZE = 1 + BUFFER_INPUT + 2 };
-enum { BYTES_PER_ROW = 8 };
+enum { MAX_BYTES_PER_ROW = 16 };
+
+typedef struct {
+    uint8_t bytes_per_row;
+    uint8_t address_col;
+    uint8_t hex_col;
+    uint8_t ascii_col;
+    bool grouped_hex;
+} DumpLayout_t;
+
+static const DumpLayout_t as3000_layout = {8, 1, 9, 33, false};
+static const DumpLayout_t standard_layout = {8, 3, 12, 36, false};
+static const DumpLayout_t small_layout = {12, 1, 10, 41, true};
+static const DumpLayout_t tiny_layout = {16, 1, 10, 51, true};
+static const DumpLayout_t* g_layout;
 
 typedef enum _Mode_e {
     MODE_NIBBLE_HI = 0,
@@ -66,18 +81,21 @@ void UninstallBusErrorHandler() {
     BUS_ERROR_HANDLER_PTR = g_prevBusErrorHandler;
 }
 
-void DumpSetCursor(char offset, Mode_e mode, CursorMode_e cursor_mode) {
-    char row = 1 + (offset / BYTES_PER_ROW);
-    char col = (offset % BYTES_PER_ROW);
+static uint8_t DumpByteInRow(uint16_t offset) {
+    return offset % g_layout->bytes_per_row;
+}
+
+void DumpSetCursor(uint16_t offset, Mode_e mode, CursorMode_e cursor_mode) {
+    uint8_t row = 1 + offset / g_layout->bytes_per_row;
+    uint8_t byte = DumpByteInRow(offset);
+    uint8_t col;
     if(mode == MODE_ASCII) {
-        col += BYTES_PER_ROW * 3;
+        col = g_layout->ascii_col + byte;
     } else {
-        col *= 3;
-        if(mode == MODE_NIBBLE_LO) {
-            col++;
-        }
+        col = g_layout->hex_col + 2 * byte;
+        col += g_layout->grouped_hex ? byte / 2 : byte;
+        col += mode == MODE_NIBBLE_LO;
     }
-    col += g_isAS3000 ? 9 : 12;
     SetCursor(row, col, cursor_mode);
 }
 
@@ -86,8 +104,8 @@ void DumpSetCursorCur() {
 }
 
 void DumpRedrawByteHex(uint8_t c, char error) {
-    char buffer[4];
-    sprintf(buffer, error ? "\xd7\xd7 " : "%02X ", c);
+    char buffer[3];
+    sprintf(buffer, error ? "\xd7\xd7" : "%02X", c);
     puts(buffer);
 }
 
@@ -123,23 +141,28 @@ void DumpWriteAndRedrawCur(uint8_t value, uint8_t mask) {
 }
 
 void DumpRedrawScreen() {
-    uint8_t buffer[BYTES_PER_ROW > 10 ? BYTES_PER_ROW : 10];
-    char busError[BYTES_PER_ROW];
+    uint8_t buffer[MAX_BYTES_PER_ROW];
+    char busError[MAX_BYTES_PER_ROW];
     volatile uint8_t* pAddr = g_pAddress;
     InstallBusErrorHandler();
     for(char row = 1; row <= g_rowsPerScreen; row++) {
-        SetCursor(row, g_isAS3000 ? 1 : 3, CURSOR_MODE_HIDE);
+        SetCursor(row, g_layout->address_col, CURSOR_MODE_HIDE);
         sprintf(buffer, g_isAS3000 ? "%-08.7X" : "%08X ", pAddr);
         puts(buffer);
-        for(char byte = 0; byte < BYTES_PER_ROW; byte++) {
+        for(char byte = 0; byte < g_layout->bytes_per_row; byte++) {
             g_busError = 0;
             buffer[byte] = *pAddr++;
             busError[byte] = g_busError;
         }
-        for(char byte = 0; byte < BYTES_PER_ROW; byte++) {
+        for(char byte = 0; byte < g_layout->bytes_per_row; byte++) {
             DumpRedrawByteHex(buffer[byte], busError[byte]);
+            if(!g_layout->grouped_hex || (byte & 1))
+                putchar(' ');
         }
-        for(char byte = 0; byte < BYTES_PER_ROW; byte++) {
+        if(g_layout->grouped_hex)
+            putchar(' ');
+        SetCursor(row, g_layout->ascii_col, CURSOR_MODE_HIDE);
+        for(char byte = 0; byte < g_layout->bytes_per_row; byte++) {
             DumpRedrawByteAscii(buffer[byte], busError[byte]);
         }
     }
@@ -147,15 +170,15 @@ void DumpRedrawScreen() {
     DumpSetCursorCur();
 }
 
-void DumpMoveCursor(char cursor) {
+void DumpMoveCursor(short cursor) {
     g_cursor = cursor;
     if(g_cursor < 0) {
-        g_pAddress -= BYTES_PER_ROW;
-        g_cursor += BYTES_PER_ROW;
+        g_pAddress -= g_layout->bytes_per_row;
+        g_cursor += g_layout->bytes_per_row;
         DumpRedrawScreen();
     } else if(g_cursor >= g_bytesPerScreen) {
-        g_pAddress += BYTES_PER_ROW;
-        g_cursor -= BYTES_PER_ROW;
+        g_pAddress += g_layout->bytes_per_row;
+        g_cursor -= g_layout->bytes_per_row;
         DumpRedrawScreen();
     } else {
         DumpSetCursorCur();
@@ -164,8 +187,8 @@ void DumpMoveCursor(char cursor) {
 
 void DumpSetAddress(uint32_t addr) {
     g_pPrevAddress = g_pAddress + g_cursor;
-    g_pAddress = (volatile uint8_t*)(addr & ~(BYTES_PER_ROW - 1));
-    g_cursor = addr & (BYTES_PER_ROW - 1);
+    g_cursor = addr % g_layout->bytes_per_row;
+    g_pAddress = (volatile uint8_t*)(addr - g_cursor);
     if(g_mode == MODE_NIBBLE_LO) {
         g_mode = MODE_NIBBLE_HI;
     }
@@ -269,13 +292,22 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
             }
             break;
 
-        case MSG_SETFOCUS:
-            CallSysInt(0, SYS_INT_GET_ROW_COUNT, &scratch);
-            g_rowsPerScreen = scratch;
-            g_bytesPerScreen = BYTES_PER_ROW * g_rowsPerScreen;
+        case MSG_SETFOCUS: {
+            uint8_t cols;
+            _DisplayGetSize(&g_rowsPerScreen, &cols);
+            if(g_isAS3000)
+                g_layout = &as3000_layout;
+            else if(cols == 66)
+                g_layout = &tiny_layout;
+            else if(cols == 52)
+                g_layout = &small_layout;
+            else
+                g_layout = &standard_layout;
+            g_bytesPerScreen = g_layout->bytes_per_row * g_rowsPerScreen;
             ClearScreen();
             DumpRedrawScreen();
             break;
+        }
 
         case MSG_CHAR:
             if(param == '\t') {
@@ -330,7 +362,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                     break;
 
                 case KEY_UP:
-                    DumpMoveCursor(g_cursor - BYTES_PER_ROW);
+                    DumpMoveCursor(g_cursor - g_layout->bytes_per_row);
                     break;
 
                 case KEY_MOD_CTRL | KEY_UP:
@@ -339,7 +371,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                     break;
 
                 case KEY_DOWN:
-                    DumpMoveCursor(g_cursor + BYTES_PER_ROW);
+                    DumpMoveCursor(g_cursor + g_layout->bytes_per_row);
                     break;
                     
                 case KEY_MOD_CTRL | KEY_DOWN:
@@ -348,19 +380,19 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                     break;
 
                 case KEY_HOME:
-                    DumpMoveCursor(g_cursor & ~(BYTES_PER_ROW - 1));
+                    DumpMoveCursor(g_cursor - DumpByteInRow(g_cursor));
                     break;
 
                 case KEY_MOD_CTRL | KEY_HOME:
-                    DumpMoveCursor(g_cursor & ~(g_bytesPerScreen - 1));
+                    DumpMoveCursor(0);
                     break;
 
                 case KEY_END:
-                    DumpMoveCursor(g_cursor | (BYTES_PER_ROW - 1));
+                    DumpMoveCursor(g_cursor - DumpByteInRow(g_cursor) + g_layout->bytes_per_row - 1);
                     break;
 
                 case KEY_MOD_CTRL | KEY_END:
-                    DumpMoveCursor(g_cursor | (g_bytesPerScreen - 1));
+                    DumpMoveCursor(g_bytesPerScreen - 1);
                     break;
 
                 case KEY_MOD_CTRL | KEY_I:
@@ -407,7 +439,7 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
                         } else {
                             choice = DialogGetChoice();
                         }
-                        GetCursorPos(&row, &col);
+                        _OS3K_GetCursorPos(&row, &col);
                         _OS3K_SetCursor(row, col + 6, CURSOR_MODE_HIDE);
                         NumberPrompt("", (char*)g_buffer[choice-1] + 1, BUFFER_INPUT, choice > 1 ? "0x" : "!");
                     }

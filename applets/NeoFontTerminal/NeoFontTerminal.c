@@ -1,10 +1,16 @@
 #include "os3k.h"
-#include "glyphs.h"
+#include FONT_GLYPHS
 
 APPLET_HEADER_BEGIN
     APPLET_FLAGS(APPLET_FLAG_FONT | APPLET_FLAG_HIDDEN)
     APPLET_ID(0xA1F0)
+#if defined(FONT_Tiny)
+    APPLET_FONT_NAME("Terminal Tiny")
+#elif defined(FONT_Small)
+    APPLET_FONT_NAME("Terminal Small")
+#else
     APPLET_FONT_NAME("Terminal (8 lines)")
+#endif
     APPLET_INFO("Copyright (c) 2020 Alpaxo Software")
     APPLET_VERSION(BETAWISE_VERSION_MAJOR, BETAWISE_VERSION_MINOR, BETAWISE_VERSION_REVISION)
     APPLET_LANGUAGE_EN_US

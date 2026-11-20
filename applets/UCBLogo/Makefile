@@ -18,6 +18,7 @@ build/%.o: build/prepared $(OS3K_HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -include port_stdio.h -c build/$*.c -o $@
 
 applet.o runtime.o softmath.o: build/prepared
+applet.o: ../../os3k/os3k_display_internal.h
 
 ../NeoFontTerminal/glyphs.h: ../NeoFontTerminal/fontgen.py ../NeoFontTerminal/glyphs.png
 	+$(MAKE) -C ../NeoFontTerminal glyphs.h

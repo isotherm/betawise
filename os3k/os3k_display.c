@@ -2,6 +2,7 @@
 
 typedef struct _DisplayState_t {
     FontHeader_t* font;
+    FontHeader_t* system_font;
     uint16_t width;
     uint16_t height;
     int16_t roll;
@@ -9,6 +10,8 @@ typedef struct _DisplayState_t {
     uint8_t col;
     uint8_t max_row;
     uint8_t max_col;
+    uint8_t left_padding;
+    uint8_t top_padding;
 } DisplayState_t;
 
 static DisplayState_t g_Display;
@@ -34,6 +37,41 @@ void _OS3K_GetCursorPos(uint8_t* row, uint8_t* col);
 
 static void _LCD_SetScreenRoll(uint16_t roll) {
     LCD_CMD_REG_LEFT = LCD_CMD_REG_RIGHT = LCD_CMD_START_LINE(roll);
+}
+
+static uint16_t ConsolePixelX(uint8_t col) {
+    return (col - 1) * g_Display.font->max_width + g_Display.left_padding;
+}
+
+static uint16_t ConsolePixelY(uint8_t row) {
+    uint16_t y = (row - 1) * g_Display.font->height + g_Display.roll + g_Display.top_padding;
+    return y < g_Display.height ? y : y - g_Display.height;
+}
+
+static void ClearPixels(uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
+    uint16_t first = g_Display.height - y;
+    if(height > first) {
+        RasterOp(x, 0, width, height - first, NULL, ROP_WHITENESS);
+        height = first;
+    }
+    if(height)
+        RasterOp(x, y, width, height, NULL, ROP_WHITENESS);
+}
+
+static void DrawGlyph(uint16_t x, uint16_t y, const uint8_t* bitmap) {
+    uint8_t width = g_Display.font->max_width;
+    uint8_t height = g_Display.font->height;
+    uint16_t first = g_Display.height - y;
+    if(height <= first) {
+        DrawBitmap(x, y, width, height, bitmap);
+    } else {
+        // Only the 6- and 7-pixel fonts can cross a 64-pixel roll boundary.
+        uint8_t remainder[6];
+        for(uint8_t col = 0; col < width; ++col)
+            remainder[col] = bitmap[col] >> first;
+        DrawBitmap(x, y, width, first, bitmap);
+        DrawBitmap(x, 0, width, height - first, remainder);
+    }
 }
 
 static void _LCD_AllPixOn(bool enable) {
@@ -86,16 +124,17 @@ void SetCursor(uint8_t row, uint8_t col, CursorMode_e cursor_mode) {
     g_Display.row = row;
     g_Display.col = col;
     CURSOR_STRUCT->pFont = g_Display.font;
-    CURSOR_STRUCT->x = (col - 1) * g_Display.font->max_width;
+    CURSOR_STRUCT->x = ConsolePixelX(col);
     if(CURSOR_STRUCT->x == g_Display.width) {
         CURSOR_STRUCT->x--;
     }
-    CURSOR_STRUCT->y = ((row - 1) * g_Display.font->height) + g_Display.roll;
-    if(CURSOR_STRUCT->y >= g_Display.height) {
-        CURSOR_STRUCT->y -= g_Display.height;
-    }
+    CURSOR_STRUCT->y = ConsolePixelY(row);
     if(clear_row) {
-        RasterOp(CURSOR_STRUCT->x, CURSOR_STRUCT->y, g_Display.width, g_Display.font->height, NULL, ROP_WHITENESS);
+        ClearPixels(0, CURSOR_STRUCT->y, g_Display.width, g_Display.font->height);
+        uint16_t used = g_Display.max_row * g_Display.font->height;
+        // In the LCD ring the bottom and top margins are adjacent.
+        ClearPixels(0, ConsolePixelY(g_Display.max_row + 1),
+                    g_Display.width, g_Display.height - used);
     }
     SetCursorMode(cursor_mode);
 }
@@ -106,8 +145,9 @@ void _DisplayProcessMessage(Message_e message, uint32_t* status) {
 
     switch(message) {
         case MSG_INIT:
-            g_Display.font = NULL;
-            _OS3K_CallSysInt(0, SYS_INT_GET_SYSTEM_FONT_PTR, &g_Display.font);
+            g_Display.system_font = NULL;
+            _OS3K_CallSysInt(0, SYS_INT_GET_SYSTEM_FONT_PTR, &g_Display.system_font);
+            g_Display.font = g_Display.system_font;
             _OS3K_CallSysInt(0, SYS_INT_GET_LCD_WIDTH, &scratch);
             g_Display.width = scratch;
             // Character LCDs report columns; backspace must wrap to column 40.
@@ -118,6 +158,7 @@ void _DisplayProcessMessage(Message_e message, uint32_t* status) {
             break;
 
         case MSG_SETFOCUS:
+            g_Display.font = g_Display.system_font;
             if(!g_Display.font) {
                 _OS3K_ClearScreen();
                 break;
@@ -125,11 +166,45 @@ void _DisplayProcessMessage(Message_e message, uint32_t* status) {
             // Initialize screen and font.
             appletIndex = AppletFindById(0xA1F0);
             if(appletIndex > 0) {
-                AppletSendMessage(appletIndex, 0x1000002, (uint32_t)&g_Display.font, status);
+                FontHeader_t* font = NULL;
+                AppletSendMessage(appletIndex, 0x1000002, (uint32_t)&font, status);
+                if(font && font->bitmap_data &&
+                   ((font->max_width == 4 && font->height == 6 && font->max_bytes == 4) ||
+                    (font->max_width == 5 && font->height == 7 && font->max_bytes == 5) ||
+                    (font->max_width == 6 && font->height == 8 && font->max_bytes == 6))) {
+                    g_Display.font = font;
+                }
             }
-            // Use constant integers to avoid long division.
-            g_Display.max_col = (uint16_t)g_Display.width / 6;
-            g_Display.max_row = g_Display.font->height == 16 ? (g_Display.height / 16) : (g_Display.height / 8);
+            // Full cells on the Neo's 264 by 64 visible raster.
+            switch(g_Display.font->height) {
+                case 6:
+                    g_Display.max_col = 66;
+                    g_Display.max_row = 10;
+                    g_Display.left_padding = 0;
+                    g_Display.top_padding = 2;
+                    break;
+
+                case 7:
+                    g_Display.max_col = 52;
+                    g_Display.max_row = 9;
+                    g_Display.left_padding = 2;
+                    g_Display.top_padding = 1;
+                    break;
+
+                case 8:
+                    g_Display.max_col = 44;
+                    g_Display.max_row = 8;
+                    g_Display.left_padding = 0;
+                    g_Display.top_padding = 0;
+                    break;
+
+                default:
+                    g_Display.max_col = 44;
+                    g_Display.max_row = 4;
+                    g_Display.left_padding = 0;
+                    g_Display.top_padding = 0;
+                    break;
+            }
             ClearScreen();
             break;
 
@@ -138,6 +213,13 @@ void _DisplayProcessMessage(Message_e message, uint32_t* status) {
                 _LCD_SetScreenRoll(0);
             }
             break;
+    }
+}
+
+void _DisplayUseUnpaddedOrigin(void) {
+    if(g_Display.font && (g_Display.left_padding || g_Display.top_padding)) {
+        g_Display.left_padding = g_Display.top_padding = 0;
+        SetCursor(1, 1, CURSOR_MODE_HIDE);
     }
 }
 
@@ -198,12 +280,12 @@ int _DisplayPutChar(int c) {
 
     short offset = g_Display.font->max_bytes * c;
     const uint8_t* bitmap = g_Display.font->bitmap_data + offset;
-    if(CURSOR_STRUCT->x == (g_Display.width - 1)) {
+    if(g_Display.col > g_Display.max_col) {
         SetCursor(g_Display.row + 1, 1, CURSOR_MODE_HIDE);
     } else {
         SetCursorMode(CURSOR_MODE_HIDE);
     }
-    DrawBitmap(CURSOR_STRUCT->x, CURSOR_STRUCT->y, g_Display.font->max_width, g_Display.font->height, bitmap);
+    DrawGlyph(CURSOR_STRUCT->x, CURSOR_STRUCT->y, bitmap);
     CURSOR_STRUCT->x += g_Display.font->max_width;
     if(CURSOR_STRUCT->x == g_Display.width) {
         CURSOR_STRUCT->x--;
@@ -236,10 +318,8 @@ void _DisplayEraseCells(uint8_t row, uint8_t first, uint8_t last) {
     if(!g_Display.font) {
         ClearRowCols(row, first, last);
     } else {
-        unsigned y = ((row - 1) * g_Display.font->height + g_Display.roll) % g_Display.height;
-        RasterOp((first - 1) * g_Display.font->max_width, y,
-                 (last - first + 1) * g_Display.font->max_width,
-                 g_Display.font->height, NULL, ROP_WHITENESS);
+        ClearPixels(ConsolePixelX(first), ConsolePixelY(row),
+                    (last - first + 1) * g_Display.font->max_width, g_Display.font->height);
     }
     SetCursor(old_row, old_col, mode);
 }
