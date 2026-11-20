@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 160" width="540" height="160" role="img" aria-label="BetaWise Logo">
+  <defs>
+    <!-- Subtle LCD screen inner shadow -->
+    <filter id="lcd-inset" x="-10%" y="-10%" width="120%" height="120%">
+      <feOffset dx="0" dy="1.5"/>
+      <feGaussianBlur stdDeviation="1.5" result="offset-blur"/>
+      <feComposite operator="out" in="SourceGraphic" in2="offset-blur" result="inverse"/>
+      <feFlood flood-color="#0D1A12" flood-opacity="0.45" result="color"/>
+      <feComposite operator="in" in="color" in2="inverse" result="shadow"/>
+      <feComposite operator="over" in="shadow" in2="SourceGraphic"/>
+    </filter>
+  </defs>
+
+  <!-- ICON MARK: Square Stylized AlphaSmart Chassis (Scaled 1.25x -> 120x120) -->
+  <g transform="translate(24, 20) scale(1.25)">
+    <!-- Outer Dark Green Square Body (96x96) -->
+    <rect x="0" y="0" width="96" height="96" rx="14" fill="#1B3B2B" stroke="#11261C" stroke-width="2"/>
+    
+    <!-- Top Bezel Highlight -->
+    <path d="M14 2 H82 A12 12 0 0 1 94 14 V16 H2 V14 A12 12 0 0 1 14 2 Z" fill="#27523C"/>
+
+    <!-- Monochrome LCD Screen -->
+    <rect x="12" y="12" width="72" height="35" rx="4" fill="#9DB398" filter="url(#lcd-inset)"/>
+    
+    <!-- LCD Pixel Art: "β" Monogram + Terminal Prompt + Cursor -->
+    <g fill="#142419">
+      <!-- Pixel 'β' (with descending tail) -->
+      <rect x="20" y="20" width="4" height="24"/>
+      <rect x="23" y="17" width="11" height="4"/>
+      <rect x="34" y="20" width="4" height="6"/>
+      <rect x="26" y="26" width="8" height="4"/>
+      <rect x="34" y="30" width="4" height="6"/>
+      <rect x="24" y="36" width="10" height="4"/>
+      
+      <!-- Pixel '>' (API / Code Prompt) -->
+      <rect x="44" y="22" width="4" height="4"/>
+      <rect x="48" y="25" width="4" height="4"/>
+      <rect x="52" y="28" width="4" height="4"/>
+      <rect x="48" y="31" width="4" height="4"/>
+      <rect x="44" y="34" width="4" height="4"/>
+
+      <!-- Blinking Block Cursor -->
+      <rect x="62" y="19" width="9" height="22" opacity="0.85"/>
+    </g>
+
+    <!-- Tactile Keyboard Grid (2 Rows of Keys, slightly taller spacing for square frame) -->
+    <g fill="#2E5E46">
+      <!-- Row 1 -->
+      <rect x="12" y="56" width="12" height="11" rx="2"/>
+      <rect x="27" y="56" width="12" height="11" rx="2"/>
+      <rect x="42" y="56" width="12" height="11" rx="2"/>
+      <rect x="57" y="56" width="12" height="11" rx="2"/>
+      <!-- Accent "Send" Key -->
+      <rect x="72" y="56" width="12" height="11" rx="2" fill="#529471"/>
+
+      <!-- Row 2 (with Spacebar) -->
+      <rect x="12" y="71" width="15" height="11" rx="2"/>
+      <rect x="30" y="71" width="36" height="11" rx="2"/>
+      <rect x="69" y="71" width="15" height="11" rx="2"/>
+    </g>
+  </g>
+
+  <!-- RIGHT WORDMARK -->
+  <g transform="translate(168, 72)">
+    <!-- Project Name: BetaWise -->
+    <text x="0" y="0" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="800" font-size="52" letter-spacing="-1.5" fill="#9DB398">
+      Beta<tspan fill="#529471">Wise</tspan>
+    </text>
+
+    <!-- LCD Status Bar Subtitle -->
+    <g transform="translate(2, 20)">
+      <rect x="0" y="0" width="346" height="30" rx="6" fill="#1B3B2B" stroke="#2E5E46" stroke-width="1.5"/>
+      <text x="12" y="20" font-family="'Courier New', Courier, monospace" font-weight="700" font-size="14" letter-spacing="0.8" fill="#9DB398">
+        &gt; ALPHASMART OPEN SDK // M68K_
+      </text>
+    </g>
+  </g>
+</svg>
