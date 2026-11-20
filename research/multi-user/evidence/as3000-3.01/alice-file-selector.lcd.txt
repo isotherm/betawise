@@ -1,0 +1,4 @@
+Press enter to open: "File 1"           
+- [F1] BASELINEALICEONLY                
+Please wait...                          
+                                        

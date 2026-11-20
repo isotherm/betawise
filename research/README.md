@@ -9,6 +9,9 @@ Investigations, evidence, and reproducible probes for Betawise and AlphaSmart fi
   integration runner.
 - [Character repertoire comparison](syscalls/localization/README.md): syscall
   #91 and the AS3000 3.01/Neo glyph comparison.
+- [Dormant firmware multi-user mode](multi-user/README.md): named profiles,
+  AS3000 runtime qualification, fourth-profile creation failure, and AlphaWord
+  cross-profile document reopening. Not recommended for exposure.
 
 - [Applet installation and warm registration](applet-installation/README.md):
   AS3000 3.01 Manager finalization, directory registration, and

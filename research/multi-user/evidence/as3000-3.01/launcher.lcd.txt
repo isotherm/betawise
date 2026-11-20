@@ -1,0 +1,4 @@
+Initializing AlphaSmart System 3.01...  
+Initializing Applet:                    
+AlphaWord Plus                          
+                                        

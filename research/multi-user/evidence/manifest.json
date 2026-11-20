@@ -1,0 +1,253 @@
+{
+  "date": "2026-11-20",
+  "source_run": "/tmp/multi-user-as-qualified",
+  "scope": "Disposable AS3000 System 3.01, stock AlphaWord and KeyWords installed; AlphaWord exercised; no Neo runtime acceptance.",
+  "artifacts": [
+    {
+      "path": "evidence/as3000-3.01/alice-created.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "51a22e1d242e972fbd69994ff304b6ec5287e57389521ed89c1b6b886849d652",
+      "gzip_sha256": "8e4a31c9a13a59f90c47f0322290a79d1779220ee45e3521c3fa5ef1ebdb2711"
+    },
+    {
+      "path": "evidence/as3000-3.01/alice-file-selector.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "9b05a29a9342027d1b55fc77c6cb9d4c400812d059cffd27d5b5f091ef2bca52",
+      "gzip_sha256": "55f57cb34f4f695e7aebd32c179f9e7e7902363b3c2fdbe65ccfddbde83eb299"
+    },
+    {
+      "path": "evidence/as3000-3.01/alice-native-group1.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "a95792f20b8c5c892d561bbd87196e6202c5414143276a79b17120e5995d8593",
+      "gzip_sha256": "47f0decbf4ba55e4140933820738753362efe686fe6c9565d1d337c2cf3a1958"
+    },
+    {
+      "path": "evidence/as3000-3.01/alice-new-dialog.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "6a35aa440260997f0e01bcc319a099839a67d063360566e38a0ef57323a73a9b",
+      "gzip_sha256": "763381cd47fcae2db9f0862b913d638a64fd436e545c871baaea86b04f794f15"
+    },
+    {
+      "path": "evidence/as3000-3.01/alice-returned.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "233ae77e2dd75b0f55a759f0d7173ecaa3a1557c4c5e8abe940220ad0a3e7ace",
+      "gzip_sha256": "0e846f6f169cdc39cad48bfdf1d241ca45713852b098ed6910c4be702b5b1d79"
+    },
+    {
+      "path": "evidence/as3000-3.01/alice-saved.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "019a3a0669db032c4c3ed26bcff9e8c220e6ddda8a5d258f555fee9b7b964c6e",
+      "gzip_sha256": "9bdd27a6d1f3959b832654ee9317a5aaa9a25b2e45843bcfa74c8fe35096ed4d"
+    },
+    {
+      "path": "evidence/as3000-3.01/alice-sees-group-zero.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "f4502b70a98897b6ebdc7d5b32b21f9eee4d74e386ba0cfeb56db1582c505679",
+      "gzip_sha256": "fec639e14cd49d1b764a5624c932a71403b15f343950d7b8cfe56aa720cebb4e"
+    },
+    {
+      "path": "evidence/as3000-3.01/alice-text.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "9915bcca7bd30268333a94596c374ca00219dfa0aff15c55753f89c018040e3e",
+      "gzip_sha256": "6ab828fc0bd31bc7309921e04db62bec9aba3d13ddc0e4fa841f2566433b5a5b"
+    },
+    {
+      "path": "evidence/as3000-3.01/baseline-text.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "b239caf94fc2817ed88b170c2d8a340129616e39275e9265e178aea8c4a8b20c",
+      "gzip_sha256": "3fa106f5f54597f509a0c1b18dc77f911d877517f066b17598da881d4d43fd2e"
+    },
+    {
+      "path": "evidence/as3000-3.01/bobby-sees-alice-text.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "717637e8ddffc94a6a1fbed17d818c8826ae2acd50f601543e8805b914a320a2",
+      "gzip_sha256": "67540464b972234f5b7703e5b5d7cf88e23ec8bfe87618b41460a425ea62ab66"
+    },
+    {
+      "path": "evidence/as3000-3.01/boot.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "9cf9a937bb2d354cec87b025cc232316583cb85b6928ff4f2e45cfa08a818fff",
+      "gzip_sha256": "d9959f6210e681c89cfa45aea326b31ffd576e0f1a331446110988a3e1b005ad"
+    },
+    {
+      "path": "evidence/as3000-3.01/disabled.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "8aba2728d18f5ed29cbbda6851c090cf27e2133d6ea36dcc327c9b90116f15fb",
+      "gzip_sha256": "7d94129c461c56ec1b180c6c37d32caec34cee8fe401db8a2a216661eda297dc"
+    },
+    {
+      "path": "evidence/as3000-3.01/enabled.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "98c20eff6433680e914553551c7f38bb6ab1a07e405e99a3c4e8684eae6654ca",
+      "gzip_sha256": "fb8edf9b8b622c10fc613ccef925312f2be5222b57bfdcb6a0d3caf3328501b4"
+    },
+    {
+      "path": "evidence/as3000-3.01/four-profiles.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "26c1981799cf75642b09ea01e02b8ae75af8f529672086f328594558b7a48c18",
+      "gzip_sha256": "3c8f035be90efc25a5d039762dc9eabd59a762561a8474401b47a4517d301ae3"
+    },
+    {
+      "path": "evidence/as3000-3.01/launcher.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "e5d1a4e3760259ce306deaf5a722e852ec5c551da9d738d76cf04322388fd25b",
+      "gzip_sha256": "925f5edcd46a578c4f1f8f9804eee0248dc0a312bb6a00d662b7c959762caf56"
+    },
+    {
+      "path": "evidence/as3000-3.01/restart-selector.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "2ff0ec467a798f7d3f72ce7d0b5f8c1046e38289d6cb2e50f71b638bd6a7fc3a",
+      "gzip_sha256": "249f4fe9102a7c85bf3e309e7025173025df8363ca0d409ae20cf981ed74a92b"
+    },
+    {
+      "path": "evidence/as3000-3.01/save-dialog.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "eb3e0adb773c30c6315d18e0503d32ab60bca0ccc13605c2a516786dbf566749",
+      "gzip_sha256": "1fab088c3183c912620cc13179e00e9f76e9fff5be0408833ab407c6eeda8dbb"
+    },
+    {
+      "path": "evidence/as3000-3.01/selector-2.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "4f8d46a75dc903e95f7892ff7ad5337ca9711cacdf5fa95ac1ea384aef49c0b3",
+      "gzip_sha256": "252f356eb8e207f7010485a93455c8dc740c24af048feeb45026b13a9791a30f"
+    },
+    {
+      "path": "evidence/as3000-3.01/selector-3.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "38d7d5ab6ee4c5c4a1c5ed0ac561957e96dac2f36cf500aa4d23a3b841e40e5c",
+      "gzip_sha256": "1559a2a5c8e2f618e2d778e0aacfc12e039f05552f1b383a3b6ee0c77b56fdc8"
+    },
+    {
+      "path": "evidence/as3000-3.01/selector-4.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "24d7f5abfa53ac39ff9dfbe5a2a3ecdfd87b1807427684e9cc1c9d89c60058f6",
+      "gzip_sha256": "36aafe7cf6d1da3cc229566ae1dd8255b785938c3f66505d10443c355e49e481"
+    },
+    {
+      "path": "evidence/as3000-3.01/toggle-continuation.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "1a9f7711ef63d36b08bdc9956b6b7de16a1b19ae6628127146150fa3f6113de5",
+      "gzip_sha256": "d42136f2ac9900c045db13c8ef847a4deb0edd786198fe293340a62ca3fed6c6"
+    },
+    {
+      "path": "evidence/as3000-3.01/toggle-screen.ram.gz",
+      "raw_size": 262144,
+      "raw_sha256": "873ddd1eb60f1c1aff9037e9a45186216ee7a1f0f06834b984519829596003aa",
+      "gzip_sha256": "5b6cd70b52180c7f403565078e4299740f8b1cc1ffa244e2ba9132b264c25b9c"
+    },
+    {
+      "path": "evidence/as3000-3.01/alice-created.lcd.txt",
+      "sha256": "6d6913150b8e2f5ebdfd40716a2e4a0d9e145a1940955030eb06d704a98925b8"
+    },
+    {
+      "path": "evidence/as3000-3.01/alice-file-selector.lcd.txt",
+      "sha256": "3fd1a7896a74bb74de31b962ed9c99f017ae69b5e77929a147b1b6771f4ff4b6"
+    },
+    {
+      "path": "evidence/as3000-3.01/alice-native-group1.lcd.txt",
+      "sha256": "aa13c6a831c877d8797162ac34f8dadc1e883cc9a80835c642fb46db35403953"
+    },
+    {
+      "path": "evidence/as3000-3.01/alice-new-dialog.lcd.txt",
+      "sha256": "6d6913150b8e2f5ebdfd40716a2e4a0d9e145a1940955030eb06d704a98925b8"
+    },
+    {
+      "path": "evidence/as3000-3.01/alice-returned.lcd.txt",
+      "sha256": "aa13c6a831c877d8797162ac34f8dadc1e883cc9a80835c642fb46db35403953"
+    },
+    {
+      "path": "evidence/as3000-3.01/alice-saved.lcd.txt",
+      "sha256": "218e315507848ab514e15ad2c39d48308609707afa1a9648826fd3fd363bef3b"
+    },
+    {
+      "path": "evidence/as3000-3.01/alice-sees-group-zero.lcd.txt",
+      "sha256": "72cbe87a859101ba037195cf270469bff28c9f9c68b2886132d96359ac37ff69"
+    },
+    {
+      "path": "evidence/as3000-3.01/alice-text.lcd.txt",
+      "sha256": "218e315507848ab514e15ad2c39d48308609707afa1a9648826fd3fd363bef3b"
+    },
+    {
+      "path": "evidence/as3000-3.01/baseline-text.lcd.txt",
+      "sha256": "72cbe87a859101ba037195cf270469bff28c9f9c68b2886132d96359ac37ff69"
+    },
+    {
+      "path": "evidence/as3000-3.01/bobby-sees-alice-text.lcd.txt",
+      "sha256": "aa13c6a831c877d8797162ac34f8dadc1e883cc9a80835c642fb46db35403953"
+    },
+    {
+      "path": "evidence/as3000-3.01/boot.lcd.txt",
+      "sha256": "c9ab4a44da5ecc182b8858e00f3a930c890acbeb54cb38c6bdb2edc5c1cc5e92"
+    },
+    {
+      "path": "evidence/as3000-3.01/disabled.lcd.txt",
+      "sha256": "984a257d44c38021c3d4c75492aeb39fb288f8ee88697881168652086455ea37"
+    },
+    {
+      "path": "evidence/as3000-3.01/enabled.lcd.txt",
+      "sha256": "94d5eef200bce90928dc8559b242add5fc1ce81e3a7d523dcea9de39715f9639"
+    },
+    {
+      "path": "evidence/as3000-3.01/four-profiles.lcd.txt",
+      "sha256": "ac9165996eecb45dfe759b0979bc72a317294f0392e98d1a73f1e4237659458b"
+    },
+    {
+      "path": "evidence/as3000-3.01/launcher.lcd.txt",
+      "sha256": "26bc55a106b86e6139f3ab370f94a1d9832e6b48b2f72cbb4a15f07c2b31d079"
+    },
+    {
+      "path": "evidence/as3000-3.01/restart-selector.lcd.txt",
+      "sha256": "a61dac7f306bb36e55840eab0c864522020fe8e1b0a326c46bb8899576be6dc6"
+    },
+    {
+      "path": "evidence/as3000-3.01/save-dialog.lcd.txt",
+      "sha256": "53adde551d5bd6ba0f0ade63c4c9a57aa3eca936761f7154dc2d91b4f47800c0"
+    },
+    {
+      "path": "evidence/as3000-3.01/selector-2.lcd.txt",
+      "sha256": "cf44f41cdfcb7ace19591032fae888a5365d613c07e3e4ec5523467d1d6b5a78"
+    },
+    {
+      "path": "evidence/as3000-3.01/selector-3.lcd.txt",
+      "sha256": "c74a02a06e01f83931d826cc4aa0c3354b4d30e4b27b51dd087cc51361440b00"
+    },
+    {
+      "path": "evidence/as3000-3.01/selector-4.lcd.txt",
+      "sha256": "07ae12c60d6bd970c9e52c2ffcd7c79719ad8b99e916ed49b11f41b06e3331f5"
+    },
+    {
+      "path": "evidence/as3000-3.01/toggle-continuation.lcd.txt",
+      "sha256": "54253aa5e02ae764616d73a0bbc2a14b3afb2aba5c90698d4d723db635391b5c"
+    },
+    {
+      "path": "evidence/as3000-3.01/toggle-screen.lcd.txt",
+      "sha256": "8c012a65c49f47f0e5beb5d5a00d9bdea7413a0aae4eb774693343af19415441"
+    },
+    {
+      "path": "evidence/as3000-3.01/mame.log",
+      "sha256": "c0c2bee927076c036d00aa7abd994daaf5553c8a3ca2371db884c03b5aabf2f6"
+    },
+    {
+      "path": "evidence/as3000-3.01/probe.lua",
+      "sha256": "8e00f1d86a52de1462e01d000f8aaf263f5487e90e8b6ac6f3cd259a1546ae70"
+    }
+  ],
+  "inputs": {
+    "system": {
+      "path": "betawise/tests/mame/asma3k/OS3KROM.OS3KOS",
+      "sha256": "732dca63399d883071ce41cc07ad352fa19c506b7b8c307ace16d5c53e6f8708"
+    },
+    "smallrom": {
+      "path": "mame/roms/asma3k/smallos3krom.os3kos",
+      "sha256": "479adbe2f873da053046a749f95d2c86eeada23df442237a613b09e9780fd874"
+    },
+    "alphaword": {
+      "path": "mame/roms/asma3k/alphawordplus.os3kapp",
+      "sha256": "22fc6a9b7ab96b332965074d81e88a61574c82bd118cd0a5122ff17eda348515"
+    },
+    "keywords": {
+      "path": "mame/roms/asma3k/keywords.os3kapp",
+      "sha256": "a0f9851a5c08c85a4ba3b59686497726a6a4b42b2a60796d268309546ccd61b0"
+    }
+  }
+}

@@ -1,0 +1,140 @@
+ALSA lib seq_hw.c:466:(snd_seq_hw_open) open /dev/snd/seq failed: No such file or directory
+ks0066_f05.bin ROM NEEDS REDUMP
+ks0066_f05.bin ROM NEEDS REDUMP
+WARNING: the machine might not run correctly.
+STATE launcher enabled=0 selected=128 pc=4e3c3e
+Initializing AlphaSmart System 3.01...  
+Initializing Applet:                    
+AlphaWord Plus                          
+                                        
+STATE boot enabled=0 selected=128 pc=4d12c4
+                                        
+                                        
+                                        
+                                        
+STATE baseline-text enabled=0 selected=128 pc=4d12c4
+BASELINE                                
+                                        
+                                        
+                                        
+MASTER think
+STATE toggle-screen enabled=0 selected=128 pc=4d12c4
+Multiple user feature is disabled.      
+Type master password to enable.         
+                                        
+Press esc key to exit....               
+STATE enabled enabled=1 selected=128 pc=4de6ac
+                                        
+Multiple user feature is enabled.       
+                                        
+                                        
+STATE toggle-continuation enabled=1 selected=128 pc=4d12c4
+Select a user and press enter.          
+- Add New User...                       
+                                        
+                                        
+STATE alice-created enabled=1 selected=1 pc=40a982
+Opening "File 1"...                     
+                                        
+                                        
+                                        
+STATE alice-sees-group-zero enabled=1 selected=1 pc=4d12c4
+BASELINE                                
+                                        
+                                        
+                                        
+OBSERVED Alice opens existing group-zero BASELINE
+PASS selector returns immediately when profile already selected
+STATE alice-text enabled=1 selected=1 pc=4d12c4
+BASELINEALICEONLY                       
+                                        
+                                        
+                                        
+STATE save-dialog enabled=1 selected=1 pc=4d12c4
+Enter a name for the file,              
+then press enter:                       
+[               ]                       
+              (Press esc key to cancel) 
+STATE alice-saved enabled=1 selected=1 pc=4d12c4
+BASELINEALICEONLY                       
+                                        
+                                        
+                                        
+OBSERVED AlphaWord Save renames existing group-zero file under Alice
+STATE alice-new-dialog enabled=1 selected=1 pc=40a97c
+Opening "File 1"...                     
+                                        
+                                        
+                                        
+STATE alice-native-group1 enabled=1 selected=1 pc=4d12c4
+PRIVATEALICE                            
+                                        
+                                        
+                                        
+PASS AlphaWord Ctrl-N creates and edits group 1 workspace
+PASS group 1 same-name creation
+STATE selector-2 enabled=1 selected=129 pc=4d12c4
+Select a user and press enter.          
+- Alice                                 
+- Add New User...                       
+                                        
+CHOICE before 1
+CHOICE after 2
+PASS named profile 2 Bobby
+PASS group 2 duplicate rejection, cross-group same name, raw write and tag lookup
+STATE selector-3 enabled=1 selected=130 pc=4d12c4
+Select a user and press enter.          
+- Alice                                 
+- Bobby                                 
+- Add New User...                       
+CHOICE before 2
+CHOICE after 3
+PASS named profile 3 Carol
+PASS group 3 create and tag filtering
+STATE selector-4 enabled=1 selected=131 pc=4d12c4
+Select a user and press enter.          
+³ Bobby                                 
+- Carol                                 
+- Add New User...                       
+CHOICE before 3
+CHOICE after 4
+PASS named profile 4 David
+GROUP4 create=fffffff6
+STATE four-profiles enabled=1 selected=4 pc=4d12e4
+Creating New User                       
+Enter name: David                       
+Enter password: *****                   
+Reenter password: *****                 
+PASS characterized group 4 creation rejection
+PASS explicit cross-profile ID remains accessible
+STATE restart-selector enabled=1 selected=132 pc=4d12c4
+Select a user and press enter.          
+³ Bobby                                 
+- Carol                                 
+- David                                 
+STATE alice-returned enabled=1 selected=1 pc=4d12c4
+PRIVATEALICE                            
+                                        
+                                        
+                                        
+PASS named profiles persist, wrong password rejected, Alice native text reopened
+STATE alice-file-selector enabled=1 selected=1 pc=4d5784
+Press enter to open: "File 1"           
+- [F1] BASELINEALICEONLY                
+Please wait...                          
+                                        
+OBSERVED AlphaWord selector lists group-zero and profile workspaces; no isolation claim
+STATE bobby-sees-alice-text enabled=1 selected=2 pc=4d12c4
+PRIVATEALICE                            
+                                        
+                                        
+                                        
+OBSERVED Bobby reopens Alice profile workspace through AlphaWord cached selection
+STATE disabled enabled=0 selected=130 pc=4de6a4
+                                        
+Multiple user feature is disabled.      
+                                        
+                                        
+PASS disable retains profiles and makes profile query return zero
+PASS multi-user qualification complete
+Average speed: 197.90% (39 seconds)

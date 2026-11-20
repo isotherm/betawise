@@ -1,0 +1,4 @@
+Multiple user feature is disabled.      
+Type master password to enable.         
+                                        
+Press esc key to exit....               

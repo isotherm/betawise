@@ -1,0 +1,33 @@
+INCOMPLETE TEST AUTOMATION; NOT A FIRMWARE FAILURE OR SCREEN VALIDATION.
+ALSA lib seq_hw.c:466:(snd_seq_hw_open) open /dev/snd/seq failed: No such file or directory
+RAW_CALL pc=4263f2 sp=7ff62 arg4=1 arg8=1
+RAW_ARGUMENT "\7��"
+RAW_CALL pc=426414 sp=7ff62 arg4=2 arg8=1
+RAW_ARGUMENT "��"
+RAW_CALL pc=426436 sp=7ff62 arg4=3 arg8=1
+RAW_ARGUMENT "�"
+LITERAL_READ "AlphaSmart's lithium backup battery?"
+RAW_CALL pc=42645e sp=7ff62 arg4=4 arg8=1
+LITERAL_READ "Your AlphaSmart needs to be restarted."
+RAW_CALL pc=4263f2 sp=7ff62 arg4=1 arg8=1
+RAW_ARGUMENT "\7��"
+LITERAL_READ "Your AlphaSmart needs to be restarted."
+RAW_CALL pc=426414 sp=7ff62 arg4=2 arg8=1
+RAW_ARGUMENT "��"
+RAW_CALL pc=426436 sp=7ff62 arg4=3 arg8=1
+RAW_ARGUMENT "�"
+LITERAL_READ "Press the enter key to restart..."
+RAW_CALL pc=42645e sp=7ff62 arg4=4 arg8=1
+RAW_CALL pc=4174dc sp=7ff50 arg4=7ffaf arg8=446486
+RAW_CALL pc=4175b4 sp=7ff64 arg4=2 arg8=1
+RAW_ARGUMENT "��"
+RAW_CALL pc=4175d8 sp=7ff54 arg4=3 arg8=1
+RAW_ARGUMENT "�"
+RAW_CALL pc=4175b4 sp=7ff64 arg4=2 arg8=1
+RAW_ARGUMENT "��"
+RAW_CALL pc=4175d8 sp=7ff54 arg4=3 arg8=1
+RAW_ARGUMENT "�"
+STATE boot enabled=0 selected=128 pc=427af2
+FAIL /tmp/multi-user-neo21-eighth/probe.lua:10: timeout output argument Multiple user feature pc=426758
+STATE failure enabled=0 selected=128 pc=426758
+Average speed: 195.27% (15 seconds)

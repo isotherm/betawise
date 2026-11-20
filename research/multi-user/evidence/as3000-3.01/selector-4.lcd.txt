@@ -1,0 +1,4 @@
+Select a user and press enter.          
+³ Bobby                                 
+- Carol                                 
+- Add New User...                       
