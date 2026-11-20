@@ -143,3 +143,7 @@ This proves the accounting/admission sites and distinguishes RAM from flash
 allocation. It does not prove complete isolation, erase safety, power-loss
 handling, NEO support or physical hardware behavior. No deployable firmware
 patch is supplied or installed by this investigation.
+
+Subsequent [manufacturer datasheet verification](updater-chip-geometries.md)
+confirms that the 128-KiB branch matches physical Micron MT28F008B3/800B3
+and older Intel SmartVoltage geometry; it is not Intel 28F008B3 geometry.

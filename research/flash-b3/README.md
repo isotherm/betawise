@@ -11,6 +11,16 @@ Manager allocation, reporting, scanning and erase-all, distinguishes RAM
 allocator addresses from flash limits, and records an executed two-constant
 admission/reporting experiment for a 256-KiB tail reservation.
 
+The [battery-power and layout investigation](power-and-layout.md) records the
+chip's voltage requirements, original serial-update documentation, the executed
+3.5-V serial-updater admission test, front-loaded/oversized image options,
+journal/fringe uses and the missing neotools migration workflow.
+
+The [NEO space and compression investigation](neo-space-and-compression.md)
+identifies the 2013 package's 116-KiB erased-value run, its firmware/trailer
+erase-block constraints, and bounded compressed/differential record options.
+Read-only package inspection and host sizing scripts reproduce the findings.
+
 The File Manager UI does **not yet call the driver**; the normal manager image
 reserves no archive capacity, retains no unused RAM worker, and performs no
 flash command writes.
@@ -79,3 +89,11 @@ retention/endurance, partial-power erase behavior, electrical write timing,
 VPP/WP#/reset wiring, interrupt/NMI/watchdog safety, hardware USB, or successful
 programming/persistence on a physical AS3000. The driver rejects NEO rather
 than extrapolating the AS3000 chip/layout to it.
+
+The [updater chip geometry cross-check](updater-chip-geometries.md) verifies
+all supplied updater families and distinguishes Micron B3 128-KiB main blocks
+from Intel B3 64-KiB main blocks.
+
+[Native service candidates](native-services.md) records the existing AS3000
+RAM-copy wrappers and their supported chip dispatch, with remaining qualification
+requirements before reuse.
