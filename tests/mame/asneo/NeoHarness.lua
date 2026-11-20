@@ -64,7 +64,7 @@ local punctuation = {
 }
 local shifted = {['"']='Quote', [':']='Semicolon', ['(']='9', [')']='0',
     ['+']='Equals', ['_']='Minus', ['*']='8', ['<']='Comma', ['>']='Period',
-    ['!']='1', ['%']='5', ['{']='Left bracket', ['}']='Right bracket'}
+    ['!']='1', ['@']='2', ['%']='5', ['{']='Left bracket', ['}']='Right bracket'}
 local function type_text(text)
     for i=1,#text do
         local ch = text:sub(i,i)

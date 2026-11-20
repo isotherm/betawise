@@ -232,7 +232,7 @@ No compile-time platform restriction is currently enforced by the headers.
 | 207 | `0xA33C` | atoi | `0x004DDD5A` | `0x005E0478` | `0x00436876` |
 | 208 | `0xA340` | atol | `0x004E7144` | `0x005E948C` | `0x00444360` |
 | 209 | `0xA344` | sscanf | `0x004E6A1A` | `0x005E8D62` | `0x00443C36` |
-| 210 | `0xA348` | fgetc | `0x004E0896` | `0x005E31F2` | `0x004395F0` |
+| 210 | `0xA348` | _OS3K_fgetc | `0x004E0896` | `0x005E31F2` | `0x004395F0` |
 | 211 | `0xA34C` | fprintf | `0x004E6992` | `0x005E8CDA` | `0x00443BAE` |
 | 212 | `0xA350` | _OS3K_fputc | `0x004E0756` | `0x005E30B2` | `0x004394B0` |
 | 213 | `0xA354` | fscanf | `0x004E69BA` | `0x005E8D02` | `0x00443BD6` |

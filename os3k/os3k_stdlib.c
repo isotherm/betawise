@@ -8,31 +8,19 @@ bool FormatInt32(int32_t value, uint32_t radix, char* buffer) {
     return true;
 }
 
-int getchar(void) {
-    KeyMod_e key;
-    char c;
-
-    do {
-        while(!IsKeyReady()) {
-            ScanKeyboard();
-        }
-        key = GetKey(false);
-        c = TranslateKeyToChar(key);
-    } while(!c);
-    return c;
-}
+int getchar(void) { return _ConsoleGetChar(); }
 
 int fputc(int c, FILE* stream) {
     if(stream != stdout) {
         return _OS3K_fputc(c, stream);
     }
-    return _DisplayPutChar(c);
+    return _ConsolePutChar(c);
 }
 
 int fputs(const char* str, FILE* stream) {
     char c;
     int res;
-    while(c = *str++) {
+    while((c = *str++)) {
         res = fputc((uint8_t)c, stream);
         if(res < 0) {
             return res;

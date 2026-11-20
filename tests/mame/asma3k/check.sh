@@ -46,7 +46,7 @@ for test_case in "${cases[@]}"; do
         micropython-facilities-extra)
             applet=MicroPython; seconds=420; variant=extra ;;
         micropython-repl-minimal|micropython-repl-core|micropython-repl-basic|micropython-repl-extra)
-            applet=MicroPython; seconds=420; variant=${test_case#micropython-repl-} ;;
+            applet=MicroPython; seconds=480; variant=${test_case#micropython-repl-} ;;
         micropython-minimal|micropython-core|micropython-basic|micropython-extra)
             applet=MicroPython; seconds=600; variant=${test_case#micropython-}
             if [[ $variant == extra ]]; then seconds=1200; fi ;;

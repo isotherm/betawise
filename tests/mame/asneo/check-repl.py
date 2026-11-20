@@ -64,6 +64,32 @@ def scenario(name, variant):
         for _ in range(4): s.key('Left')
         s.ctrl('K'); s.enter('', 'CTRLK 1')
         s.text('print("EDIT",12)'); s.key('Left'); s.key('Left'); s.text('0'); s.enter('', 'EDIT 102')
+    elif name == 'terminal':
+        # Keep the prompt outside each asserted region. Every operation is
+        # emitted by Python through the production HAL, not injected pixels.
+        s.enter('t=lambda s: print(s.replace("@",chr(27)),end="")')
+        def screen(command, label, expected, region):
+            s.enter(command)
+            s.check(label, equals=expected, region=region)
+        screen('t("@[2J@[HVT100@[6;1H")', 'clear and home', 'VT100', [0,0,264,40])
+        screen('print(chr(27)+"[3;",end="");t("5HSPLIT@[6;1H")',
+               'escape survives separate output calls', '    SPLIT', [0,16,264,8])
+        screen('t("@[2J@[3;5HABCDE@[2D!@[6;1H")',
+               'relative cursor movement', '    ABC!E', [0,16,264,8])
+        screen('t("@[2J@[999;999H@[999A@[999DCLAMP@[6;1H")',
+               'cursor clamps to screen', 'CLAMP', [0,0,264,40])
+        for mode, expected in [(0, '    AB'), (1, '      CD'), (2, '')]:
+            screen(f't("@[2J@[3;5HABCD@[3;{7 if mode == 0 else 6}H@[{mode}K@[6;1H")',
+                   f'erase line mode {mode}', expected, [0,16,264,8])
+        screen('t("@[2J@[2;1HABOVE@[3;1HABCD@[4;1HBELOW@[3;2H@[J@[6;1H")',
+               'erase display below cursor', 'ABOVE\nA', [0,8,264,24])
+        screen('t("@[2J@[2;1HABOVE@[3;1HABCD@[4;1HBELOW@[3;2H@[1J@[6;1H")',
+               'erase display above cursor preserves below', '  CD\nBELOW', [0,16,264,16])
+        s.check('erase display above cursor clears earlier rows', equals='', region=[0,0,264,16])
+        s.enter('print("SCROLL"+chr(10),end="")')
+        s.enter('print(("SCROLL"+chr(10))*10,end="")')
+        screen('t("@[2J@[3;5HROLLED@[6;1H")',
+               'clear and position after hardware scrolling', '    ROLLED', [0,0,264,40])
     elif name == 'history':
         s.enter('history=0')
         s.enter('history+=1; print("HISTORY",history)', 'HISTORY 1')
@@ -193,7 +219,7 @@ def verify(out, checks):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--no-build', action='store_true', help='explicitly use existing applet binaries')
-    p.add_argument('--case', choices=['all', 'editing', 'history', 'completion', 'interrupts', 'modes', 'logo', 'logo-graphics'], nargs='+', default=['all'])
+    p.add_argument('--case', choices=['all', 'editing', 'terminal', 'history', 'completion', 'interrupts', 'modes', 'logo', 'logo-graphics'], nargs='+', default=['all'])
     p.add_argument('--variant', choices=['minimal', 'core', 'basic', 'extra'], default='extra')
     p.add_argument('--mame', type=Path, default=ROOT/'mame/neodiag')
     p.add_argument('--firmware', type=Path, default=ROOT/'Ghidra/Alphasmart Neo/SmartApplets')
@@ -209,7 +235,7 @@ def main():
             print(f'FAIL: {error}', file=sys.stderr)
             return 1
     out = args.output or Path(tempfile.mkdtemp(prefix='neo-repl-'))
-    cases = ['editing', 'history', 'completion', 'interrupts', 'modes', 'logo', 'logo-graphics'] if 'all' in args.case else args.case
+    cases = ['editing', 'terminal', 'history', 'completion', 'interrupts', 'modes', 'logo', 'logo-graphics'] if 'all' in args.case else args.case
     try:
         out.mkdir(parents=True, exist_ok=True)
         if not args.no_build:

@@ -55,9 +55,17 @@ SRC_EXTMOD_C = \
 	extmod/moductypes.c
 
 # Upstream's standard streams use our output HAL and unsupported-input stubs.
-SRC_SHARED_C = shared/readline/readline.c shared/runtime/pyexec.c $(if $(filter extra,$(VARIANT)),shared/runtime/sys_stdio_mphal.c)
+SRC_SHARED_C = shared/libc/printf.c shared/readline/readline.c shared/runtime/pyexec.c $(if $(filter extra,$(VARIANT)),shared/runtime/sys_stdio_mphal.c)
 SRC_QSTR += $(SRC_EXTMOD_C) $(SRC_SHARED_C)
 OBJ = $(PY_CORE_O) $(LIBM_OBJ) $(addprefix $(BUILD)/,$(SRC_EXTMOD_C:.c=.o) $(SRC_SHARED_C:.c=.o))
+
+# Keep the upstream file unchanged. Rename its overlapping output symbols in
+# this object only (it undefines putchar, so preprocessor renaming is unsafe).
+# snprintf/vsnprintf retain their public names; dead private output routines
+# are discarded. The HAL continues through SDK putchar, avoiding recursion.
+$(BUILD)/shared/libc/printf.o: $(TOP)/shared/libc/printf.c
+	$(call compile_c)
+	$(Q)$(OBJCOPY) --redefine-sym printf=mp_libc_printf --redefine-sym vprintf=mp_libc_vprintf --redefine-sym putchar=mp_libc_putchar --redefine-sym puts=mp_libc_puts $@
 
 # Rebuild when variant mappings, compiler flags, or source selections change.
 $(OBJ): Makefile variant.mk ../../os3k/setjmp.h

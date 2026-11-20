@@ -59,7 +59,11 @@ if test_case == "memory" then
         assert(memory:read_u8(scratch + 0x20) == 0xa5)
         assert(memory:read_u8(scratch + 0x21) == string.byte("H"))
         assert(memory:read_u8(scratch + 0x22) == string.byte("i"))
-        expect_text("A5 48 69")
+        -- The applet RAM base need not align scratch to an eight-byte dump
+        -- row. Join just the hex fields so this also checks a split sequence.
+        local hex = ""
+        for line in lcd():gmatch("[^\n]+") do hex = hex .. line:sub(9, 32) end
+        assert(hex:find("A5 48 69", 1, true), "missing edited hex bytes\n" .. lcd())
     end)
     scratch_jump(1470, "20")
     text(1740, "\t")

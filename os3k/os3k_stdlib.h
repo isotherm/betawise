@@ -1,6 +1,8 @@
 #ifndef _OS3K_STDLIB_H_
 #define _OS3K_STDLIB_H_
 
+#include "os3k_keyboard.h"
+
 /** @file os3k_stdlib.h
  * @brief Firmware string helpers, standard-library functions, and stream I/O.
  */
@@ -173,7 +175,7 @@ int sscanf(const char* str, const char* fmt, ...);
  * @param stream Use stdin.
  * @return The next byte as an unsigned value, or -1 for an unsupported stream.
  */
-int fgetc(FILE* stream);
+int _OS3K_fgetc(FILE* stream);
 
 /** @brief Write formatted output to a ROM stream.
  * @param stream Output stream token.
@@ -366,14 +368,37 @@ int ungetc(int c, FILE* stream);
 
 // Betawise wrappers.
 
+/** @brief Encode a physical key as terminal bytes (no terminating NUL).
+ * Returns 0..8 bytes, including ASCII Ctrl codes and CSI arrow sequences.
+ * Ignores releases; Applets invokes the normal system menu.
+ */
+size_t ConsoleKeySequence(KeyMod_e key, char output[8]);
+
+/** @brief Read a queued terminal reply, or -1 if none is pending. Nonblocking.
+ * ESC [ 6 n queues ESC [ row ; col R for stdin; no keyboard events are consumed.
+ */
+int ConsoleReadPending(void);
+
+/** @brief Read an un-echoed terminal byte; stdin includes arrow sequences and replies.
+ * Other stream tokens retain the original ROM fgetc behavior.
+ */
+int fgetc(FILE* stream);
+int getc(FILE* stream);
+
+/** @brief Read up to size-1 bytes, retaining the first CR or LF, then NUL terminate.
+ * No editing or echo. Returns NULL on failure before any byte or size <= 0.
+ * size == 1 writes just NUL. Input control sequences remain bytes.
+ */
+char* fgets(char* str, int size, FILE* stream);
+
 /** @brief Read one character through Betawise's keyboard helpers.
- * @return The translated character code.
+ * @return An unsigned terminal byte, including encoded key sequences.
  */
 int getchar(void);
 
 /** @brief Write one character using Betawise's console output path.
  *
- * The wrapper normalizes stdout characters to a byte and delegates other
+ * The stdout parser consumes basic VT100 cursor/erase sequences and delegates other
  * streams to _OS3K_fputc().
  * @param c Character value.
  * @param stream Output stream token.

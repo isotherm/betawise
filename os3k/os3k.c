@@ -2,6 +2,7 @@
 
 void BwProcessMessage(Message_e message, uint32_t param, uint32_t* status) {
     _DisplayProcessMessage(message, status);
+    if(message == MSG_SETFOCUS) _ConsoleReset();
     ProcessMessage(message, param, status);
 }
 

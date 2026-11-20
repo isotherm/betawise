@@ -212,3 +212,34 @@ int _DisplayPutChar(int c) {
     SetCursorMode(cursor_mode);
     return c;
 }
+
+void _DisplayGetSize(uint8_t* rows, uint8_t* cols) {
+    if(g_Display.font) {
+        *rows = g_Display.max_row;
+        *cols = g_Display.max_col;
+    } else {
+        uint32_t n = 4;
+        _OS3K_CallSysInt(0, SYS_INT_GET_ROW_COUNT, &n);
+        *rows = n;
+        n = 40;
+        _OS3K_CallSysInt(0, SYS_INT_GET_LCD_WIDTH, &n);
+        *cols = n;
+    }
+}
+
+void _DisplayEraseCells(uint8_t row, uint8_t first, uint8_t last) {
+    uint8_t old_row, old_col;
+    CursorMode_e mode;
+    GetCursorPos(&old_row, &old_col);
+    GetCursorMode(&mode);
+    SetCursorMode(CURSOR_MODE_HIDE);
+    if(!g_Display.font) {
+        ClearRowCols(row, first, last);
+    } else {
+        unsigned y = ((row - 1) * g_Display.font->height + g_Display.roll) % g_Display.height;
+        RasterOp((first - 1) * g_Display.font->max_width, y,
+                 (last - first + 1) * g_Display.font->max_width,
+                 g_Display.font->height, NULL, ROP_WHITENESS);
+    }
+    SetCursor(old_row, old_col, mode);
+}

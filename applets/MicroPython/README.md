@@ -63,6 +63,11 @@ be interrupted until they return to the Python VM.
 `micropython.kbd_intr()` changes the interrupt character (Ctrl+C by default;
 `-1` disables it).
 
+Console output now passes through Betawise's [basic terminal parser](../../tests/console/README.md).
+Python output can clear the screen (`print("\x1b[2J\x1b[H", end="")`),
+position the cursor, and erase lines. Upstream readline emits cursor/erase sequences;
+inverse video is deferred. This does not enable blocking Python stdin.
+
 ## Limitations
 
 - Integers range from −536,870,912 to 536,870,911. Larger values, including
@@ -80,3 +85,9 @@ be interrupted until they return to the Python VM.
 To build an image from source, see the [build instructions](../../research/micropython/README.md#build-from-source).
 The same page covers firmware tests, implementation details, and remaining
 porting work.
+
+The build includes upstream `shared/libc/printf.c` for `snprintf`/`vsnprintf`,
+reusing the interpreter's `mp_vprintf`. Its `printf`/`vprintf`/`putchar`/`puts`
+implementations are compiled under private names to avoid duplicate SDK symbols
+and output-HAL recursion; unused private functions are removed by the linker.
+`MICROPY_HAL_HAS_VT100=1` enables upstream readline's terminal helpers.

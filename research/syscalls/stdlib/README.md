@@ -64,3 +64,41 @@ uses FF as the nondecrementing limit; the AS implementation agrees in live tests
 The Neo function was rechecked in Ghidra with analysis disabled. The maintained
 [inspector](../wireless/InspectNeoTail.java) accepts 41c900 as an explicit address
 to reproduce the instruction/decompiler view.
+
+## Internal formatter callback (2026-11-19)
+
+A directed compiled-GCC probe executed the original AS3000 3.01 and Neo 3.21
+ROM formatter at `0x004DD55A` and `0x00436076`, respectively, in MAME.
+Both ROMs passed two cases using this private interface:
+
+```c
+int engine(int (*emit)(int character, void *context),
+           void *context, const char *format, va_list arguments);
+```
+
+The GCC wrapper constructs a real `va_list` using `va_start`. The callback
+receives the character and caller context, returns the character on success,
+and accesses a volatile applet global through the actual GCC A5/GOT layout.
+Cases cover signed int, long, hex, string, character, double, dynamic string
+width/precision, and literal ESC bytes supplied through `%s`. Exact output,
+callback count, formatter return count, NUL termination, buffer sentinels,
+D2–D7/A2–A6, SP, and inherited A5 are checked. No compiler-runtime library is
+linked into the probe: floating conversion is performed by the ROM.
+
+Reproduce from any directory:
+
+```sh
+python3 /home/kirk/Projects/Alphasmart/betawise/research/syscalls/stdlib/run-formatter-probe.py /tmp/os3k-formatter-probe
+```
+
+This demonstrates a synchronous GCC callback can feed a terminal parser without
+a global display hook. It does not validate callback failure returns, recursive
+formatting, every conversion or floating-point edge case, or Neo 3.01 execution.
+The addresses are private ROM details; this probe checks the expected absolute
+JSR in printf, but is not a production resolver. Resolve and validate supported
+ROM patterns before exposing this interface in the SDK. The inherited-A5 result
+applies to this synchronous call path, not asynchronous OS callbacks.
+
+Probe sources: `formatter-probe.c` and `run-formatter-probe.py` alongside this
+page. Disposable artifacts and full logs are written to the requested output
+directory; original firmware and system syscall tables are not modified.

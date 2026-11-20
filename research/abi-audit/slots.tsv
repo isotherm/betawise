@@ -209,7 +209,7 @@ slot	opcode	symbol	header_declaration	ABI_review	AS3000_target	Neo_3_01_target	N
 207	A33C	atoi	yes	declared: shared ABI rules reviewed; semantics not rederived	004DDD5A	005E0478	00436876
 208	A340	atol	yes	declared: shared ABI rules reviewed; semantics not rederived	004E7144	005E948C	00444360
 209	A344	sscanf	yes	declared: shared ABI rules reviewed; semantics not rederived	004E6A1A	005E8D62	00443C36
-210	A348	fgetc	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0896	005E31F2	004395F0
+210	A348	_OS3K_fgetc	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0896	005E31F2	004395F0
 211	A34C	fprintf	yes	declared: shared ABI rules reviewed; semantics not rederived	004E6992	005E8CDA	00443BAE
 212	A350	_OS3K_fputc	yes	declared: shared ABI rules reviewed; semantics not rederived	004E0756	005E30B2	004394B0
 213	A354	fscanf	yes	declared: shared ABI rules reviewed; semantics not rederived	004E69BA	005E8D02	00443BD6

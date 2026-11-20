@@ -146,5 +146,20 @@ frame = frame + 260
 chord(frame, field(12, 0x80), field(10, 0x40)) -- Cancel paste.
 frame = frame + 100
 enter('print("FRIENDLY",1)', 'FRIENDLY 1')
-at(frame, function() pass(); manager.machine:exit() end)
+-- Terminal controls must pass through Python output, not appear as text.
+enter('print(chr(27),"[2J",chr(27),"[HVT100",sep="")')
+at(frame, function() assert(lcd():sub(1,5)=='VT100', 'clear/home escape was not interpreted') end)
+frame = frame + 20
+enter('print(chr(27),"[2;5HAT",sep="")')
+at(frame, function()
+    local row2 = lcd():match("^[^\n]*\n([^\n]*)")
+    assert(row2:sub(5,6)=='AT', 'absolute cursor position failed')
+end)
+frame = frame + 20
+enter('print(chr(27),"[2;5H",chr(27),"[K",sep="")')
+at(frame, function()
+    local row2 = lcd():match("^[^\n]*\n([^\n]*)")
+    assert(row2:sub(5,6)=='  ', 'erase line failed')
+    pass(); manager.machine:exit()
+end)
 run()

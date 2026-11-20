@@ -241,6 +241,10 @@ suite. Use `--baseline-only` to run just the original regression. The extended
 suite ports the AS3000 `MicroPythonRepl.lua` scenarios to native Neo matrix keys:
 
 - Editing: Backspace/delete to empty, Ctrl+U/F/K and insertion in the middle.
+- Terminal: clear/home, escape sequences split across Python writes, absolute and
+  relative cursor placement/clamping, all line-erase modes, display erasing above
+  and below the cursor, and clearing/positioning after hardware scrolling. Exact
+  regions assert text placement and blank cells, with the REPL prompt outside them.
 - History: Up, Ctrl+P recall, Ctrl+N returning to empty input, then execution.
 - Completion: user-defined names, attributes, Tab indentation, and state surviving
   allocation stress; EXTRA also checks scheduled callback order.
@@ -256,6 +260,7 @@ Run selected cases without rerunning the baseline:
 
 ```bash
 python3 tests/mame/asneo/check-repl.py
+python3 tests/mame/asneo/check-repl.py --case terminal
 python3 tests/mame/asneo/check-repl.py --case history completion modes
 python3 tests/mame/asneo/check-repl.py --variant core --case interrupts modes
 python3 tests/mame/asneo/check-repl.py --verify-only /tmp/saved-run/history

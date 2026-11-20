@@ -92,12 +92,7 @@ static mp_obj_t os3k_open(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs)
 MP_DEFINE_CONST_FUN_OBJ_KW(mp_builtin_open_obj, 1, os3k_open);
 
 void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
-    while (len--) {
-        unsigned char c = *str++;
-        if (c == '\n' || c == '\r' || c == '\b' || c >= ' ') {
-            putchar(c);
-        }
-    }
+    while (len--) putchar((unsigned char)*str++);
 }
 
 mp_import_stat_t mp_import_stat(const char *path) {
@@ -107,17 +102,6 @@ mp_import_stat_t mp_import_stat(const char *path) {
 mp_lexer_t *mp_lexer_new_from_file(qstr filename) {
     (void)filename;
     mp_raise_OSError(MP_ENOENT);
-}
-
-// The shared readline editor calls these instead of emitting VT100 escapes.
-void mp_hal_move_cursor_back(unsigned int count) {
-    // Betawise already handles cursor movement and wrapping for backspace.
-    while (count--) putchar('\b');
-}
-
-void mp_hal_erase_line_from_cursor(unsigned int count) {
-    for (unsigned int i = 0; i < count; ++i) putchar(' ');
-    mp_hal_move_cursor_back(count);
 }
 
 static void show_input(void) {
@@ -210,22 +194,10 @@ static void input_key(uint32_t key) {
         if (c >= 0) input((char)c);
         return;
     }
-    const char *escape = NULL;
-    key &= ~KEY_MOD_CAPS_LOCK;
-    switch (key) {
-        case KEY_BACKSPACE: input('\b'); break;
-        case KEY_TAB: input('\t'); break;
-        case KEY_UP: escape = "\033[A"; break;
-        case KEY_DOWN: escape = "\033[B"; break;
-        case KEY_RIGHT: escape = "\033[C"; break;
-        case KEY_LEFT: escape = "\033[D"; break;
-        case KEY_HOME: escape = "\033[H"; break;
-        case KEY_END: escape = "\033[F"; break;
-        case KEY_DELETE: escape = "\033[3~"; break;
-        case KEY_APPLETS: SystemHandleEvents(SYSTEM_EVENT_SPECIAL_KEYS, key); break;
-    }
-    if (escape && pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL) {
-        while (*escape) input(*escape++);
+    char sequence[8];
+    size_t count = ConsoleKeySequence(key, sequence);
+    if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL) {
+        for (size_t i = 0; i < count; ++i) input(sequence[i]);
     }
 }
 
@@ -252,9 +224,13 @@ void ProcessMessage(Message_e message, uint32_t param, uint32_t *status) {
                 input_key(param);
             }
             break;
+        case MSG_IDLE:
+            break;
         default:
             return;
     }
+    int reply;
+    while (started && (reply = ConsoleReadPending()) >= 0) input((char)reply);
     while (started && typeahead_count) {
         unsigned key = typeahead[typeahead_head];
         typeahead_head = (typeahead_head + 1) % 64;
