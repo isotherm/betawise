@@ -161,78 +161,68 @@ installation is outside this procedure.
 
 ## Readline Backspace regression
 
-`MicroPythonBackspace.lua` uses a fresh virtual flash containing AlphaWord,
-UCBLogo, MicroPython EXTRA, and NeoFontTerminal, in that order. Launch it with
-`-autoboot_delay 0 -autoboot_script /absolute/path/MicroPythonBackspace.lua`.
-It opens MicroPython through native keyboard events, types `a=1234`, deletes
-the final digit, and evaluates `a`. Screenshots show `a=123` and the result
-`123`. It also deletes a one-character draft to empty, presses Backspace again,
-and deletes from the middle of an assignment, checking the edited result `124`.
-The empty-input checks require the cursor to remain just after one prompt.
-It also verifies that generic Ctrl+U clears a draft without changing the
-previously evaluated value.
-The probe checks Neo 3.21 cursor-structure coordinates at RAM addresses
-`0x5c72/0x5c74`; those fixed-address reads belong to the test, not the applet.
+The `backspace` case in `check-repl.py` covers deletion at the end and middle,
+deleting to empty, repeated Backspace, Ctrl+U, arithmetic, wrapping and scrolling.
+It retains independent Neo 3.21 cursor-coordinate assertions at `0x5c72/0x5c74`.
 The AS3000 `micropython-repl-*` cases also exercise Backspace.
 
-## Offline screen evaluation (required for iteration and acceptance)
+## Direct LCD memory evaluation (required for iteration and acceptance)
 
-Use local bitmap matching for Neo screen checks. Do not use OpenAI/model vision
-as the screen reader. Screenshot capture itself needs no model or network.
-Install Pillow in the test environment; no OCR service, API key or ML model is
-required. The canonical font is `applets/NeoFontTerminal/glyphs.png`, rather than
-a separately copied font strip.
-
-Run the full headless Backspace/middle-edit/empty-input/Ctrl+U regression:
+Run the complete suite, or select cases:
 
 ```bash
 python3 tests/mame/asneo/check.py
-# Override locations if necessary:
-python3 tests/mame/asneo/check.py --mame ../mame/neodiag \
-  --firmware '../Ghidra/Alphasmart Neo/SmartApplets' --output /tmp/neo-check-new
-```
-
-The runner builds the current applet sources and prepares disposable flash from
-local firmware (MicroPython EXTRA by default), sends native keyboard events, retains cursor RAM
-checks, and asserts actual rendered assignments/results, arithmetic, wrapped input
-and scrolling (12 checkpoints). At each checkpoint Lua pauses the key schedule,
-calls the real `SetCursorMode(CURSOR_MODE_HIDE)` firmware API, waits two display
-frames, and captures two PNGs on the next two frames (about 50 and 67 ms). It then
-restores the original cursor mode and resumes the guest. Python requires two
-identical cursor-free readings; unknown glyphs or cursor pixels fail.
-
-The capture helper temporarily preserves CPU registers and 4 KiB of scratch RAM
-while calling the firmware on a private stack. It does not edit framebuffer pixels
-or modify the applet. Fixed cursor addresses and this test helper are specific to
-Neo 3.21 / the documented 2013 firmware, not a portable OS API. The runner saves
-logs, input hashes, screenshots, decoded `.txt` files and `results.json`. Successful
-Lua cursor checks alone do not mean the screen checks passed.
-
-Decode a single native screenshot or an exact integer enlargement:
-
-```bash
-python3 tests/mame/asneo/neo_reader.py screen.png --json --expect '123'
-python3 tests/mame/asneo/neo_reader.py --burst checkpoint-01-*.png --expect '>>> a=1234'
-python3 tests/mame/asneo/check.py --verify-only /tmp/neo-check-new
+python3 tests/mame/asneo/check.py --baseline-only
+python3 tests/mame/asneo/check-repl.py --case history completion modes
+python3 tests/mame/asneo/check-repl.py --case logo-graphics --verify-rendering
+python3 tests/mame/asneo/check-repl.py --verify-only /tmp/saved-run/history
 python3 -m unittest discover -s tests/mame/asneo -p 'test_*.py'
 ```
 
-Burst files must be ordered captures from one idle checkpoint. Do not use unrelated
-screens as a burst. Unknown glyphs, ambiguous nonblank glyphs, cursor overlays,
-nonuniform scaling and unsupported image geometry fail with a nonzero exit code.
-The reader preserves spaces and internal blank lines and reports zero-based cell
-coordinates for failures. It uses exact pixels, with no fuzzy nearest-character
-matching and no network calls. A malformed image or screenshot with another font
-must not be accepted as evidence.
+Both runners build current sources by default and use disposable flash. Select
+`--variant minimal|core|basic|extra` as appropriate; EXTRA is the default. Override
+`--mame`, `--firmware` and `--output` for local paths. Use `--no-build` only when
+deliberately testing existing artifacts.
 
-The old screenshot-only smoke procedure above is superseded for terminal text:
-assert exact full lines for arithmetic (`42`), wrapped length (`52`), banner/prompt
-layout and scrolling. When adding a new scenario, add its idle capture checkpoint
-and expected text to the regression. Cursor geometry still needs independent
-coordinate assertions. Firmware menus, proportional fonts and Logo graphics need
-verified font profiles or deterministic pixel checks; this 6x8 reader must fail
-closed for those screens, never fall back to AI inspection. Historical screenshots with a visible cursor remain unverified; rerun the scenario. Fixtures in `fixtures/` preserve one clean
-and one cursor-on real MAME screenshot from the supplied historical session.
+`NeoLCD.lua` reads the two LCD controllers' DDRAM save items and display flags
+without touching guest MMIO ports. It reconstructs native 264x64 pixels using the
+page layout, scroll origin, axis direction, inversion, display-off and all-points
+modes. `neo_reader.py` decodes exact glyphs from the canonical
+`applets/NeoFontTerminal/glyphs.png`; unknown/ambiguous cells fail. There is no
+network inference, OCR model or screenshot input in automated evaluations.
+Pillow is used for the local font and independently authored graphics references.
+
+Actions wait for RAM to remain unchanged across three observations, together with
+input readiness and explicit expected text/graphics checkpoints. A change alone
+is insufficient. Normal keys have a minimum 3-frame hold and 8-frame interval;
+interrupt keys retain 30-frame holds to span the VM's periodic keyboard scans.
+Logo acknowledges each character using its complete input tail and solid cursor,
+and commands finish at an empty prompt. Action deadlines are 15 emulated seconds,
+with a separate process watchdog. Startup recovery/menu navigation retains its
+conservative fixed schedule. Run unthrottled at native 60 Hz, without frame skips;
+`-speed 2` adds no benefit to `-nothrottle`.
+
+At a checkpoint, the harness calls the real firmware cursor-hide API when needed,
+observes its return, and records three identical complete RAM/flag samples. It
+restores the cursor, CPU registers and scratch RAM before continuing. Captures
+are `checkpoint-NN.lcd.json`; Python independently reconstructs and validates
+them. Cursor helpers require the pinned Neo 3.21 firmware. Fixed addresses are
+test instrumentation, not portable applet APIs. `--verify-rendering` additionally
+compares all 16896 reconstructed pixels against MAME's display for diagnostics.
+
+Runs retain RAM records, decoded text, logs, input hashes, explicit expectations
+and `results.json`. Graphics actual/expected/difference PNGs are generated from
+RAM for review. Failure screenshots are diagnostics only. Replay a saved record:
+
+```bash
+python3 tests/mame/asneo/neo_reader.py checkpoint-01.lcd.json --json --expect '123'
+```
+
+The reader also accepts historical native PNGs and integer enlargements for
+manual investigation. Those are not the regression input. Historical captures
+with a visible cursor remain unverified; rerun the scenario. Terminal decoding
+supports the verified 6x8 font only; menus and other fonts require their own
+verified profiles. Never fall back to model vision or guess covered characters.
 
 ## Neo readline parity and Logo text coverage
 
@@ -272,7 +262,7 @@ use `--no-build` only when deliberately testing existing binary artifacts. Build
 output is retained in `build.log`.
 Each case has fresh disposable flash, a generated native-key script and explicit
 expectations in `checks.json`. The runner requires a completion marker, no Lua
-errors, and exact local screenshot assertions; it retains logs, screenshots,
+errors, and exact local LCD RAM assertions; it retains logs, RAM records,
 decoded text, input hashes and `results.json`. An echoed command does not satisfy
 an expected full output line.
 
@@ -281,12 +271,46 @@ then decode the completed transcript at `(0,0,132,56)`, excluding the eighth-row
 editor and the entire right graphics pane. Prompt-state checks read only the first
 cell, away from the cursor. After `ct`/`cleartext`, separate regions verify the
 empty rows and the prompt returning to the top. This tests output and completed input,
-not the live editor cursor or turtle drawing. Region decoding still rejects every
+with independent editor acknowledgements; graphics are checked separately. Region decoding still rejects every
 unknown glyph in the selected region. For example:
 
 ```bash
 python3 tests/mame/asneo/neo_reader.py logo.png --region 0 0 132 56 --expect '42'
 ```
+
+## Reusable screen bitmap fixtures
+
+See the [generic fixture guide](fixtures/README.md) for authoring, provenance and
+review instructions. Applet subdirectories document only their own expectations.
+
+`screen_bitmap.py` verifies any applet's screen against a reviewed black-and-white
+PNG. It is independent of Logo, fonts, text decoding and shape recognition. A
+fixture may cover the full 264x64 LCD or an arbitrary `(x, y, width, height)` region;
+the reference PNG must have exactly that region's dimensions. Every selected
+pixel must match, including the background. Blank regions are supported.
+
+```bash
+python3 tests/mame/asneo/screen_bitmap.py /tmp/run/checkpoint-01.lcd.json \
+  --reference tests/mame/asneo/fixtures/my-applet/expected-screen.png --output /tmp/bitmap-check
+# Or check just a region:
+python3 tests/mame/asneo/screen_bitmap.py /tmp/run/checkpoint-01.lcd.json \
+  --reference tests/mame/asneo/fixtures/my-applet/expected-region.png --region 12 8 120 40 \
+  --output /tmp/bitmap-region
+```
+
+From Python, use `screen_bitmap.compare([record], reference, output, region=None)`.
+`NeoLCD.lua` supplies the reusable RAM sampler/record writer for applet harnesses.
+The comparator validates the record's three identical complete RAM/flag samples,
+then reconstructs pixels. It writes actual/expected PNGs and a difference image
+on mismatch; the CLI also writes a JSON report with bounds, pixel count and the
+reference hash. References are never regenerated by verification. Historical PNG
+pairs are supported for investigation; automated Neo tests use RAM records.
+
+The Logo wrapper retains its independent geometry/reference consistency check and
+separator-free shape statistics. Its square/turtle fixtures remain under
+`fixtures/logo-graphics`, while pixel comparison goes through the generic tool.
+Capture setup remains the calling harness's responsibility: wait for the expected
+completed state and hide any cursor/turtle that should not be in the reference.
 
 ## Logo graphics checks
 
@@ -310,7 +334,7 @@ pen-up/down, backward retracing, the diagonal home stroke, a parameterized
 the graphics. Turtle references use explicit cardinal-heading vertices; they do
 not derive expectations from the applet's rasterizer or screenshots.
 
-Every checkpoint requires two identical right-pane captures. Reports include
+Every checkpoint requires three identical controller RAM/flag samples. Reports include
 foreground bounds/counts and reference hashes. Actual/expected pane PNGs are saved;
 a mismatch additionally saves a difference PNG and fails with the wrong-pixel
 count. The tests never update reference images automatically. See the fixture

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exact, offline NeoFontTerminal screenshot decoding. Unknown pixels fail closed."""
+"""Exact offline NeoFontTerminal decoding from LCD RAM records or historical PNGs."""
 import argparse
 from collections import defaultdict
 from dataclasses import asdict, dataclass
@@ -26,8 +26,65 @@ class Reading:
         return not (self.unknown_cells or self.ambiguous_cells or self.cursor_columns)
 
 
+def read_lcd_samples(path):
+    """Reconstruct visible pixels from non-mutating controller save-item reads."""
+    data = json.loads(Path(path).read_text())
+    if not isinstance(data, dict) or data.get('format') != 'neo-lcd-v1' or not isinstance(data.get('samples'), list):
+        raise ValueError('unsupported Neo LCD record')
+    frames = []
+    for sample in data['samples']:
+        if not isinstance(sample, dict):
+            raise ValueError('invalid LCD sample')
+        controllers = sample.get('controllers', [])
+        if len(controllers) != 2:
+            raise ValueError('LCD record must contain two controllers')
+        decoded = []
+        for state in controllers:
+            try:
+                ram = bytes.fromhex(state['ram'])
+                start = state['m_start_line']
+                flags = [state[k] for k in ['m_display_on', 'm_adc', 'm_com_reverse',
+                                           'm_reverse', 'm_all_points', 'm_reset']]
+            except (KeyError, TypeError, ValueError) as error:
+                raise ValueError('invalid LCD register record') from error
+            if len(ram) != 1188 or type(start) is not int or not 0 <= start < 64:
+                raise ValueError('invalid LCD RAM geometry/start line')
+            if any(type(v) is not int or v not in (0, 1) for v in flags):
+                raise ValueError('invalid LCD display flags')
+            decoded.append((ram, start, flags))
+        pixels = []
+        for y in range(64):
+            for x in range(264):
+                ram, start, flags = decoded[x//132]
+                on, adc, com, reverse, all_points, reset = flags
+                col = 131-x%132 if adc else x%132
+                line = ((63-y if com else y)+start)&63
+                value = ((ram[(line//8)*132+col] >> (line&7))&1)^reverse
+                pixels.append(int(on and not reset and (all_points or value)))
+        frames.append(pixels)
+    if not frames:
+        raise ValueError('LCD record contains no samples')
+    return frames
+
+
+def lcd_frames(path):
+    data = json.loads(Path(path).read_text())
+    frames = read_lcd_samples(path)
+    if len(frames) < 3 or any(s != data['samples'][0] for s in data['samples'][1:]):
+        raise ValueError('LCD capture needs three identical controller samples')
+    return frames
+
+
+def is_lcd(path):
+    return str(path).endswith('.lcd.json')
+
+
 def bitmap(path, size):
     """Accept native or exact integer nearest-neighbour enlargement, two colours only."""
+    if is_lcd(path):
+        if size != (264, 64):
+            raise ValueError('LCD records are 264x64')
+        return lcd_frames(path)[0]
     with Image.open(path) as source:
         im = source.convert('RGB')
     w, h = size
@@ -50,6 +107,10 @@ def bitmap(path, size):
 
 
 def decode(path, font=FONT, region=None):
+    return decode_pixels(bitmap(path, (264, 64)), font, region)
+
+
+def decode_pixels(screen, font=FONT, region=None):
     font = Path(font)
     bits = bitmap(font, (1536, 8))
     glyphs = defaultdict(list)
@@ -57,7 +118,6 @@ def decode(path, font=FONT, region=None):
     for code in list(range(32, 127)) + list(range(160, 256)):
         key = tuple(bits[y*1536 + code*6 + x] for y in range(8) for x in range(6))
         glyphs[key].append(chr(code))
-    screen = bitmap(path, (264, 64))
     x0, y0, width, height = region or (0, 0, 264, 64)
     if (x0 < 0 or y0 < 0 or width <= 0 or height <= 0 or x0+width > 264
             or y0+height > 64 or x0 % 6 or y0 % 8 or width % 6 or height % 8):
@@ -98,6 +158,8 @@ def stable_read(paths, font=FONT, repeats=2, region=None):
     for path in paths:
         reading = decode(path, font, region)
         if reading.clean:
+            if is_lcd(path):
+                return reading, str(path)
             count = count + 1 if last == reading.text else 1
             last = reading.text
             if count >= repeats:

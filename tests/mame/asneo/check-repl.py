@@ -9,8 +9,8 @@ import subprocess
 import sys
 import tempfile
 
-from neo_reader import stable_read
-from logo_graphics import compare as compare_graphics, REFERENCES
+from neo_reader import stable_read, bitmap, FONT
+from logo_graphics import compare as compare_graphics, REFERENCES, expected_image, SCENES
 from check import HERE, ROOT, build_images
 
 
@@ -20,38 +20,90 @@ class Scenario:
         self.checks = []
         self.region = [0, 0, 132, 56] if applet == 'logo' else None
 
-    def text(self, text):
-        self.lua.append(f'type_text({json.dumps(text)})')
+    def text(self, text, busy=False):
+        self.lua.append(f'type_text({json.dumps(text)}, {str(busy).lower()})')
 
     def key(self, key, modifier=None, hold=None):
         self.lua.append(f'key({json.dumps(key)}, {json.dumps(modifier) if modifier else "nil"}, {hold or "nil"})')
 
     def ctrl(self, key, hold=None):
         self.key(key, 'Left Ctrl', hold=hold)
-        self.wait(90)
 
-    def wait(self, frames=150):
-        self.lua.append(f'wait({frames})')
-
-    def check(self, name, lines=(), suffix=None, contains=(), absent=(), region=None, equals=None):
-        self.lua.append('checkpoint()')
+    def check(self, name, lines=(), suffix=None, contains=(), absent=(), region=None, equals=None, busy=False):
+        self.lua.append(f'checkpoint({len(self.checks)+1})')
         self.checks.append(dict(name=name, lines=list(lines), suffix=suffix,
-                                contains=list(contains), absent=list(absent), region=region or self.region, equals=equals))
+                                contains=list(contains), absent=list(absent), region=region or self.region, equals=equals, busy=busy))
 
     def graphics(self, name, scene):
-        self.lua.append('checkpoint()')
+        self.lua.append(f'checkpoint({len(self.checks)+1})')
         self.checks.append(dict(name=name, graphics=scene))
 
     def enter(self, command, expected=None, name=None):
         self.text(command+'\r')
-        self.wait()
         if expected:
             self.check(name or expected, lines=[expected])
 
 
+def lua(value):
+    if value is None: return 'nil'
+    if isinstance(value, bool): return str(value).lower()
+    if isinstance(value, str): return json.dumps(value, ensure_ascii=False)
+    if isinstance(value, (int, float)): return str(value)
+    if isinstance(value, list): return '{'+','.join(lua(v) for v in value)+'}'
+    return '{'+','.join('['+lua(k)+']='+lua(v) for k,v in value.items())+'}'
+
+
+def bootstrap(checks, session, verify_rendering=False):
+    """Supply one font/oracle to the live RAM observer and offline verifier."""
+    from collections import defaultdict
+    bits=bitmap(FONT, (1536,8))
+    glyphs={}
+    aliases=defaultdict(list)
+    for code in list(range(32,127))+list(range(160,256)):
+        pattern=''.join(str(bits[y*1536+code*6+x]) for y in range(8) for x in range(6))
+        aliases[int(pattern,2)].append(chr(code))
+        glyphs[chr(code)]=pattern
+    font={key:chars[0] if len(chars)==1 else False for key,chars in aliases.items()}
+    font[0]=' '
+    geometry={name:''.join('1' if v else '0' for v in expected_image(name).getdata()) for name in SCENES}
+    config=dict(font=font,glyphs=glyphs,graphics=geometry,expectations=checks,
+                lcd_module=str(HERE/'NeoLCD.lua'), capture_directory=str(session),
+                failure_path=str(session/'failure.lcd.json'), verify_rendering=verify_rendering)
+    return ''.join('local '+name+'='+lua(value)+'\n' for name,value in config.items())
+
+
 def scenario(name, variant):
     s = Scenario('logo' if name.startswith('logo') else 'micropython')
-    if name == 'editing':
+    if name == 'backspace':
+        def probe(code): s.lua.append('probe(function() '+code+' end)')
+        s.text('a=1234')
+        s.lua.append('local original_x, original_y')
+        probe('original_x=memory:read_u16(0x5c72);original_y=memory:read_u16(0x5c74)')
+        s.check('initial draft', suffix='>>> a=1234')
+        s.key('Backspace')
+        probe('assert(memory:read_u16(0x5c72)==original_x-6 and memory:read_u16(0x5c74)==original_y,"Backspace cursor mismatch")')
+        s.check('Backspace edited draft', suffix='>>> a=123')
+        s.enter(''); s.enter('a')
+        s.check('edited value', suffix='>>> a\n123\n>>>')
+        s.text('a'); s.key('Backspace')
+        probe('assert(memory:read_u16(0x5c72)==24,"delete-to-empty cursor mismatch")')
+        s.check('delete to empty', suffix='>>> a\n123\n>>>')
+        s.key('Backspace')
+        probe('assert(memory:read_u16(0x5c72)==24,"empty Backspace changed cursor")')
+        s.check('empty Backspace', suffix='>>> a\n123\n>>>')
+        s.text('a=1234'); s.key('Left'); s.key('Backspace'); s.key('End'); s.enter(''); s.enter('a')
+        s.check('middle deletion', suffix='>>> a=124\n>>> a\n124\n>>>')
+        s.text('a=9'); s.ctrl('U')
+        probe('assert(memory:read_u16(0x5c72)==24,"Ctrl+U cursor mismatch")')
+        s.check('Ctrl+U draft cleared', suffix='>>> a\n124\n>>>')
+        s.enter('a'); s.check('Ctrl+U preserved value', suffix='>>> a\n124\n>>> a\n124\n>>>')
+        s.enter('6*7'); s.check('arithmetic', suffix='>>> 6*7\n42\n>>>')
+        s.text('len("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")')
+        s.check('wrapped draft', suffix='>>> len("abcdefghijklmnopqrstuvwxyzABCDEFGHI\nJKLMNOPQRSTUVWXYZ")')
+        s.enter(''); s.check('wrapped result', suffix='52\n>>>')
+        for _ in range(4): s.enter('1')
+        s.check('scrolling', suffix='1\n>>> 1\n1\n>>> 1\n1\n>>> 1\n1\n>>>')
+    elif name == 'editing':
         s.text('print("BACKSPACE",123)X'); s.key('Backspace'); s.enter('', 'BACKSPACE 123')
         s.text('x'); s.key('Backspace'); s.key('Backspace')
         s.check('empty Backspace', suffix='>>>', absent=['>>> >>>'])
@@ -102,7 +154,7 @@ def scenario(name, variant):
         s.enter('word="abc"')
         s.text('print("METHOD",word.upp'); s.key('Tab'); s.enter('())', 'METHOD ABC')
         s.text('if True:\r'); s.key('Tab'); s.enter('print("TAB",1)\r', 'TAB 1')
-        s.enter('for i in range(900):\r t=list(range(12))\r'); s.wait(300)
+        s.enter('for i in range(900):\r t=list(range(12))\r')
         s.enter('assert completionvalue==37; print("ALIVE",1)', 'ALIVE 1')
         if variant == 'extra':
             s.enter('import micropython; events=[]; micropython.schedule(events.append,7); micropython.schedule(events.append,8)')
@@ -111,30 +163,36 @@ def scenario(name, variant):
         s.enter('completionvalue=37')
         s.text('unfinished draft'); s.ctrl('C')
         s.enter('print("CANCEL",1)', 'CANCEL 1')
-        s.text('while True:\r pass\r\r'); s.wait(450); s.ctrl('C', hold=30)
+        s.text('print("RUNNING",1);exec("while True:pass")\r', busy=True)
+        s.check('execution started', lines=['RUNNING 1'], busy=True)
+        s.ctrl('C', hold=30)
         s.check('Ctrl+C interrupts execution', lines=['KeyboardInterrupt:'], suffix='>>>')
         s.enter('assert completionvalue==37; print("INTERRUPT",1)', 'INTERRUPT 1')
         if variant == 'extra':
             s.enter('import micropython; f=getattr(micropython,"kbd"+chr(95)+"intr"); print("HOOK",1)', 'HOOK 1')
-            s.text('while True:\r f(24)\r\r'); s.wait(450); s.ctrl('X', hold=30)
+            s.text('f(24);print("RUNNING",2);exec("while True:pass")\r', busy=True)
+            s.check('Ctrl+X hook running', lines=['RUNNING 2'], busy=True)
+            s.ctrl('X', hold=30)
             s.check('assigned Ctrl+X interrupt', lines=['KeyboardInterrupt:'], suffix='>>>')
-            s.text('while True:\r f(120)\r\r'); s.wait(450); s.key('X', hold=30); s.wait()
+            s.text('f(120);print("RUNNING",3);exec("while True:pass")\r', busy=True)
+            s.check('plain x hook running', lines=['RUNNING 3'], busy=True)
+            s.key('X', hold=30)
             s.check('assigned plain x interrupt', lines=['KeyboardInterrupt:'], suffix='>>>')
     elif name == 'modes':
         s.enter('completionvalue=37'); s.ctrl('D')
         s.check('soft reboot banner', contains=['MicroPython'])
         s.enter('try:\r completionvalue\rexcept NameError:\r print("RESET",1)\r', 'RESET 1')
         s.ctrl('A'); s.check('raw REPL entry', contains=['raw REPL'])
-        s.text('print("RAW",1)'); s.ctrl('D'); s.wait()
+        s.text('print("RAW",1)'); s.ctrl('D')
         s.check('raw REPL execution', lines=['>OKRAW 1'], suffix='>')
         s.ctrl('B'); s.check('friendly REPL return', contains=['MicroPython'], suffix='>>>')
         s.ctrl('E'); s.check('paste entry', contains=['paste mode'])
-        s.text('print("PASTE",1)\r'); s.ctrl('D'); s.wait()
+        s.text('print("PASTE",1)\r'); s.ctrl('D')
         s.check('paste execution', lines=['PASTE 1'], suffix='>>>')
         s.ctrl('E'); s.text('unfinished paste'); s.ctrl('C')
         s.enter('print("FRIENDLY",1)', 'FRIENDLY 1')
     elif name == 'logo-graphics':
-        s.wait(150); s.graphics('initial north turtle', 'north')
+        s.graphics('initial north turtle', 'north')
         s.enter('ht'); s.graphics('hide turtle leaves empty canvas', 'blank')
         s.enter('repeat 4 [fd 20 rt 90]'); s.graphics('four complete square edges, empty interior', 'square20')
         s.enter('st'); s.graphics('show turtle over square', 'square20-north')
@@ -190,7 +248,7 @@ def verify(out, checks):
         raise ValueError('incomplete or failed guest scenario; see mame.log')
     results = []
     for index, spec in enumerate(checks, 1):
-        paths = sorted((out/'snap').glob(f'checkpoint-{index:02d}-*.png'))
+        paths = [out/f'checkpoint-{index:02d}.lcd.json']
         if 'graphics' in spec:
             result = compare_graphics(paths, spec['graphics'], out/f'checkpoint-{index:02d}')
             results.append(dict(name=spec['name'], captures=[str(p) for p in paths], **result))
@@ -218,8 +276,9 @@ def verify(out, checks):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--verify-rendering', action='store_true', help='cross-check RAM reconstruction against rendered pixels')
     p.add_argument('--no-build', action='store_true', help='explicitly use existing applet binaries')
-    p.add_argument('--case', choices=['all', 'editing', 'terminal', 'history', 'completion', 'interrupts', 'modes', 'logo', 'logo-graphics'], nargs='+', default=['all'])
+    p.add_argument('--case', choices=['all', 'editing', 'terminal', 'history', 'completion', 'interrupts', 'modes', 'logo', 'logo-graphics', 'backspace'], nargs='+', default=['all'])
     p.add_argument('--variant', choices=['minimal', 'core', 'basic', 'extra'], default='extra')
     p.add_argument('--mame', type=Path, default=ROOT/'mame/neodiag')
     p.add_argument('--firmware', type=Path, default=ROOT/'Ghidra/Alphasmart Neo/SmartApplets')
@@ -235,7 +294,7 @@ def main():
             print(f'FAIL: {error}', file=sys.stderr)
             return 1
     out = args.output or Path(tempfile.mkdtemp(prefix='neo-repl-'))
-    cases = ['editing', 'terminal', 'history', 'completion', 'interrupts', 'modes', 'logo', 'logo-graphics'] if 'all' in args.case else args.case
+    cases = ['backspace', 'editing', 'terminal', 'history', 'completion', 'interrupts', 'modes', 'logo', 'logo-graphics'] if 'all' in args.case else args.case
     try:
         out.mkdir(parents=True, exist_ok=True)
         if not args.no_build:
@@ -245,10 +304,10 @@ def main():
             subprocess.run([sys.executable, str(HERE/'check.py'), '--prepare-only', '--no-build', '--variant', args.variant,
                             '--mame', str(args.mame), '--firmware', str(args.firmware), '--output', str(session)], check=True)
             s = scenario(name, args.variant)
-            script = (HERE/'NeoHarness.lua').read_text()+'\n'+'\n'.join(s.lua)+'\n'
+            script = bootstrap(s.checks, session, args.verify_rendering)+(HERE/'NeoHarness.lua').read_text()+'\n'+'\n'.join(s.lua)+'\n'
             (session/'scenario.lua').write_text(script)
             (session/'checks.json').write_text(json.dumps(s.checks, indent=2)+'\n')
-            inputs = [HERE/'logo_graphics.py', *sorted(REFERENCES.glob('*.png')), HERE/'NeoHarness.lua', Path(__file__), HERE/'neo_reader.py', session/'checks.json', session/'scenario.lua']
+            inputs = [HERE/'NeoLCD.lua', HERE/'screen_bitmap.py', HERE/'logo_graphics.py', *sorted(REFERENCES.glob('*.png')), HERE/'NeoHarness.lua', Path(__file__), HERE/'neo_reader.py', session/'checks.json', session/'scenario.lua']
             manifest = json.loads((session/'manifest.json').read_text())
             manifest.extend(dict(path=str(f), sha256=hashlib.sha256(f.read_bytes()).hexdigest()) for f in inputs)
             (session/'manifest.json').write_text(json.dumps(manifest, indent=2)+'\n')
@@ -257,7 +316,7 @@ def main():
                 result = subprocess.run([str(args.mame.resolve()), 'asneo', '-rompath', str(session/'roms'),
                     '-nvram_directory', str(session/'nvram'), '-cfg_directory', str(session/'cfg'),
                     '-snapshot_directory', str(session/'snap'), '-video', 'none', '-sound', 'none', '-nothrottle',
-                    '-skip_gameinfo', '-autoboot_delay', '0', '-autoboot_script', str(session/'scenario.lua'),
+                    '-frameskip', '0', '-noautoframeskip', '-skip_gameinfo', '-autoboot_delay', '0', '-autoboot_script', str(session/'scenario.lua'),
                     '-seconds_to_run', '1500'], env=dict(os.environ, SDL_VIDEODRIVER='dummy'),
                     stdout=log, stderr=subprocess.STDOUT, timeout=900)
             if result.returncode:

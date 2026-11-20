@@ -2,7 +2,6 @@ local function check(frame, expected)
     at(frame, function()
         local ok, err = pcall(expect_text, expected)
         if not ok then
-            manager.machine:exit()
             error(err)
         end
     end)

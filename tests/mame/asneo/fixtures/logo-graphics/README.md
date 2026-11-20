@@ -1,5 +1,10 @@
 # Logo right-pane references
 
+This directory documents the expected images for Logo only. For creating and
+checking bitmap fixtures for any applet, see the
+[generic fixture guide](../README.md). The shared verifier is
+[`screen_bitmap.py`](../../screen_bitmap.py).
+
 These 132x64 monochrome PNGs are authored from declared geometry in
 `../../logo_graphics.py`, never copied from emulator output. Coordinates are
 relative to the right LCD controller; x=0 is the fixed vertical separator.
@@ -24,10 +29,11 @@ applet's integer line implementation. Cardinal headings avoid floating-point
 trigonometry in the reference oracle.
 
 Tests verify the stored PNG against its declared geometry and then compare every
-right-pane pixel in two stable captures. They do not rewrite references. To
-explicitly re-author them after reviewing a geometry change:
+right-pane pixel through the generic bitmap verifier. This Logo-specific command
+explicitly re-authors the images from their declared geometry after a reviewed
+geometry change:
 
     python3 tests/mame/asneo/logo_graphics.py --write-references
 
-A geometry/reference change is a test expectation change and needs review;
-a failing emulator screenshot is not sufficient justification.
+Other applets do not need this generator or these shapes; they supply their own
+reviewed reference PNGs to the generic verifier.

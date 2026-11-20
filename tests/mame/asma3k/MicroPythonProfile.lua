@@ -20,7 +20,6 @@ local function statement(command, expected)
     at(frame, function()
         local ok, err = pcall(expect_text, expected)
         if not ok then
-            manager.machine:exit()
             error(err)
         end
     end)
@@ -93,7 +92,7 @@ chord(frame, field(12, 0x80), field(10, 0x40)) -- Ctrl+C
 frame = frame + 80
 statement('assert x==93; print("CANCEL",1)', "CANCEL 1")
 local loop = 'try:\r while True:\r  pass\rexcept KeyboardInterrupt:\r print("BREAK",1)\r\r'
-text(frame, loop)
+text(frame, loop, true)
 frame = frame + #loop * 12 + 200
 chord(frame, field(12, 0x80), field(10, 0x40))
 frame = frame + 150

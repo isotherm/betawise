@@ -69,6 +69,14 @@ for test_case in "${cases[@]}"; do
         exit 2
     fi
 
+    if [[ $applet == MicroPython ]]; then
+        actual_rom=$(sha256sum "$full_rom")
+        if [[ ${actual_rom%% *} != 732dca63399d883071ce41cc07ad352fa19c506b7b8c307ace16d5c53e6f8708 ]]; then
+            echo "AS3000 LCD translation requires the original 3.01 ROM." >&2
+            exit 2
+        fi
+    fi
+
     run="$work/$test_case"
     mkdir "$run"
     {
@@ -88,9 +96,9 @@ for test_case in "${cases[@]}"; do
     echo "RUN  $test_case"
     if (
         cd "$run"
-        SDL_VIDEODRIVER=dummy "$mame" asma3k -rompath "$roms;$mame_roms" -nvram_directory nvram \
+        SDL_VIDEODRIVER=dummy timeout 900 "$mame" asma3k -rompath "$roms;$mame_roms" -nvram_directory nvram \
             -snapshot_directory snap -applet "$artifact.OS3KApp" \
-            -video none -sound none -nothrottle -seconds_to_run "$seconds" \
+            -video none -sound none -nothrottle -frameskip 0 -noautoframeskip -seconds_to_run "$seconds" \
             -autoboot_delay 0 -autoboot_script "$run/check.lua" > mame.log 2>&1
     ) && grep -Fxq "PASS $test_case" "$run/mame.log" && ! grep -q 'LUA ERROR' "$run/mame.log"; then
         echo "PASS $test_case"

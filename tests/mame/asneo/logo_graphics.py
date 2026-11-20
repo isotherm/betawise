@@ -1,10 +1,9 @@
 """Independent Pillow geometry references and exact right-pane comparisons."""
-import hashlib
 from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw
 
-from neo_reader import bitmap
+from screen_bitmap import compare as compare_bitmap, reference_image
 
 SIZE = (132, 64)
 REFERENCES = Path(__file__).with_name('fixtures') / 'logo-graphics'
@@ -51,47 +50,20 @@ def write_references():
         ImageChops.invert(expected_image(scene).convert('L')).save(REFERENCES/f'{scene}.png')
 
 
-def pane(path):
-    bits = bitmap(path, (264,64))
-    image = Image.new('1', SIZE)
-    image.putdata([bits[y*264+x] for y in range(64) for x in range(132,264)])
-    return image
-
-
 def compare(paths, scene, output):
-    """Require two identical captures, then compare every pixel with fixed geometry."""
-    paths = list(paths)
-    if len(paths) < 2:
-        raise ValueError('graphics check needs two captures')
+    """Logo-specific geometry and statistics around the generic bitmap verifier."""
     expected = expected_image(scene)
     reference = REFERENCES/f'{scene}.png'
-    with Image.open(reference) as stored:
-        stored_bits = stored.convert('L').point(lambda p: int(p < 128), mode='1')
-    if stored_bits.size != SIZE or stored_bits.tobytes() != expected.tobytes():
+    stored = reference_image(reference)
+    if stored.size != SIZE or stored.tobytes() != expected.tobytes():
         raise ValueError(f'graphics reference disagrees with declared geometry: {reference}')
-    images = [pane(path) for path in paths]
-    for image in images[1:]:
-        if image.tobytes() != images[0].tobytes():
-            output = Path(output)
-            output.parent.mkdir(parents=True, exist_ok=True)
-            diff_path = output.with_suffix('.unstable.png')
-            ImageChops.logical_xor(images[0], image).convert('L').save(diff_path)
-            raise ValueError(f'{scene}: graphics changed between captures; diff: {diff_path}')
-    actual = images[0]
-    difference = ImageChops.logical_xor(actual, expected)
-    mismatch = sum(bool(p) for p in difference.getdata())
-    output = Path(output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    ImageChops.invert(actual.convert('L')).save(output.with_suffix('.actual.png'))
-    ImageChops.invert(expected.convert('L')).save(output.with_suffix('.expected.png'))
-    if mismatch:
-        difference.convert('L').save(output.with_suffix('.diff.png'))
-        raise ValueError(f'{scene}: {mismatch} wrong pixels; diff: {output.with_suffix(".diff.png")}')
-    ink = actual.copy()
+    report = compare_bitmap(paths, reference, output, region=(132, 0, 132, 64))
+    # Retain Logo's shape-only statistics, excluding its fixed pane separator.
+    ink = expected.copy()
     ImageDraw.Draw(ink).line((0,0,0,63), fill=0)
-    return dict(scene=scene, region=[132,0,132,64], foreground_bounds=ink.getbbox(),
-                foreground_pixels=sum(bool(p) for p in ink.getdata()), differing_pixels=0,
-                reference=str(reference), reference_sha256=hashlib.sha256(reference.read_bytes()).hexdigest())
+    report.update(scene=scene, foreground_bounds=ink.getbbox(),
+                  foreground_pixels=sum(bool(pixel) for pixel in ink.getdata()))
+    return report
 
 
 if __name__ == '__main__':

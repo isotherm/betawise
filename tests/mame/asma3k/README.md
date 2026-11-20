@@ -92,3 +92,19 @@ message after an uncaught interrupt.
 disabled select/asyncio/thread/process/network modules, retained stdout/stderr
 text and binary streams, memory streams, and the existing `input()`/stdin/open
 unsupported-operation stubs.
+
+## Completion-driven MicroPython actions
+
+MicroPython fixtures use an ordered queue, drain the actual natural-keyboard
+queue and require three unchanged LCD DDRAM observations. Executed commands
+wait for the appropriate friendly/continuation/raw/paste prompt; intentional
+infinite loops explicitly allow busy execution before an interrupt. Assertions
+retry until their expected contents appear, with a 12-emulated-second deadline.
+Cursor-enable flags alone do not prove completion. Interrupt holds retain 12
+frames (240 ms). Boot/menu recovery retains its fixed schedule; DebugTool and
+other fixtures retain their explicit RAM/event schedules.
+
+Use native 50 Hz, unthrottled, without frame skips. Natural-keyboard timings remain
+MAME's defaults (including longer Return phases); arbitrary post-command sleeps
+are removed. A separate wall-clock watchdog bounds a stalled emulator. The LCD
+translation table is checked against the original AS3000 3.01 ROM hash.

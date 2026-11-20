@@ -2,7 +2,7 @@
 local frame = 530
 local function check(expected)
     local ok, err = pcall(expect_text, expected)
-    if not ok then manager.machine:exit(); error(err) end
+    if not ok then error(err) end
 end
 local function enter(command, expected)
     text(frame, command .. "\r")
@@ -95,7 +95,7 @@ enter('print("TAB",1)\r', 'TAB 1')
 enter('for i in range(900):\r t=list(range(12))\r', nil)
 frame = frame + 200
 enter('assert completionvalue==37; print("ALIVE",1)', 'ALIVE 1')
-text(frame, 'while True:\r pass\r\r')
+text(frame, 'while True:\r pass\r\r', true)
 frame = frame + 450
 chord(frame, field(12, 0x80), field(10, 0x40))
 frame = frame + 150
@@ -103,12 +103,12 @@ expect('KeyboardInterrupt') -- Check full decoded LCD text, not a substitute mar
 enter('assert completionvalue==37; print("INTERRUPT",1)', 'INTERRUPT 1')
 if variant == "extra" then
     enter('f=getattr(micropython,"kbd"+chr(95)+"intr"); print("HOOK",1)', 'HOOK 1')
-    text(frame, 'while True:\r f(24)\r\r')
+    text(frame, 'while True:\r f(24)\r\r', true)
     frame = frame + 450
     chord(frame, field(12, 0x80), field(11, 0x40)) -- Assigned Ctrl+X.
     frame = frame + 150
     expect('KeyboardInterrupt')
-    text(frame, 'while True:\r f(120)\r\r')
+    text(frame, 'while True:\r f(120)\r\r', true)
     frame = frame + 450
     key(field(11, 0x40)) -- Assigned plain x.
     frame = frame + 150
