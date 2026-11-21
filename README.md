@@ -7,16 +7,14 @@ for people who want to make their own.
 
 You don't need a compiler to use BetaWise applets.
 
-- **Released applets:** open [Releases](https://github.com/betawise/betawise/releases)
-  and download the `betawise-applets-*.zip` asset. Unzip it to find the
-  `.OS3KApp` files. GitHub's “Source code” downloads are for developers.
+- **Latest release: [v0.3](https://github.com/betawise/betawise/releases/tag/v0.3).**
+  Download the `betawise-applets-*.zip` asset for MicroPython, UCBLogo, terminal
+  fonts, Hello World, and DebugTool. No GitHub account is needed. Unzip it to
+  find the `.OS3KApp` files. GitHub's “Source code” downloads are for developers.
 - **Latest development builds:** open [CI runs](https://github.com/betawise/betawise/actions/workflows/ci.yml),
   choose a successful run for `master`, and download its `betawise-applets-*`
   artifact. GitHub requires you to sign in to download artifacts, and older
   artifacts may expire. These builds include work newer than the releases.
-
-The latest tagged release is **v0.2 (2021)**; it predates the MicroPython and
-UCBLogo applets described below. Use a current development build for those.
 
 ## Installing custom applets
 
