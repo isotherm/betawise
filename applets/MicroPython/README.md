@@ -5,6 +5,8 @@ Choose a profile below, install its `MicroPython-<profile>.OS3KApp` image using
 [Neo Manager](../../README.md#installing-custom-applets), and select MicroPython
 from the SmartApplets menu.
 
+![MicroPython running JSON and Pig Latin demos on the Neo](screenshot.gif)
+
 ## Choose a profile
 
 All profiles include the compiler, interactive REPL, garbage collection, and

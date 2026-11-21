@@ -4,6 +4,8 @@ Draw with turtle graphics and write small Logo procedures on your AlphaSmart.
 Install `UCBLogo.OS3KApp` using [Neo Manager](../../README.md#installing-custom-applets),
 then select **UCBLogo** from the SmartApplets menu.
 
+![UCBLogo drawing a square and a star on the Neo](screenshot.gif)
+
 ## Draw your first square
 
 The applet opens at a `?` prompt. The left pane shows your commands and output;

@@ -34,8 +34,11 @@ jobs:
       id: applets
       shell: bash
       run: |
-        shopt -s nullglob
-        applets=(applets/*/*.OS3KApp)
+        applet_list=$(make --no-print-directory -s -C applets published-applets)
+        applets=()
+        if [[ -n "$applet_list" ]]; then
+          mapfile -t applets <<< "$applet_list"
+        fi
         if (( ${#applets[@]} == 0 )); then
           echo "No published applets found" >&2
           exit 1
